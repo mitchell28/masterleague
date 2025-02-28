@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+@import 'tailwindcss';
+
+@layer base {
+	html {
+		@apply scroll-smooth;
+	}
+
+	body {
+		@apply min-h-screen bg-gradient-to-br from-slate-800 to-slate-950 font-sans text-white;
+	}
+
+	.glass-card {
+		@apply border border-slate-700/50 bg-slate-800/70 shadow-xl backdrop-blur-md;
+	}
+
+	.glass-panel {
+		@apply border border-slate-700/40 bg-slate-800/50 backdrop-blur-lg;
+	}
+
+	.text-gradient {
+		@apply bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent;
+	}
+
+	/* Silver/metallic gradient buttons */
+	.silver-gradient {
+		@apply bg-gradient-to-r from-slate-300 via-white to-slate-300;
+	}
+
+	/* Additional utility classes for monochrome theme */
+	.bg-dark-gradient {
+		@apply bg-gradient-to-br from-slate-800 to-slate-900;
+	}
+
+	.border-dark {
+		@apply border-slate-600/50;
+	}
+
+	.text-muted {
+		@apply text-slate-400;
+	}
+
+	/* Subtle glow effects */
+	.glow-subtle {
+		@apply shadow-[0_0_15px_rgba(203,213,225,0.15)];
+	}
+
+	.glow-button {
+		@apply shadow-[0_0_10px_rgba(203,213,225,0.3)];
+	}
+}
