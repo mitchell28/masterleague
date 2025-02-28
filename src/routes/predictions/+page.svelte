@@ -363,7 +363,7 @@
 			<div class="flex justify-end">
 				<button
 					type="submit"
-					class="btn variant-filled-primary"
+					class="cursor-pointer rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 font-medium text-white transition-all hover:bg-slate-700"
 					disabled={submitting || !areAllPredictionsValid()}
 				>
 					{#if submitting}
