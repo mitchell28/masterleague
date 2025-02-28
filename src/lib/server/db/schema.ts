@@ -1,68 +1,68 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { pgTable, varchar, integer, timestamp, unique } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
-export const user = sqliteTable('user', {
-	id: text('id').primaryKey(),
+export const user = pgTable('user', {
+	id: varchar('id').primaryKey(),
 	age: integer('age'),
-	username: text('username').notNull().unique(),
-	passwordHash: text('password_hash').notNull(),
-	role: text('role').default('user').notNull()
+	username: varchar('username').notNull().unique(),
+	passwordHash: varchar('password_hash').notNull(),
+	role: varchar('role').default('user').notNull()
 });
 
-export const session = sqliteTable('session', {
-	id: text('id').primaryKey(),
-	userId: text('user_id')
+export const session = pgTable('session', {
+	id: varchar('id').primaryKey(),
+	userId: varchar('user_id')
 		.notNull()
 		.references(() => user.id),
-	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
+	expiresAt: timestamp('expires_at').notNull()
 });
 
-export const teams = sqliteTable('teams', {
-	id: text('id').primaryKey(),
-	name: text('name').notNull(),
-	shortName: text('short_name').notNull(),
-	logo: text('logo')
+export const teams = pgTable('teams', {
+	id: varchar('id').primaryKey(),
+	name: varchar('name').notNull(),
+	shortName: varchar('short_name').notNull(),
+	logo: varchar('logo')
 });
 
-export const fixtures = sqliteTable('fixtures', {
-	id: text('id').primaryKey(),
+export const fixtures = pgTable('fixtures', {
+	id: varchar('id').primaryKey(),
 	weekId: integer('week_id').notNull(),
-	homeTeamId: text('home_team_id')
+	homeTeamId: varchar('home_team_id')
 		.notNull()
 		.references(() => teams.id),
-	awayTeamId: text('away_team_id')
+	awayTeamId: varchar('away_team_id')
 		.notNull()
 		.references(() => teams.id),
 	homeScore: integer('home_score'),
 	awayScore: integer('away_score'),
-	matchDate: integer('match_date', { mode: 'timestamp' }).notNull(),
+	matchDate: timestamp('match_date').notNull(),
 	pointsMultiplier: integer('points_multiplier').default(1).notNull(),
-	status: text('status').default('upcoming').notNull() // upcoming, live, completed
+	status: varchar('status').default('upcoming').notNull() // upcoming, live, completed
 });
 
-export const predictions = sqliteTable('predictions', {
-	id: text('id').primaryKey(),
-	userId: text('user_id')
+export const predictions = pgTable('predictions', {
+	id: varchar('id').primaryKey(),
+	userId: varchar('user_id')
 		.notNull()
 		.references(() => user.id),
-	fixtureId: text('fixture_id')
+	fixtureId: varchar('fixture_id')
 		.notNull()
 		.references(() => fixtures.id),
 	predictedHomeScore: integer('predicted_home_score').notNull(),
 	predictedAwayScore: integer('predicted_away_score').notNull(),
 	points: integer('points').default(0),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
+	createdAt: timestamp('created_at').notNull()
 });
 
-export const leagueTable = sqliteTable('league_table', {
-	id: text('id').primaryKey(),
-	userId: text('user_id')
+export const leagueTable = pgTable('league_table', {
+	id: varchar('id').primaryKey(),
+	userId: varchar('user_id')
 		.notNull()
 		.references(() => user.id),
 	totalPoints: integer('total_points').default(0).notNull(),
 	correctScorelines: integer('correct_scorelines').default(0).notNull(),
 	correctOutcomes: integer('correct_outcomes').default(0).notNull(),
-	lastUpdated: integer('last_updated', { mode: 'timestamp' }).notNull()
+	lastUpdated: timestamp('last_updated').notNull()
 });
 
 // Relations

@@ -278,7 +278,7 @@
 						<div class="mb-4 flex items-center justify-between">
 							<span class="opacity-75">{formatDate(fixture.matchDate)}</span>
 							{#if badge}
-								<span class="badge {badge.color}">
+								<span class="rounded-xl bg-slate-700 p-3 text-white transition-all {badge.color}">
 									{badge.text}
 								</span>
 							{/if}
@@ -322,8 +322,10 @@
 								<div class="flex flex-col">
 									<input
 										type="number"
-										class="input w-16 text-center {validationErrors[fixture.id]?.homeScore
-											? 'input-error'
+										class="w-16 rounded-xl bg-slate-800 p-2 text-center {validationErrors[
+											fixture.id
+										]?.homeScore
+											? 'bg-error-500 '
 											: ''}"
 										min="0"
 										max="99"
@@ -338,8 +340,10 @@
 								<div class="flex flex-col">
 									<input
 										type="number"
-										class="input w-16 text-center {validationErrors[fixture.id]?.awayScore
-											? 'input-error'
+										class="w-16 rounded-xl bg-slate-800 p-2 text-center {validationErrors[
+											fixture.id
+										]?.awayScore
+											? 'bg-error-500 '
 											: ''}"
 										min="0"
 										max="99"

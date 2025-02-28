@@ -122,7 +122,11 @@
 	<div class="mb-6 flex items-center justify-between">
 		<h1 class="h1">Week {week} Fixtures</h1>
 		<div>
-			<button onclick={generateFixtures} class="btn preset-filled" disabled={generating}>
+			<button
+				onclick={generateFixtures}
+				class="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 font-medium text-white transition-all hover:bg-slate-700"
+				disabled={generating}
+			>
 				{#if generating}
 					<span class="animate-spin">⟳</span>
 					<span>Generating...</span>

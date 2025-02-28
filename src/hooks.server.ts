@@ -1,9 +1,5 @@
 import type { Handle } from '@sveltejs/kit';
 import * as auth from '$lib/server/auth.js';
-import { runMigrations } from '$lib/server/db/migrate';
-
-// Run migrations on server start
-runMigrations().catch(console.error);
 
 const handleAuth: Handle = async ({ event, resolve }) => {
 	const sessionToken = event.cookies.get(auth.sessionCookieName);

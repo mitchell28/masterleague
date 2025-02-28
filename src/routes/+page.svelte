@@ -138,7 +138,7 @@
 				<button
 					class="{activeTab === 'how-it-works'
 						? 'border-white bg-slate-900/30 text-white'
-						: 'border-transparent bg-slate-900/30 text-slate-400 hover:bg-slate-800/30 hover:text-slate-300'} rounded-lg border px-4 py-2 text-sm font-medium transition-all"
+						: 'border-transparent bg-slate-900/30 text-slate-400 hover:bg-slate-800/30 hover:text-slate-300'} cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition-all"
 					onclick={() => (activeTab = 'how-it-works')}
 				>
 					How It Works
@@ -146,7 +146,7 @@
 				<button
 					class="{activeTab === 'match-types'
 						? 'border-white bg-slate-900/30 text-white'
-						: 'border-transparent bg-slate-900/30 text-slate-400 hover:bg-slate-800/30 hover:text-slate-300'} rounded-lg border px-4 py-2 text-sm font-medium transition-all"
+						: 'border-transparent bg-slate-900/30 text-slate-400 hover:bg-slate-800/30 hover:text-slate-300'} cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition-all"
 					onclick={() => (activeTab = 'match-types')}
 				>
 					Match Types
@@ -154,7 +154,7 @@
 				<button
 					class="{activeTab === 'scoring-system'
 						? 'border-white bg-slate-900/30 text-white'
-						: 'border-transparent bg-slate-900/30 text-slate-400 hover:bg-slate-800/30 hover:text-slate-300'} rounded-lg border px-4 py-2 text-sm font-medium transition-all"
+						: 'border-transparent bg-slate-900/30 text-slate-400 hover:bg-slate-800/30 hover:text-slate-300'} cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition-all"
 					onclick={() => (activeTab = 'scoring-system')}
 				>
 					Scoring System

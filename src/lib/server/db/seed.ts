@@ -1,16 +1,15 @@
 import { db } from './index';
 import { user } from './schema';
-import { sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import bcrypt from 'bcryptjs';
 
+/**
+ * Seeds the admin user into the database
+ */
 export async function seedAdminUser() {
 	// Check if admin user already exists
-	const existingAdmin = await db
-		.select()
-		.from(user)
-		.where(sql`${user.role} = 'admin'`)
-		.limit(1);
+	const existingAdmin = await db.select().from(user).where(eq(user.role, 'admin')).limit(1);
 
 	if (existingAdmin.length === 0) {
 		// Create admin user
@@ -26,19 +25,17 @@ export async function seedAdminUser() {
 		});
 
 		console.log('Admin user created successfully');
+		return true;
 	} else {
 		console.log('Admin user already exists');
+		return false;
 	}
 }
 
 export async function applySchemaChanges() {
-	// Add role column if it doesn't exist
-	try {
-		await db.run(sql`ALTER TABLE user ADD COLUMN role text DEFAULT 'user' NOT NULL`);
-		console.log('Added role column to user table');
-	} catch (error) {
-		console.log('Role column might already exist:', error);
-	}
+	// For PostgreSQL, we don't need to run ALTER TABLE statements here
+	// as we're using migrations through drizzle-kit
+	// PostgreSQL column modifications would be handled through migrations
 
 	console.log('Schema changes applied successfully');
 }
