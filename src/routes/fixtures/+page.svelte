@@ -1,13 +1,14 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import type { Fixture, Team } from '$lib/server/db/schema';
+	import { enhance } from '$app/forms';
 
-	let fixtures: Fixture[] = [];
-	let teams: Record<string, Team> = {};
-	let loading = true;
-	let error = '';
-	let week = 0;
-	let generating = false;
+	// Use data from page.server.ts load function
+	let data = $props();
+
+	let fixtures: Fixture[] = data.fixtures;
+	let teams: Record<string, Team> = data.teams;
+	let week = data.week;
+	let generating = $state(false);
 
 	// Format date for display
 	function formatDate(timestamp: number | Date): string {
@@ -34,122 +35,46 @@
 		}
 		return null;
 	}
-
-	// Load current fixtures
-	async function loadFixtures() {
-		loading = true;
-		error = '';
-
-		try {
-			const response = await fetch('/api/fixtures/current');
-			const data = await response.json();
-
-			if (data.success) {
-				fixtures = data.fixtures;
-				week = data.week;
-
-				// Load team data if we have fixtures
-				if (fixtures.length > 0) {
-					await loadTeams();
-				}
-			} else {
-				error = data.message || 'Failed to load fixtures';
-			}
-		} catch (err) {
-			error = 'An error occurred while loading fixtures';
-			console.error(err);
-		} finally {
-			loading = false;
-		}
-	}
-
-	// Load team data
-	async function loadTeams() {
-		try {
-			// In a real app, you'd fetch this from an API
-			// For simplicity, we'll use the data from the fixtures
-			const teamIds = new Set<string>();
-			fixtures.forEach((fixture) => {
-				teamIds.add(fixture.homeTeamId);
-				teamIds.add(fixture.awayTeamId);
-			});
-
-			// Fetch team data for each team ID
-			const teamsResponse = await fetch('/api/teams');
-			const teamsData = await teamsResponse.json();
-
-			if (teamsData.success) {
-				// Convert array to record for easy lookup
-				teams = teamsData.teams.reduce((acc: Record<string, Team>, team: Team) => {
-					acc[team.id] = team;
-					return acc;
-				}, {});
-			}
-		} catch (err) {
-			console.error('Failed to load team data:', err);
-		}
-	}
-
-	// Generate fixtures for the current week
-	async function generateFixtures() {
-		generating = true;
-		error = '';
-
-		try {
-			const response = await fetch('/api/fixtures/generate', {
-				method: 'POST'
-			});
-			const data = await response.json();
-
-			if (data.success) {
-				fixtures = data.fixtures;
-				await loadTeams();
-			} else {
-				error = data.message || 'Failed to generate fixtures';
-			}
-		} catch (err) {
-			error = 'An error occurred while generating fixtures';
-			console.error(err);
-		} finally {
-			generating = false;
-		}
-	}
-
-	onMount(loadFixtures);
 </script>
 
 <div class="container mx-auto max-w-4xl p-4">
 	<div class="mb-6 flex items-center justify-between">
 		<h1 class="h1">Week {week} Fixtures</h1>
 		<div>
-			<button
-				onclick={generateFixtures}
-				class="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 font-medium text-white transition-all hover:bg-slate-700"
-				disabled={generating}
+			<form
+				action="?/generateFixtures"
+				method="POST"
+				use:enhance={() => {
+					generating = true;
+
+					return async ({ result }) => {
+						generating = false;
+						if (result.type === 'success') {
+							// Refresh the page to get updated data
+							window.location.reload();
+						}
+					};
+				}}
 			>
-				{#if generating}
-					<span class="animate-spin">⟳</span>
-					<span>Generating...</span>
-				{:else if fixtures.length > 0}
-					<span>Regenerate Fixtures</span>
-				{:else}
-					<span>Generate Fixtures</span>
-				{/if}
-			</button>
+				<button
+					type="submit"
+					class="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 font-medium text-white transition-all hover:bg-slate-700"
+					disabled={generating}
+				>
+					{#if generating}
+						<span class="animate-spin">⟳</span>
+						<span>Generating...</span>
+					{:else if fixtures.length > 0}
+						<span>Regenerate Fixtures</span>
+					{:else}
+						<span>Generate Fixtures</span>
+					{/if}
+				</button>
+			</form>
 		</div>
 	</div>
 
-	{#if loading}
-		<div class="card p-4">
-			<div class="flex items-center gap-4">
-				<p>Loading fixtures...</p>
-			</div>
-		</div>
-	{:else if error}
-		<div class="alert variant-filled-error">
-			<p>{error}</p>
-		</div>
-	{:else if fixtures.length === 0}
+	{#if fixtures.length === 0}
 		<div class="alert variant-soft-warning">
 			<p>No fixtures available for this week. Click "Generate Fixtures" to create some.</p>
 		</div>
