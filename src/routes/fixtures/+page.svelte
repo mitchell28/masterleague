@@ -2,8 +2,7 @@
 	import type { Fixture, Team } from '$lib/server/db/schema';
 	import { enhance } from '$app/forms';
 
-	// Use data from page.server.ts load function
-	let data = $props();
+	let { data } = $props();
 
 	let fixtures: Fixture[] = data.fixtures;
 	let teams: Record<string, Team> = data.teams;
