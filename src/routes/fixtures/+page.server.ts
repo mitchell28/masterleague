@@ -2,10 +2,36 @@ import { error } from '@sveltejs/kit';
 import type { Fixture, Team } from '$lib/server/db/schema';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ fetch }: { fetch: any }) => {
+export const load: PageServerLoad = async ({ fetch, url }) => {
 	try {
-		// Fetch current fixtures
-		const fixturesResponse = await fetch('/api/fixtures/current');
+		// Get week from URL params
+		const requestedWeek = url.searchParams.get('week');
+
+		// Fetch available weeks and current week
+		const weeksResponse = await fetch('/api/fixtures/weeks');
+		const weeksData = await weeksResponse.json();
+
+		if (!weeksData.success) {
+			throw new Error(weeksData.message || 'Failed to load weeks data');
+		}
+
+		// Normalize weeks data
+		const weeks = weeksData.weeks
+			.map((w: string | number) => parseInt(String(w)))
+			.sort((a: number, b: number) => a - b);
+		const currentWeek = parseInt(String(weeksData.currentWeek));
+
+		// Determine which week to load
+		let weekToLoad = currentWeek;
+		if (requestedWeek) {
+			const parsedWeek = parseInt(requestedWeek);
+			if (weeks.includes(parsedWeek)) {
+				weekToLoad = parsedWeek;
+			}
+		}
+
+		// Fetch fixtures for the selected week
+		const fixturesResponse = await fetch(`/api/fixtures/week/${weekToLoad}`);
 		const fixturesData = await fixturesResponse.json();
 
 		if (!fixturesData.success) {
@@ -15,14 +41,13 @@ export const load: PageServerLoad = async ({ fetch }: { fetch: any }) => {
 		const fixtures: Fixture[] = fixturesData.fixtures;
 		const week: number = fixturesData.week;
 
-		// If we have fixtures, also fetch team data
+		// Fetch team data if we have fixtures
 		let teams: Record<string, Team> = {};
 		if (fixtures.length > 0) {
 			const teamsResponse = await fetch('/api/teams');
 			const teamsData = await teamsResponse.json();
 
 			if (teamsData.success) {
-				// Convert array to record for easy lookup
 				teams = teamsData.teams.reduce((acc: Record<string, Team>, team: Team) => {
 					acc[team.id] = team;
 					return acc;
@@ -30,38 +55,9 @@ export const load: PageServerLoad = async ({ fetch }: { fetch: any }) => {
 			}
 		}
 
-		return {
-			fixtures,
-			teams,
-			week
-		};
+		return { fixtures, teams, week, weeks, currentWeek };
 	} catch (err) {
 		console.error('Error loading fixtures data:', err);
 		throw error(500, { message: 'Failed to load fixtures data' });
-	}
-};
-export const actions = {
-	generateFixtures: async ({ fetch }: { fetch: any }) => {
-		try {
-			const response = await fetch('/api/fixtures/generate', {
-				method: 'POST'
-			});
-			const data = await response.json();
-
-			if (!data.success) {
-				throw new Error(data.message || 'Failed to generate fixtures');
-			}
-
-			return {
-				success: true,
-				fixtures: data.fixtures
-			};
-		} catch (err) {
-			console.error('Error generating fixtures:', err);
-			return {
-				success: false,
-				message: 'An error occurred while generating fixtures'
-			};
-		}
 	}
 };

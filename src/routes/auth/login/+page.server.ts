@@ -66,7 +66,6 @@ export const actions: Actions = {
 
 		const userId = generateUserId();
 		const passwordHash = await hash(password, {
-			// recommended minimum parameters
 			memoryCost: 19456,
 			timeCost: 2,
 			outputLen: 32,

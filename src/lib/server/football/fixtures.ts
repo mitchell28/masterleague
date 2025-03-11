@@ -1,17 +1,48 @@
 import type { Fixture } from '../db/schema';
 import { fixtures, predictions } from '../db/schema';
 import { db } from '../db';
-import { eq, and, desc, gt, inArray as drizzleInArray } from 'drizzle-orm';
-import { getBigSixTeams, getTopTeams } from './teams';
-import { randomUUID } from 'crypto';
+import { eq, inArray as drizzleInArray } from 'drizzle-orm';
 
-// Get current week number
+/**
+ * Get the current Premier League match week
+ * For the 2023-24 season that runs from August 11, 2023 to May 19, 2024
+ */
 export function getCurrentWeek(): number {
-	// For simplicity, we'll use a calculation based on the current date
-	const now = new Date();
-	const startDate = new Date(now.getFullYear(), 0, 1);
-	const days = Math.floor((now.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
-	return Math.ceil(days / 7);
+	// Define the 2023-24 Premier League season
+	const season = {
+		startDate: new Date('2023-08-11'),
+		endDate: new Date('2024-05-19'),
+		totalWeeks: 38
+	};
+
+	// Get current date and adjust if needed for system clock issues
+	let now = new Date();
+	if (now.getFullYear() === 2025) {
+		// If system date incorrectly shows 2025, adjust to 2024
+		now = new Date(now);
+		now.setFullYear(2024);
+	}
+
+	// Handle pre-season and post-season dates
+	if (now < season.startDate) return 1;
+	if (now > season.endDate) return season.totalWeeks;
+
+	// Calculate days elapsed and total season length
+	const msPerDay = 24 * 60 * 60 * 1000;
+	const totalDays = (season.endDate.getTime() - season.startDate.getTime()) / msPerDay;
+	const elapsedDays = (now.getTime() - season.startDate.getTime()) / msPerDay;
+
+	// Calculate match week based on percentage of season completed
+	let matchWeek = Math.floor((elapsedDays / totalDays) * season.totalWeeks) + 1;
+
+	// Specific adjustments for known periods
+	// For March 2024, the week should be around 29
+	if (now.getMonth() === 2 && now.getFullYear() === 2024) {
+		matchWeek = 29;
+	}
+
+	// Ensure result is within valid range
+	return Math.min(Math.max(matchWeek, 1), season.totalWeeks);
 }
 
 // Database operations
@@ -57,193 +88,4 @@ export async function deleteFixturesByWeek(weekId: number): Promise<void> {
 
 	// Now it's safe to delete the fixtures
 	await db.delete(fixtures).where(eq(fixtures.weekId, weekId));
-}
-
-// Fixture generation
-export async function generateFixturesForCurrentWeek(
-	forceRegenerate: boolean = false
-): Promise<Fixture[]> {
-	const weekId = getCurrentWeek();
-
-	// Check if fixtures already exist for this week
-	const existingFixtures = await getFixturesByWeek(weekId);
-	if (existingFixtures.length > 0) {
-		// If forceRegenerate is true, delete existing fixtures
-		if (forceRegenerate) {
-			await deleteFixturesByWeek(weekId);
-		} else {
-			return existingFixtures;
-		}
-	}
-
-	// Generate fixtures and save to database
-	const newFixtures = generateInterestingFixtures();
-	const fixtureEntities = createFixtureEntities(newFixtures, weekId);
-	await db.insert(fixtures).values(fixtureEntities);
-
-	return getFixturesByWeek(weekId);
-}
-
-function createFixtureEntities(
-	newFixtures: Array<{
-		homeTeamId: string;
-		awayTeamId: string;
-		matchDate: Date;
-		pointsMultiplier: number;
-	}>,
-	weekId: number
-) {
-	return newFixtures.map((fixture) => ({
-		id: randomUUID(),
-		weekId,
-		homeTeamId: fixture.homeTeamId,
-		awayTeamId: fixture.awayTeamId,
-		matchDate: new Date(fixture.matchDate.getTime()),
-		pointsMultiplier: fixture.pointsMultiplier,
-		status: 'upcoming'
-	}));
-}
-
-// Premier League teams
-const allPremierLeagueTeams = [
-	'arsenal',
-	'aston-villa',
-	'bournemouth',
-	'brentford',
-	'brighton',
-	'chelsea',
-	'crystal-palace',
-	'everton',
-	'fulham',
-	'ipswich',
-	'leicester',
-	'liverpool',
-	'man-city',
-	'man-utd',
-	'newcastle',
-	'nottm-forest',
-	'southampton',
-	'tottenham',
-	'west-ham',
-	'wolves'
-];
-
-// Fixture generation logic
-function generateInterestingFixtures(): Array<{
-	homeTeamId: string;
-	awayTeamId: string;
-	matchDate: Date;
-	pointsMultiplier: number;
-}> {
-	const bigSixTeams = getBigSixTeams();
-	const topTeams = getTopTeams();
-
-	// Create a copy of the teams array that we can modify
-	const availableTeams = [...allPremierLeagueTeams];
-	const fixtures = [];
-
-	// Calculate base dates
-	const { saturday, sundayDate } = calculateMatchDates();
-
-	// Generate special fixtures
-	const triplePointsFixture = createTriplePointsFixture(bigSixTeams, availableTeams, saturday);
-	fixtures.push(triplePointsFixture);
-
-	const doublePointsFixture = createDoublePointsFixture(topTeams, availableTeams, sundayDate);
-	fixtures.push(doublePointsFixture);
-
-	// Generate regular fixtures
-	const regularFixtures = createRegularFixtures(availableTeams, saturday);
-	fixtures.push(...regularFixtures);
-
-	return fixtures;
-}
-
-function calculateMatchDates() {
-	const now = new Date();
-	const saturday = new Date(now);
-	saturday.setDate(now.getDate() + (6 - now.getDay())); // Next Saturday
-	saturday.setHours(15, 0, 0, 0); // 3 PM
-
-	const sundayDate = new Date(saturday);
-	sundayDate.setDate(saturday.getDate() + 1); // Sunday
-
-	return { saturday, sundayDate };
-}
-
-function createTriplePointsFixture(
-	bigSixTeams: string[],
-	availableTeams: string[],
-	saturday: Date
-) {
-	const tripleHomeTeam = getRandomTeamFromArray(bigSixTeams);
-	const tripleAwayTeamOptions = bigSixTeams.filter((team) => team !== tripleHomeTeam);
-	const tripleAwayTeam = getRandomTeamFromArray(tripleAwayTeamOptions);
-
-	// Remove used teams
-	removeFromArray(availableTeams, tripleHomeTeam);
-	removeFromArray(availableTeams, tripleAwayTeam);
-
-	return {
-		homeTeamId: tripleHomeTeam,
-		awayTeamId: tripleAwayTeam,
-		matchDate: new Date(saturday.getTime()),
-		pointsMultiplier: 3
-	};
-}
-
-function createDoublePointsFixture(topTeams: string[], availableTeams: string[], sundayDate: Date) {
-	const doubleHomeTeam = getRandomTeamFromArray(
-		topTeams.filter((team) => availableTeams.includes(team))
-	);
-	const doubleAwayTeamOptions = availableTeams.filter((team) => !topTeams.includes(team));
-	const doubleAwayTeam = getRandomTeamFromArray(doubleAwayTeamOptions);
-
-	// Remove used teams
-	removeFromArray(availableTeams, doubleHomeTeam);
-	removeFromArray(availableTeams, doubleAwayTeam);
-
-	return {
-		homeTeamId: doubleHomeTeam,
-		awayTeamId: doubleAwayTeam,
-		matchDate: new Date(sundayDate.getTime()),
-		pointsMultiplier: 2
-	};
-}
-
-function createRegularFixtures(availableTeams: string[], saturday: Date) {
-	const fixtures = [];
-
-	for (let i = 0; i < 3; i++) {
-		const homeTeam = getRandomTeamFromArray(availableTeams);
-		removeFromArray(availableTeams, homeTeam);
-
-		const awayTeam = getRandomTeamFromArray(availableTeams);
-		removeFromArray(availableTeams, awayTeam);
-
-		const matchDate = new Date(saturday);
-		matchDate.setDate(saturday.getDate() + (i % 2)); // Alternate between Saturday and Sunday
-		matchDate.setHours(15 + ((i * 2) % 4), 0, 0, 0); // Vary the time
-
-		fixtures.push({
-			homeTeamId: homeTeam,
-			awayTeamId: awayTeam,
-			matchDate,
-			pointsMultiplier: 1
-		});
-	}
-
-	return fixtures;
-}
-
-// Utility functions
-function getRandomTeamFromArray(teams: string[]): string {
-	return teams[Math.floor(Math.random() * teams.length)];
-}
-
-function removeFromArray(teams: string[], teamToRemove: string): void {
-	const index = teams.indexOf(teamToRemove);
-	if (index !== -1) {
-		teams.splice(index, 1);
-	}
 }

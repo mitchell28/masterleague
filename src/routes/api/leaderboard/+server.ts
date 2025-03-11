@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { getLeagueTable } from '$lib/server/football/predictions';
 import type { RequestEvent } from '@sveltejs/kit';
-import { requireAuth } from '$lib/server/middleware/validation';
+import { requireAuth } from '$lib/server/api-utils';
 
 export async function GET(event: RequestEvent) {
 	// Check if user is authenticated

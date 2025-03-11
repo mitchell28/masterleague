@@ -5,7 +5,7 @@ import { predictionsArraySchema } from '$lib/validation/schemas';
 import { eq, and, inArray } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { predictions } from '$lib/server/db/schema';
-import { validateRequest, requireAuth } from '$lib/server/middleware/validation';
+import { validateRequest, requireAuth } from '$lib/server/api-utils';
 
 export async function POST(event: RequestEvent) {
 	// Check if user is authenticated

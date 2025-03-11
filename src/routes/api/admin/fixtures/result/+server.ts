@@ -4,22 +4,18 @@ import { user } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { updateFixtureResults } from '$lib/server/football/fixtures';
 import { processFixtureResults } from '$lib/server/football/predictions';
+import { requireAdmin } from '$lib/server/api-utils';
 import type { RequestEvent } from '@sveltejs/kit';
 
-export async function POST({ request, locals }: RequestEvent) {
+export async function POST(event: RequestEvent) {
 	// Check if user is authenticated and is an admin
-	if (!locals.user) {
-		return json({ success: false, message: 'Unauthorized' }, { status: 401 });
-	}
-
-	const userData = await db.select().from(user).where(eq(user.id, locals.user.id)).limit(1);
-
-	if (userData.length === 0 || userData[0].role !== 'admin') {
-		return json({ success: false, message: 'Forbidden' }, { status: 403 });
+	const authCheck = requireAdmin(event);
+	if (!authCheck.success) {
+		return authCheck.response;
 	}
 
 	try {
-		const data = await request.json();
+		const data = await event.request.json();
 
 		// Validate the request
 		if (

@@ -1,9 +1,9 @@
 import type { RequestEvent } from '@sveltejs/kit';
-import type { z } from 'zod';
 import { json } from '@sveltejs/kit';
+import type { z } from 'zod';
 
 /**
- * A middleware function for validating API request bodies against a Zod schema
+ * A utility function for validating API request bodies against a Zod schema
  *
  * @param event The SvelteKit request event
  * @param schema The Zod schema to validate against
@@ -56,7 +56,7 @@ export async function validateRequest<T extends z.ZodTypeAny>(
 }
 
 /**
- * Middleware to check if the user is authenticated
+ * Utility to check if the user is authenticated
  *
  * @param event The SvelteKit request event
  * @returns An object indicating if the user is authenticated, with a response to return if not
@@ -77,7 +77,7 @@ export function requireAuth(
 }
 
 /**
- * Middleware to check if the user has admin role
+ * Utility to check if the user has admin role
  *
  * @param event The SvelteKit request event
  * @returns An object indicating if the user is an admin, with a response to return if not
