@@ -1,43 +1,75 @@
-import type { Prediction, Fixture } from '../db/schema';
-import { predictions, fixtures, leagueTable, user } from '../db/schema';
-import { db } from '../db';
-import { eq, and, asc, desc, or, inArray as drizzleInArray } from 'drizzle-orm';
+import { db } from '$lib/server/db';
+import * as schema from '$lib/server/db/schema';
+import type { Prediction } from '$lib/server/db/schema';
+import { eq, and, desc, inArray } from 'drizzle-orm';
+import { leagueTable, user } from '$lib/server/db/schema';
 import { randomUUID } from 'crypto';
 
-// Get predictions for a specific user and week
+// Get a user's predictions for a specific week
 export async function getUserPredictionsByWeek(
 	userId: string,
 	weekId: number
 ): Promise<Prediction[]> {
-	const weekFixtures = await db.select().from(fixtures).where(eq(fixtures.weekId, weekId));
-	const fixtureIds = weekFixtures.map((fixture) => fixture.id);
+	try {
+		// Get fixtures for the week
+		const fixtures = await db
+			.select()
+			.from(schema.fixtures)
+			.where(eq(schema.fixtures.weekId, weekId));
 
-	if (fixtureIds.length === 0) {
+		// Get predictions for these fixtures
+		const predictions = await db
+			.select()
+			.from(schema.predictions)
+			.where(
+				and(
+					eq(schema.predictions.userId, userId),
+					// Use the fixtures found to filter predictions
+					inArray(
+						schema.predictions.fixtureId,
+						fixtures.map((f) => f.id)
+					)
+				)
+			);
+
+		return predictions;
+	} catch (error) {
+		console.error(`Error getting user predictions for week ${weekId}:`, error);
 		return [];
 	}
-
-	return db
-		.select()
-		.from(predictions)
-		.where(and(eq(predictions.userId, userId), drizzleInArray(predictions.fixtureId, fixtureIds)));
 }
 
-// Get all users who have made predictions for a specific week
+// Get all users who have submitted predictions for a specific week
 export async function getUsersWithPredictionsByWeek(weekId: number): Promise<string[]> {
-	const weekFixtures = await db.select().from(fixtures).where(eq(fixtures.weekId, weekId));
-	const fixtureIds = weekFixtures.map((fixture) => fixture.id);
+	try {
+		// Get fixtures for the week
+		const fixtures = await db
+			.select()
+			.from(schema.fixtures)
+			.where(eq(schema.fixtures.weekId, weekId));
 
-	if (fixtureIds.length === 0) {
+		if (fixtures.length === 0) {
+			return [];
+		}
+
+		// Get unique user IDs who have predictions for these fixtures
+		const predictions = await db
+			.select({ userId: schema.predictions.userId })
+			.from(schema.predictions)
+			.where(
+				inArray(
+					schema.predictions.fixtureId,
+					fixtures.map((f) => f.id)
+				)
+			);
+
+		// Extract unique user IDs
+		const userIds = [...new Set(predictions.map((p) => p.userId))];
+		return userIds;
+	} catch (error) {
+		console.error(`Error getting users with predictions for week ${weekId}:`, error);
 		return [];
 	}
-
-	const predictionRecords = await db
-		.select({ userId: predictions.userId })
-		.from(predictions)
-		.where(drizzleInArray(predictions.fixtureId, fixtureIds))
-		.groupBy(predictions.userId);
-
-	return predictionRecords.map((record) => record.userId);
 }
 
 // Submit predictions for a user
@@ -49,60 +81,83 @@ export async function submitPredictions(
 		awayScore: number;
 	}>
 ): Promise<Prediction[]> {
-	if (predictionData.length === 0) {
-		return [];
+	// Validate user exists
+	const userExists = await db.select().from(schema.user).where(eq(schema.user.id, userId));
+
+	if (userExists.length === 0) {
+		throw new Error('User not found');
 	}
 
-	// Get week ID for the first fixture
-	const fixtureResult = await db
-		.select({ weekId: fixtures.weekId })
-		.from(fixtures)
-		.where(eq(fixtures.id, predictionData[0].fixtureId))
-		.limit(1);
-
-	if (fixtureResult.length === 0) {
-		throw new Error('Fixture not found');
-	}
-
-	const weekId = fixtureResult[0].weekId;
-
-	// Check if user has already submitted predictions for this week
-	const weekFixtures = await db.select().from(fixtures).where(eq(fixtures.weekId, weekId));
-	const fixtureIds = weekFixtures.map((fixture) => fixture.id);
-
-	const existingPredictions = await db
-		.select()
-		.from(predictions)
-		.where(and(eq(predictions.userId, userId), drizzleInArray(predictions.fixtureId, fixtureIds)));
-
-	// If user has already submitted predictions for this week, delete them
-	if (existingPredictions.length > 0) {
-		await db
-			.delete(predictions)
-			.where(
-				and(eq(predictions.userId, userId), drizzleInArray(predictions.fixtureId, fixtureIds))
-			);
-	}
-
-	// Insert all predictions
 	const now = new Date();
-	const predictionEntities = predictionData.map((prediction) => ({
-		id: randomUUID(),
-		userId,
-		fixtureId: prediction.fixtureId,
-		predictedHomeScore: prediction.homeScore,
-		predictedAwayScore: prediction.awayScore,
-		points: 0, // Points will be calculated when results are in
-		createdAt: now
-	}));
+	const results: Prediction[] = [];
 
-	await db.insert(predictions).values(predictionEntities);
+	// Process predictions individually
+	try {
+		for (const prediction of predictionData) {
+			// Check if fixture exists and is still scheduled
+			const fixture = await db
+				.select()
+				.from(schema.fixtures)
+				.where(eq(schema.fixtures.id, prediction.fixtureId));
 
-	// Return the newly created predictions
-	return db
-		.select()
-		.from(predictions)
-		.where(and(eq(predictions.userId, userId), drizzleInArray(predictions.fixtureId, fixtureIds)));
+			if (fixture.length === 0) {
+				throw new Error(`Fixture ${prediction.fixtureId} not found`);
+			}
+
+			// Check if fixture is in the future and still predictable
+			if (fixture[0].status !== 'upcoming') {
+				throw new Error(`This match is no longer open for predictions`);
+			}
+
+			// Check if prediction already exists
+			const existingPrediction = await db
+				.select()
+				.from(schema.predictions)
+				.where(
+					and(
+						eq(schema.predictions.userId, userId),
+						eq(schema.predictions.fixtureId, prediction.fixtureId)
+					)
+				);
+
+			let result;
+
+			if (existingPrediction.length === 0) {
+				// Create new prediction
+				result = await db
+					.insert(schema.predictions)
+					.values({
+						id: randomUUID(),
+						userId,
+						fixtureId: prediction.fixtureId,
+						predictedHomeScore: prediction.homeScore,
+						predictedAwayScore: prediction.awayScore,
+						createdAt: now,
+						points: 0 // Default to 0 points until processed
+					})
+					.returning();
+			} else {
+				// Update existing prediction
+				result = await db
+					.update(schema.predictions)
+					.set({
+						predictedHomeScore: prediction.homeScore,
+						predictedAwayScore: prediction.awayScore
+					})
+					.where(eq(schema.predictions.id, existingPrediction[0].id))
+					.returning();
+			}
+
+			if (result && result.length > 0) {
+				results.push(result[0]);
+			}
+		}
+
+		return results;
+	} catch (error) {
+		console.error('Error submitting predictions:', error);
+		throw error;
+	}
 }
 
 // Calculate points for a prediction
@@ -117,15 +172,16 @@ export function calculatePoints(
 	},
 	multiplier: number = 1
 ): number {
-	// Check for correct scoreline (3 points)
-	if (
+	// If scores match exactly: 3 points
+	const isExactScore =
 		prediction.predictedHomeScore === result.homeScore &&
-		prediction.predictedAwayScore === result.awayScore
-	) {
+		prediction.predictedAwayScore === result.awayScore;
+
+	if (isExactScore) {
 		return 3 * multiplier;
 	}
 
-	// Check for correct outcome (1 point)
+	// If outcome matches (win/loss/draw): 1 point
 	const predictedOutcome = getOutcome(prediction.predictedHomeScore, prediction.predictedAwayScore);
 	const actualOutcome = getOutcome(result.homeScore, result.awayScore);
 
@@ -137,7 +193,7 @@ export function calculatePoints(
 	return 0;
 }
 
-// Determine the outcome of a match (home win, away win, draw)
+// Helper function to determine match outcome
 function getOutcome(homeScore: number, awayScore: number): 'home' | 'away' | 'draw' {
 	if (homeScore > awayScore) {
 		return 'home';
@@ -148,69 +204,96 @@ function getOutcome(homeScore: number, awayScore: number): 'home' | 'away' | 'dr
 	}
 }
 
-// Process results for a fixture and update user points
+// Process results for a fixture
 export async function processFixtureResults(fixtureId: string): Promise<void> {
-	// Get fixture details
-	const fixtureResult = await db.select().from(fixtures).where(eq(fixtures.id, fixtureId)).limit(1);
-	if (fixtureResult.length === 0 || fixtureResult[0].status !== 'completed') {
-		throw new Error('Fixture not found or not completed');
-	}
+	try {
+		// Get the fixture
+		const fixture = await db
+			.select()
+			.from(schema.fixtures)
+			.where(eq(schema.fixtures.id, fixtureId));
 
-	const fixture = fixtureResult[0];
-	if (fixture.homeScore === null || fixture.awayScore === null) {
-		throw new Error('Fixture results not available');
-	}
+		if (fixture.length === 0) {
+			throw new Error(`Fixture ${fixtureId} not found`);
+		}
 
-	// Get all predictions for this fixture
-	const fixturesPredictions = await db
-		.select()
-		.from(predictions)
-		.where(eq(predictions.fixtureId, fixtureId));
+		// Check if fixture has results
+		if (
+			fixture[0].status !== 'completed' ||
+			fixture[0].homeScore === null ||
+			fixture[0].awayScore === null
+		) {
+			throw new Error(`Fixture ${fixtureId} does not have complete results`);
+		}
 
-	// Calculate points and update each prediction
-	for (const prediction of fixturesPredictions) {
-		// Use the fixture's pointsMultiplier directly
-		const multiplier = fixture.pointsMultiplier;
+		// Get all predictions for this fixture
+		const predictions = await db
+			.select()
+			.from(schema.predictions)
+			.where(eq(schema.predictions.fixtureId, fixtureId));
 
-		// Calculate points
-		const points = calculatePoints(
-			{
-				predictedHomeScore: prediction.predictedHomeScore,
-				predictedAwayScore: prediction.predictedAwayScore
-			},
-			{
-				homeScore: fixture.homeScore,
-				awayScore: fixture.awayScore
-			},
-			multiplier
-		);
+		// Process each prediction
+		for (const prediction of predictions) {
+			const points = calculatePoints(
+				{
+					predictedHomeScore: prediction.predictedHomeScore,
+					predictedAwayScore: prediction.predictedAwayScore
+				},
+				{
+					homeScore: fixture[0].homeScore!,
+					awayScore: fixture[0].awayScore!
+				},
+				fixture[0].pointsMultiplier
+			);
 
-		// Update prediction with points
-		await db.update(predictions).set({ points }).where(eq(predictions.id, prediction.id));
+			// Check if prediction was correct
+			const isCorrectScoreline =
+				prediction.predictedHomeScore === fixture[0].homeScore &&
+				prediction.predictedAwayScore === fixture[0].awayScore;
 
-		// Update league table
-		await updateLeagueTable(
-			prediction.userId,
-			points,
-			prediction.predictedHomeScore === fixture.homeScore &&
-				prediction.predictedAwayScore === fixture.awayScore,
-			getOutcome(prediction.predictedHomeScore, prediction.predictedAwayScore) ===
-				getOutcome(fixture.homeScore, fixture.awayScore)
-		);
+			const predictedOutcome = getOutcome(
+				prediction.predictedHomeScore,
+				prediction.predictedAwayScore
+			);
+			const actualOutcome = getOutcome(fixture[0].homeScore!, fixture[0].awayScore!);
+			const isCorrectOutcome = predictedOutcome === actualOutcome;
+
+			// Update prediction with points earned
+			await db
+				.update(schema.predictions)
+				.set({
+					points: points
+				})
+				.where(eq(schema.predictions.id, prediction.id));
+
+			// Update league table
+			await updateLeagueTable(prediction.userId, points, isCorrectScoreline, isCorrectOutcome);
+		}
+
+		// Update fixture status if needed
+		await db
+			.update(schema.fixtures)
+			.set({
+				status: 'completed'
+			})
+			.where(eq(schema.fixtures.id, fixtureId));
+	} catch (error) {
+		console.error(`Error processing results for fixture ${fixtureId}:`, error);
+		throw error;
 	}
 }
 
-// Update league table for a user
+// Update the league table for a user
 async function updateLeagueTable(
 	userId: string,
 	pointsEarned: number,
 	isCorrectScoreline: boolean,
 	isCorrectOutcome: boolean
 ): Promise<void> {
+	const now = new Date();
+
 	// Check if user already has an entry in the league table
 	const existingEntry = await db.select().from(leagueTable).where(eq(leagueTable.userId, userId));
-
-	const now = new Date();
 
 	if (existingEntry.length === 0) {
 		// Create new entry

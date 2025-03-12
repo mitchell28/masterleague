@@ -2,8 +2,16 @@ import type { Team } from '../db/schema';
 import { teams } from '../db/schema';
 import { db } from '../db';
 import { eq } from 'drizzle-orm';
-import { error } from '@sveltejs/kit';
-import { FOOTBALL_DATA_API_KEY } from '$env/static/private';
+import { FOOTBALL_DATA_API_KEY as SVELTEKIT_API_KEY } from '$env/static/private';
+
+// Try to get API key from environment, allows running from scripts and SvelteKit
+let FOOTBALL_DATA_API_KEY: string | undefined;
+try {
+	FOOTBALL_DATA_API_KEY = SVELTEKIT_API_KEY;
+} catch (error) {
+	// If running from script, get from process.env
+	FOOTBALL_DATA_API_KEY = process.env.FOOTBALL_DATA_API_KEY;
+}
 
 interface ApiTeam {
 	id: number;
@@ -41,14 +49,13 @@ export async function initializeTeams(): Promise<void> {
 	}
 
 	// Fetch teams from API
-	const apiKey = FOOTBALL_DATA_API_KEY;
-	if (!apiKey) {
+	if (!FOOTBALL_DATA_API_KEY) {
 		throw new Error('FOOTBALL_DATA_API_KEY not found in environment variables');
 	}
 
 	const response = await fetch(API_URL, {
 		headers: {
-			'X-Auth-Token': apiKey
+			'X-Auth-Token': FOOTBALL_DATA_API_KEY
 		}
 	});
 

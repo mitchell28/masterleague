@@ -2,10 +2,16 @@
 	import '../app.css';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
+	import { invalidate } from '$app/navigation';
+	import { Menu, X } from '@lucide/svelte';
 
 	let { children } = $props();
 	let isMenuOpen = $state(false);
 	let scrolled = $state(false);
+	let fixtureCheckDone = $state(false);
+
+	// Access the server-loaded data
+	let fixtureUpdates = $derived(page.data.fixtureUpdates);
 
 	onMount(() => {
 		const handleScroll = () => {
@@ -13,6 +19,30 @@
 		};
 
 		window.addEventListener('scroll', handleScroll);
+
+		// Check for fixture updates when the app loads (only once per session)
+		const checkFixtureUpdates = async () => {
+			if (!fixtureCheckDone) {
+				try {
+					// Invalidate the server data to trigger a refresh
+					await invalidate('fixtures:updates');
+
+					if (fixtureUpdates?.success && fixtureUpdates.updated > 0) {
+						console.log(`Updated ${fixtureUpdates.updated} fixtures with new scores`);
+					}
+				} catch (err) {
+					console.error('Error checking for fixture updates:', err);
+				} finally {
+					fixtureCheckDone = true;
+				}
+			}
+		};
+
+		// Only check for updates if user is logged in
+		if (page.data.user) {
+			checkFixtureUpdates();
+		}
+
 		return () => {
 			window.removeEventListener('scroll', handleScroll);
 		};
@@ -35,7 +65,7 @@
 			>
 				PL
 			</div>
-			<span class="font-display text-gradient text-xl font-bold">Prediction League</span>
+			<span class="font-display text-gradient text-xl font-bold">Master League</span>
 		</a>
 
 		<!-- Desktop Navigation -->
@@ -101,20 +131,11 @@
 			onclick={toggleMenu}
 			aria-label="Toggle menu"
 		>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke-width="1.5"
-				stroke="currentColor"
-				class="size-6"
-			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					d={isMenuOpen ? 'M6 18L18 6M6 6l12 12' : 'M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5'}
-				/>
-			</svg>
+			{#if isMenuOpen}
+				<X class="size-6" />
+			{:else}
+				<Menu class="size-6" />
+			{/if}
 		</button>
 	</div>
 

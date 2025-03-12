@@ -1,16 +1,18 @@
-import { json } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { user, predictions, fixtures } from '$lib/server/db/schema';
 import { getCurrentWeek } from '$lib/server/football/fixtures';
 import { eq, count } from 'drizzle-orm';
-import { requireAdmin } from '$lib/server/api-utils';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
 
-export async function GET(event: RequestEvent) {
+export const load: PageServerLoad = async ({ locals }) => {
 	// Check if user is authenticated and is an admin
-	const authCheck = requireAdmin(event);
-	if (!authCheck.success) {
-		return authCheck.response;
+	if (!locals.user?.id) {
+		throw redirect(302, '/auth/login');
+	}
+
+	if (locals.user.role !== 'admin') {
+		throw error(403, 'You do not have permission to access this page');
 	}
 
 	try {
@@ -29,17 +31,16 @@ export async function GET(event: RequestEvent) {
 			.from(fixtures)
 			.where(eq(fixtures.weekId, currentWeek));
 
-		return json({
-			success: true,
+		return {
 			stats: {
 				totalUsers: userCount[0].count,
 				totalPredictions: predictionCount[0].count,
 				currentWeek,
 				fixturesThisWeek: fixtureCount[0].count
 			}
-		});
-	} catch (error) {
-		console.error('Failed to get admin stats:', error);
-		return json({ success: false, message: 'Failed to get admin stats' }, { status: 500 });
+		};
+	} catch (err) {
+		console.error('Error loading admin stats:', err);
+		throw error(500, { message: 'Failed to load admin stats' });
 	}
-}
+};

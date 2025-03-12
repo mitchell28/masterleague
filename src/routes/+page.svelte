@@ -1,21 +1,23 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { AlertTriangle, CheckCircle, Heart, Award, Check, ArrowUpCircle } from '@lucide/svelte';
 
 	let initialized = $state(false);
 	let loading = $state(true);
 	let error = $state('');
 	let activeTab = $state('how-it-works');
 
+	// Get initialized data from the server
+	let { data } = $props();
+	let initializedData = $derived(data.initialized);
+
 	onMount(async () => {
 		try {
-			// Initialize the database with Premier League teams
-			const response = await fetch('/api/init');
-			const data = await response.json();
-
-			if (data.success) {
+			// Use the server-loaded initialization data
+			if (initializedData.success) {
 				initialized = true;
 			} else {
-				error = data.message || 'Failed to initialize the database';
+				error = initializedData.message || 'Failed to initialize the database';
 			}
 		} catch (err) {
 			error = 'An error occurred while initializing the database';
@@ -43,7 +45,7 @@
 			<h1 class="font-display mb-6 text-4xl font-bold md:text-6xl">
 				<span class="text-gradient">Premier League</span>
 				<br />
-				<span>Prediction League</span>
+				<span>Master League</span>
 			</h1>
 			<p class="mx-auto mb-10 max-w-2xl text-lg text-slate-300 md:text-xl">
 				Predict match scores, compete with friends, and climb the leaderboard in this AI-powered
@@ -65,18 +67,7 @@
 						<div
 							class="flex size-10 flex-shrink-0 items-center justify-center rounded-full bg-red-500/20 text-red-500"
 						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								viewBox="0 0 24 24"
-								fill="currentColor"
-								class="size-6"
-							>
-								<path
-									fill-rule="evenodd"
-									d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"
-									clip-rule="evenodd"
-								/>
-							</svg>
+							<AlertTriangle class="size-6" />
 						</div>
 						<div>
 							<h3 class="mb-1 text-lg font-medium text-red-400">Initialization Error</h3>
@@ -95,18 +86,7 @@
 							<div
 								class="flex size-10 flex-shrink-0 items-center justify-center rounded-full bg-green-500/20 text-green-500"
 							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									viewBox="0 0 24 24"
-									fill="currentColor"
-									class="size-6"
-								>
-									<path
-										fill-rule="evenodd"
-										d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z"
-										clip-rule="evenodd"
-									/>
-								</svg>
+								<CheckCircle class="size-6" />
 							</div>
 						</div>
 					</div>
@@ -168,18 +148,7 @@
 						<div
 							class="silver-gradient glow-button mx-auto mb-6 flex size-16 items-center justify-center rounded-full"
 						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								viewBox="0 0 24 24"
-								fill="currentColor"
-								class="size-8 text-black"
-							>
-								<path
-									fill-rule="evenodd"
-									d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm11.378-3.917c-.89-.777-2.366-.777-3.255 0a.75.75 0 0 1-.988-1.129c1.454-1.272 3.776-1.272 5.23 0 1.513 1.324 1.513 3.518 0 4.842a3.75 3.75 0 0 1-.837.552c-.676.328-1.028.774-1.028 1.152v.75a.75.75 0 0 1-1.5 0v-.75c0-1.279 1.06-2.107 1.875-2.502.182-.088.351-.199.503-.331.83-.727.83-1.857 0-2.584ZM12 18a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"
-									clip-rule="evenodd"
-								/>
-							</svg>
+							<Heart class="size-8 text-black" />
 						</div>
 						<h2 class="font-display text-gradient mb-4 text-2xl font-bold">How It Works</h2>
 						<p class="mb-6 text-slate-300">
@@ -227,16 +196,7 @@
 						<div
 							class="silver-gradient glow-button mx-auto mb-6 flex size-16 items-center justify-center rounded-full"
 						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								viewBox="0 0 24 24"
-								fill="currentColor"
-								class="size-8 text-black"
-							>
-								<path
-									d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"
-								/>
-							</svg>
+							<Award class="size-8 text-black" />
 						</div>
 						<h2 class="font-display text-gradient mb-4 text-2xl font-bold">Match Types</h2>
 						<p class="mb-6 text-slate-300">
@@ -290,18 +250,7 @@
 						<div
 							class="silver-gradient glow-button mx-auto mb-6 flex size-16 items-center justify-center rounded-full"
 						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								viewBox="0 0 24 24"
-								fill="currentColor"
-								class="size-8 text-black"
-							>
-								<path
-									fill-rule="evenodd"
-									d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z"
-									clip-rule="evenodd"
-								/>
-							</svg>
+							<Check class="size-8 text-black" />
 						</div>
 						<h2 class="font-display text-gradient mb-4 text-2xl font-bold">Scoring System</h2>
 						<p class="mb-6 text-slate-300">
@@ -313,18 +262,7 @@
 								<div
 									class="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-green-500/20 text-green-400"
 								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										viewBox="0 0 24 24"
-										fill="currentColor"
-										class="size-6"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 0 1 1.04-.208Z"
-											clip-rule="evenodd"
-										/>
-									</svg>
+									<Check class="size-6" />
 								</div>
 								<h3 class="mb-2 font-medium text-green-400">Correct Scoreline</h3>
 								<p class="mb-3 text-sm text-slate-300">3 points</p>
@@ -338,18 +276,7 @@
 								<div
 									class="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-yellow-500/20 text-yellow-400"
 								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										viewBox="0 0 24 24"
-										fill="currentColor"
-										class="size-6"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm.53 5.47a.75.75 0 0 0-1.06 0l-3 3a.75.75 0 1 0 1.06 1.06l1.72-1.72v5.69a.75.75 0 0 0 1.5 0v-5.69l1.72 1.72a.75.75 0 1 0 1.06-1.06l-3-3Z"
-											clip-rule="evenodd"
-										/>
-									</svg>
+									<ArrowUpCircle class="size-6" />
 								</div>
 								<h3 class="mb-2 font-medium text-yellow-400">Correct Outcome</h3>
 								<p class="mb-3 text-sm text-slate-300">1 point</p>

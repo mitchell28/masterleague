@@ -1,9 +1,12 @@
 <script lang="ts">
 	import type { Fixture, Team } from '$lib/server/db/schema';
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { enhance } from '$app/forms';
+	import { Check, X } from '@lucide/svelte';
 
 	// Get data from props
-	let { data } = $props();
+	let { data, form } = $props();
 
 	// Use derived values to extract from data props
 	// These will automatically update when data changes
@@ -15,13 +18,61 @@
 	let teams = $derived(data.teams);
 	let week = $state(data.week);
 	let weeks = $derived(data.weeks);
-	let currentWeek = $derived(data.currentWeek);
+	let currentWeek = $state(data.currentWeek);
+
+	// State for notifications
+	let showUpdateNotification = $state(false);
+	let updatedFixturesCount = $state(0);
+	let completedFixturesCount = $state(0);
+	let inPlayFixturesCount = $state(0);
+
+	// Explicitly check for updates on the fixtures page
+	onMount(async () => {
+		try {
+			const formData = new FormData();
+			const response = await fetch('?/checkUpdates', {
+				method: 'POST',
+				body: formData
+			});
+
+			const result = await response.json();
+
+			if (result.success && result.updated > 0) {
+				updatedFixturesCount = result.updated;
+				completedFixturesCount = result.completed || 0;
+				inPlayFixturesCount = result.inPlay || 0;
+				showUpdateNotification = true;
+
+				// Auto-hide notification after 5 seconds
+				setTimeout(() => {
+					showUpdateNotification = false;
+				}, 5000);
+
+				// Reload the page to show the updated fixtures
+				setTimeout(() => {
+					window.location.reload();
+				}, 1000);
+			}
+		} catch (err) {
+			console.error('Error checking for fixture updates:', err);
+		}
+	});
 
 	// Change week from dropdown
 	function changeWeek(event: Event) {
 		const target = event.target as HTMLSelectElement;
 		const newWeek = target.value;
 		goto(`?week=${newWeek}`);
+	}
+
+	// Navigate to predictions page for a specific week
+	function goToPredictions() {
+		goto(`/predictions?week=${week}`);
+	}
+
+	// Dismiss notification
+	function dismissNotification() {
+		showUpdateNotification = false;
 	}
 
 	// Helper functions
@@ -54,6 +105,41 @@
 	<div class="mb-6 flex items-center justify-between">
 		<h1 class="text-3xl font-bold">Week {week} Fixtures</h1>
 	</div>
+
+	{#if showUpdateNotification}
+		<div class="mb-4 rounded-lg bg-green-500/20 p-4 text-green-100 shadow-lg">
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-2">
+					<Check class="size-5" />
+					<div>
+						<span
+							>Updated {updatedFixturesCount} fixture{updatedFixturesCount !== 1 ? 's' : ''}!</span
+						>
+						{#if completedFixturesCount > 0 && inPlayFixturesCount > 0}
+							<div class="mt-1 text-sm">
+								{completedFixturesCount} completed, {inPlayFixturesCount} in progress
+							</div>
+						{:else if completedFixturesCount > 0}
+							<div class="mt-1 text-sm">
+								{completedFixturesCount} match{completedFixturesCount !== 1 ? 'es' : ''} with final scores
+							</div>
+						{:else if inPlayFixturesCount > 0}
+							<div class="mt-1 text-sm">
+								{inPlayFixturesCount} match{inPlayFixturesCount !== 1 ? 'es' : ''} in progress
+							</div>
+						{/if}
+					</div>
+				</div>
+				<button
+					aria-label="Dismiss notification"
+					onclick={dismissNotification}
+					class="text-green-100 hover:text-white"
+				>
+					<X class="size-5" />
+				</button>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Week navigation panel -->
 	<div class="mb-8 rounded-xl border border-slate-700 bg-slate-800/50 p-4 shadow-lg">
@@ -140,8 +226,20 @@
 
 					<div class="mt-4 flex justify-center">
 						{#if new Date(fixture.matchDate) < new Date()}
-							<!-- Show result if the match has been played -->
-							{#if fixture.homeScore !== undefined && fixture.awayScore !== undefined}
+							{#if fixture.status === 'in_play' && fixture.homeScore !== undefined && fixture.awayScore !== undefined}
+								<div class="text-center">
+									<div class="flex items-center gap-2">
+										<span
+											class="animate-pulse rounded bg-red-500 px-2 py-0.5 text-xs font-bold text-white"
+											>LIVE</span
+										>
+										<div class="text-xl font-bold">
+											{fixture.homeScore} - {fixture.awayScore}
+										</div>
+									</div>
+									<div class="mt-1 text-sm opacity-75">Match in progress</div>
+								</div>
+							{:else if fixture.homeScore !== undefined && fixture.awayScore !== undefined}
 								<div class="text-center">
 									<div class="text-xl font-bold">
 										{fixture.homeScore} - {fixture.awayScore}
@@ -154,12 +252,12 @@
 								</div>
 							{/if}
 						{:else}
-							<a
-								href="/predictions"
+							<button
+								onclick={goToPredictions}
 								class="rounded-xl border border-blue-600 bg-blue-700 px-4 py-2 font-medium text-white transition-all hover:bg-blue-600"
 							>
 								Make Prediction
-							</a>
+							</button>
 						{/if}
 					</div>
 				</div>

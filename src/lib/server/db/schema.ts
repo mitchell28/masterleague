@@ -26,6 +26,7 @@ export const teams = pgTable('teams', {
 
 export const fixtures = pgTable('fixtures', {
 	id: varchar('id').primaryKey(),
+	matchId: varchar('match_id').notNull(),
 	weekId: integer('week_id').notNull(),
 	homeTeamId: varchar('home_team_id')
 		.notNull()

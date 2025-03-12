@@ -1,25 +1,162 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import type { Fixture, Team } from '$lib/server/db/schema';
-	import { predictionSchema } from '$lib/validation/schemas';
-	import { z } from 'zod';
+	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { Info, Check, AlertTriangle } from '@lucide/svelte';
+	import type { Team, Prediction } from '$lib/server/db/schema';
+	import type { Fixture as BaseFixture } from '$lib/server/db/schema';
+	import type { SubmitFunction } from './$types';
 
-	let fixtures: Fixture[] = [];
-	let teams: Record<string, Team> = {};
-	let loading = true;
-	let error = '';
-	let submitting = false;
-	let success = false;
-	let week = 0;
+	// Extended Fixture type with canPredict property
+	type Fixture = BaseFixture & {
+		canPredict?: boolean;
+	};
 
-	// Predictions state
-	let predictions: Record<string, { homeScore: number; awayScore: number }> = {};
-	// Validation errors
-	let validationErrors: Record<string, { homeScore?: string; awayScore?: string }> = {};
+	// Use the new $props runes syntax
+	let { data, form } = $props<{
+		data: {
+			fixtures: Fixture[];
+			teams: Record<string, Team>;
+			week: number;
+			weeks: number[];
+			currentWeek: number;
+			predictions: Record<string, Prediction>;
+		};
+		form?: {
+			success: boolean;
+			message?: string;
+		};
+	}>();
 
-	// Format date for display
+	// Use the new $state and $derived runes syntax
+	let fixtures = $derived(
+		[...data.fixtures].sort(
+			(a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
+		)
+	);
+	let teams = $derived(data.teams);
+	let week = $state(data.week);
+	let weeks = $derived(data.weeks);
+	let currentWeek = $state(data.currentWeek);
+	let predictions = $derived(data.predictions);
+
+	// For form handling and UI
+	let submitting = $state(false);
+	let showSuccess = $state(false);
+	let showError = $state(false);
+	let errorMessage = $state('');
+	let invalidPredictions = $state<string[]>([]);
+
+	// Initialize prediction form data
+	type PredictionValue = {
+		home: number;
+		away: number;
+	};
+	let predictionValues = $state<Record<string, PredictionValue>>({});
+
+	// Set up initial prediction values from data
+	$effect(() => {
+		const newValues: Record<string, PredictionValue> = {};
+		fixtures.forEach((fixture) => {
+			const prediction = predictions[fixture.id];
+			newValues[fixture.id] = {
+				home: prediction?.predictedHomeScore ?? 0,
+				away: prediction?.predictedAwayScore ?? 0
+			};
+		});
+		predictionValues = newValues;
+	});
+
+	// Handle form submission result
+	$effect(() => {
+		if (form) {
+			submitting = false;
+			if (form?.success) {
+				showSuccess = true;
+				setTimeout(() => {
+					showSuccess = false;
+				}, 3000);
+			} else {
+				showError = true;
+				errorMessage = form?.message || 'Failed to save predictions';
+				setTimeout(() => {
+					showError = false;
+				}, 5000);
+			}
+		}
+	});
+
+	// Validate the form before submission
+	function validateForm(): boolean {
+		// Reset validation state
+		invalidPredictions = [];
+
+		// Check for negative scores or invalid inputs
+		for (const fixtureId in predictionValues) {
+			const prediction = predictionValues[fixtureId];
+			const fixture = fixtures.find((f) => f.id === fixtureId);
+
+			// Only validate fixtures that can still be predicted
+			if (fixture && canPredictFixture(fixture)) {
+				if (
+					prediction.home < 0 ||
+					prediction.away < 0 ||
+					isNaN(prediction.home) ||
+					isNaN(prediction.away)
+				) {
+					invalidPredictions.push(fixtureId);
+				}
+			}
+		}
+
+		return invalidPredictions.length === 0;
+	}
+
+	// Form submission handler using SvelteKit 5 approach
+	const handleSubmit: SubmitFunction = ({ cancel }) => {
+		submitting = true;
+
+		// Validate before submitting
+		if (!validateForm()) {
+			submitting = false;
+			showError = true;
+			errorMessage = 'Please fix the invalid predictions highlighted in red';
+			setTimeout(() => {
+				showError = false;
+			}, 5000);
+			cancel();
+			return;
+		}
+
+		// Return processing function for after submission
+		return async ({ result }) => {
+			submitting = false;
+
+			if (result.type === 'success') {
+				showSuccess = true;
+				setTimeout(() => {
+					showSuccess = false;
+				}, 3000);
+			} else if (result.type === 'failure') {
+				showError = true;
+				errorMessage = result.data?.message || 'Failed to save predictions';
+				setTimeout(() => {
+					showError = false;
+				}, 5000);
+			}
+		};
+	};
+
+	// Change week from dropdown
+	function changeWeek(event: Event) {
+		const target = event.target as HTMLSelectElement;
+		const newWeek = target.value;
+		goto(`?week=${newWeek}`);
+	}
+
+	// Helper functions
 	function formatDate(timestamp: number | Date): string {
-		const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+		const date = new Date(timestamp);
 		return date.toLocaleString('en-GB', {
 			weekday: 'short',
 			day: '2-digit',
@@ -29,13 +166,12 @@
 		});
 	}
 
-	// Get badge for special fixtures
 	function getSpecialBadge(fixture: Fixture): { text: string; color: string } | null {
 		if (fixture.pointsMultiplier > 1) {
 			if (fixture.pointsMultiplier === 3) {
-				return { text: '3x Points', color: 'variant-filled-error' };
+				return { text: '3x Points', color: 'bg-green-400' };
 			} else if (fixture.pointsMultiplier === 2) {
-				return { text: '2x Points', color: 'variant-filled-warning' };
+				return { text: '2x Points', color: 'bg-red-400' };
 			} else {
 				return { text: `${fixture.pointsMultiplier}x Points`, color: 'variant-filled-primary' };
 			}
@@ -43,334 +179,381 @@
 		return null;
 	}
 
-	// Load current fixtures
-	async function loadFixtures() {
-		loading = true;
-		error = '';
-
-		try {
-			const response = await fetch('/api/fixtures/current');
-			const data = await response.json();
-
-			if (data.success) {
-				fixtures = data.fixtures;
-				week = data.week;
-
-				// Initialize predictions object
-				fixtures.forEach((fixture) => {
-					predictions[fixture.id] = { homeScore: 0, awayScore: 0 };
-				});
-
-				// Load team data if we have fixtures
-				if (fixtures.length > 0) {
-					await loadTeams();
-				}
-			} else {
-				error = data.message || 'Failed to load fixtures';
-			}
-		} catch (err) {
-			error = 'An error occurred while loading fixtures';
-			console.error(err);
-		} finally {
-			loading = false;
-		}
+	function isPredictionComplete(fixtureId: string): boolean {
+		return (
+			predictionValues[fixtureId]?.home !== undefined &&
+			predictionValues[fixtureId]?.away !== undefined
+		);
 	}
 
-	// Load team data
-	async function loadTeams() {
-		try {
-			// In a real app, you'd fetch this from an API
-			// For simplicity, we'll use the data from the fixtures
-			const teamIds = new Set<string>();
-			fixtures.forEach((fixture) => {
-				teamIds.add(fixture.homeTeamId);
-				teamIds.add(fixture.awayTeamId);
-			});
+	function canPredictFixture(fixture: Fixture): boolean {
+		// URGENT FIX: Allow all scheduled fixtures to be predicted regardless of date
+		// The date parsing was causing issues with different locales/formats
 
-			// Fetch team data for each team ID
-			const teamsResponse = await fetch('/api/teams');
-			const teamsData = await teamsResponse.json();
-
-			if (teamsData.success) {
-				// Convert array to record for easy lookup
-				teams = teamsData.teams.reduce((acc: Record<string, Team>, team: Team) => {
-					acc[team.id] = team;
-					return acc;
-				}, {});
-			}
-		} catch (err) {
-			console.error('Failed to load team data:', err);
-		}
-	}
-
-	// Validate a single prediction
-	function validatePrediction(fixtureId: string, scores: { homeScore: number; awayScore: number }) {
-		try {
-			predictionSchema.parse({
-				fixtureId,
-				homeScore: Number(scores.homeScore),
-				awayScore: Number(scores.awayScore)
-			});
-			// Clear any previous errors
-			validationErrors[fixtureId] = {};
+		// First check if it's a scheduled match - this should ALWAYS be predictable
+		if (fixture.status === 'upcoming') {
 			return true;
-		} catch (error) {
-			if (error instanceof z.ZodError) {
-				validationErrors[fixtureId] = {};
-
-				error.errors.forEach((err) => {
-					const path = err.path[0];
-					if (path === 'homeScore' || path === 'awayScore') {
-						if (validationErrors[fixtureId]) {
-							validationErrors[fixtureId][path as 'homeScore' | 'awayScore'] = err.message;
-						}
-					}
-				});
-			}
-			return false;
-		}
-	}
-
-	// Handle input changes
-	function handleInput(fixtureId: string, field: 'homeScore' | 'awayScore', event: Event) {
-		const target = event.target as HTMLInputElement;
-		const value = parseInt(target.value);
-
-		// Update the prediction
-		predictions[fixtureId] = {
-			...predictions[fixtureId],
-			[field]: isNaN(value) ? 0 : value
-		};
-
-		// Validate on input
-		validatePrediction(fixtureId, predictions[fixtureId]);
-	}
-
-	// Submit predictions
-	async function submitPredictions(e: Event) {
-		e.preventDefault();
-		submitting = true;
-		error = '';
-		success = false;
-
-		// Validate all predictions before submission
-		let isValid = true;
-		Object.entries(predictions).forEach(([fixtureId, scores]) => {
-			if (!validatePrediction(fixtureId, scores)) {
-				isValid = false;
-			}
-		});
-
-		if (!isValid) {
-			submitting = false;
-			error = 'Please fix validation errors before submitting';
-			return;
 		}
 
-		try {
-			// Format predictions for API
-			const predictionArray = Object.entries(predictions).map(([fixtureId, scores]) => ({
-				fixtureId,
-				homeScore: Number(scores.homeScore),
-				awayScore: Number(scores.awayScore)
-			}));
-
-			const response = await fetch('/api/predictions/submit', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ predictions: predictionArray })
-			});
-
-			const data = await response.json();
-
-			if (data.success) {
-				success = true;
-				if (data.message) {
-					// If server returned a message, show it
-					error = data.message;
-				}
-			} else {
-				error = data.message || 'Failed to submit predictions';
-
-				// Handle validation errors from server
-				if (data.errors && Array.isArray(data.errors)) {
-					data.errors.forEach((err: { path: string; message: string }) => {
-						const pathParts = err.path.split('.');
-						if (pathParts.length === 3 && pathParts[0] === 'predictions') {
-							const index = parseInt(pathParts[1]);
-							const field = pathParts[2];
-							const fixtureId = predictionArray[index]?.fixtureId;
-
-							if (fixtureId && (field === 'homeScore' || field === 'awayScore')) {
-								validationErrors[fixtureId] = validationErrors[fixtureId] || {};
-								if (validationErrors[fixtureId]) {
-									validationErrors[fixtureId][field as 'homeScore' | 'awayScore'] = err.message;
-								}
-							}
-						}
-					});
-				}
-			}
-		} catch (err) {
-			error = 'An error occurred while submitting predictions';
-			console.error(err);
-		} finally {
-			submitting = false;
+		// Check server's calculation as fallback
+		if (fixture.canPredict === true) {
+			return true;
 		}
+
+		// If neither of the above conditions are met, it's not predictable
+		return false;
 	}
-
-	// Check if all predictions are valid
-	function areAllPredictionsValid(): boolean {
-		return fixtures.every((fixture) => {
-			const prediction = predictions[fixture.id];
-
-			// First check if prediction exists with basic validation
-			const basicCheck =
-				prediction &&
-				typeof prediction.homeScore === 'number' &&
-				typeof prediction.awayScore === 'number' &&
-				prediction.homeScore >= 0 &&
-				prediction.awayScore >= 0;
-
-			// If basic check passes, perform full validation
-			return basicCheck && validatePrediction(fixture.id, prediction);
-		});
-	}
-
-	onMount(loadFixtures);
 </script>
 
-<div class="container mx-auto px-10">
-	<h1 class="h2 mb-6 font-bold">Week {week} Predictions</h1>
+<div class="container mx-auto max-w-6xl p-4">
+	<div class="mb-6 flex items-center justify-between">
+		<h1 class="text-3xl font-bold">Week {week} Predictions</h1>
+	</div>
 
-	{#if loading}
-		<div class="alert variant-filled-primary">
-			<p>Loading fixtures...</p>
-		</div>
-	{:else if error && !success}
-		<div class="alert variant-filled-error mb-4">
-			<p>{error}</p>
-		</div>
-	{:else if success}
-		<div class="alert variant-filled-success mb-4">
-			<p>Your predictions have been submitted successfully!</p>
-			<div class="mt-4">
-				<a href="/leaderboard" class="anchor">View Leaderboard</a>
+	{#if week > currentWeek}
+		<div class="mb-4 rounded-lg bg-blue-500/20 p-4 text-blue-100 shadow-lg">
+			<div class="flex items-center gap-2">
+				<Info class="size-5" />
+				<span>
+					You're viewing a future week. You can make predictions for any match with "upcoming"
+					status. All upcoming matches should be available for prediction regardless of date.
+				</span>
 			</div>
 		</div>
-	{:else if fixtures.length === 0}
-		<div class="alert variant-filled-warning">
-			<p>No fixtures available for this week.</p>
-			<div class="mt-4">
-				<a href="/fixtures" class="anchor">Generate Fixtures</a>
+	{/if}
+
+	{#if showSuccess}
+		<div class="mb-4 animate-pulse rounded-lg bg-green-500/20 p-4 text-green-100 shadow-lg">
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-2">
+					<Check class="size-5" />
+					<span class="font-medium">Predictions saved successfully!</span>
+				</div>
 			</div>
+		</div>
+	{/if}
+
+	{#if showError}
+		<div class="mb-4 animate-pulse rounded-lg bg-red-500/20 p-4 text-red-100 shadow-lg">
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-2">
+					<AlertTriangle class="size-5" />
+					<span class="font-medium">{errorMessage}</span>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Week navigation panel -->
+	<div class="mb-8 rounded-xl border border-slate-700 bg-slate-800/50 p-4 shadow-lg">
+		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+			<!-- Current week indicator -->
+			<div class="flex items-center gap-2">
+				<div class="rounded-full bg-blue-500 px-3 py-1 text-sm font-medium text-white">
+					Current Week: {currentWeek}
+				</div>
+				{#if week !== currentWeek}
+					<div class="rounded-full bg-slate-700 px-3 py-1 text-sm font-medium text-white">
+						Viewing Week: {week}
+					</div>
+				{/if}
+			</div>
+
+			<!-- Week selector dropdown -->
+			<div class="flex items-center gap-3">
+				<label for="week-select" class="font-medium text-slate-200">Jump to Week:</label>
+				<select
+					id="week-select"
+					class="select w-48 rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-white focus:border-transparent focus:ring-2 focus:ring-blue-500"
+					bind:value={week}
+					onchange={changeWeek}
+				>
+					{#each weeks as weekOption}
+						<option value={Number(weekOption)}>
+							Week {weekOption}
+							{weekOption === currentWeek
+								? ' (Current)'
+								: weekOption > currentWeek
+									? ' (Future)'
+									: ' (Past)'}
+						</option>
+					{/each}
+				</select>
+			</div>
+		</div>
+	</div>
+
+	{#if fixtures.length === 0}
+		<div class="alert variant-soft-warning rounded-lg p-4 text-center">
+			<p class="text-lg">No fixtures available for this week.</p>
 		</div>
 	{:else}
-		<form on:submit={submitPredictions} class="flex flex-col gap-4">
-			{#each fixtures as fixture}
-				{@const badge = getSpecialBadge(fixture)}
-				<div
-					class="card preset-filled-surface-100-900 border-surface-200-800 relative border-[1px]"
-				>
-					<div class="@container p-4">
-						<div class="mb-4 flex items-center justify-between">
-							<span class="opacity-75">{formatDate(fixture.matchDate)}</span>
-							{#if badge}
-								<span class="rounded-xl bg-slate-700 p-3 text-white transition-all {badge.color}">
-									{badge.text}
+		<form method="POST" action="?/submitPredictions" use:enhance={handleSubmit}>
+			<!-- Prediction summary -->
+			<div class="mb-6 rounded-xl border border-slate-700 bg-slate-800/50 p-4 shadow-lg">
+				<h2 class="mb-2 text-xl font-semibold">Your Week {week} Predictions</h2>
+
+				{#if fixtures.filter((f) => canPredictFixture(f)).length === 0}
+					<p class="text-yellow-400">
+						{#if week < currentWeek}
+							This week is in the past. No matches are available for prediction.
+						{:else if week === currentWeek}
+							There are no matches available for prediction at this time. All matches may have
+							already started or been completed.
+						{:else}
+							This is a future week. You can predict matches once the fixtures are upcoming.
+						{/if}
+					</p>
+				{:else}
+					<div class="flex items-center justify-between">
+						<div>
+							<p>
+								<span class="font-medium"
+									>{fixtures.filter((f) => canPredictFixture(f)).length}</span
+								>
+								match{fixtures.filter((f) => canPredictFixture(f)).length !== 1 ? 'es' : ''} available
+								for prediction
+							</p>
+							<p>
+								<span class="font-medium">
+									{fixtures.filter((f) => canPredictFixture(f) && isPredictionComplete(f.id))
+										.length}
 								</span>
+								prediction{fixtures.filter(
+									(f) => canPredictFixture(f) && isPredictionComplete(f.id)
+								).length !== 1
+									? 's'
+									: ''} set
+							</p>
+						</div>
+
+						{#if fixtures.filter( (f) => canPredictFixture(f) ).length - fixtures.filter((f) => canPredictFixture(f) && isPredictionComplete(f.id)).length > 0}
+							<div class="rounded-lg bg-yellow-500/20 p-2 text-sm text-yellow-100">
+								<span class="font-medium">
+									{fixtures.filter((f) => canPredictFixture(f)).length -
+										fixtures.filter((f) => canPredictFixture(f) && isPredictionComplete(f.id))
+											.length}
+								</span>
+								match{fixtures.filter((f) => canPredictFixture(f)).length -
+									fixtures.filter((f) => canPredictFixture(f) && isPredictionComplete(f.id))
+										.length !==
+								1
+									? 'es'
+									: ''} still need predictions
+							</div>
+						{:else if fixtures.filter((f) => canPredictFixture(f)).length > 0}
+							<div class="rounded-lg bg-green-500/20 p-2 text-sm text-green-100">
+								All predictions complete! ✅
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
+
+			<div class="mb-6 flex justify-end">
+				<button
+					type="submit"
+					class="rounded-xl border border-green-600 bg-green-700 px-6 py-2 font-medium text-white transition-all hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+					disabled={submitting}
+				>
+					{submitting ? 'Saving...' : 'Save Predictions'}
+				</button>
+			</div>
+
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+				{#each fixtures as fixture}
+					<div
+						class="rounded-xl border border-slate-700 bg-slate-800/30 p-4 shadow-md transition-all hover:shadow-lg"
+						class:border-red-500={invalidPredictions.includes(fixture.id)}
+					>
+						<div class="mb-2 flex items-center justify-between">
+							<span class="text-sm font-medium text-slate-300">{formatDate(fixture.matchDate)}</span
+							>
+							{#if getSpecialBadge(fixture)}
+								{@const badge = getSpecialBadge(fixture)}
+								<span class="badge {badge?.color} rounded-full px-2 py-1 text-xs font-bold"
+									>{badge?.text}</span
+								>
 							{/if}
 						</div>
 
-						<div class="flex flex-col items-center">
-							<div class="mb-4 flex w-full items-center justify-between">
-								<!-- Home team -->
-								<div class="flex items-center">
-									{#if teams[fixture.homeTeamId]?.logo}
-										<img
-											src={teams[fixture.homeTeamId].logo}
-											alt={teams[fixture.homeTeamId].name}
-											class="mr-2 h-8 w-8"
-										/>
-									{/if}
-									<span class="text-lg font-bold"
-										>{teams[fixture.homeTeamId]?.name || 'Home Team'}</span
-									>
-								</div>
-
-								<!-- Away team -->
-								<div class="flex items-center">
-									<span class="text-lg font-bold"
-										>{teams[fixture.awayTeamId]?.name || 'Away Team'}</span
-									>
-									{#if teams[fixture.awayTeamId]?.logo}
-										<img
-											src={teams[fixture.awayTeamId].logo}
-											alt={teams[fixture.awayTeamId].name}
-											class="ml-2 h-8 w-8"
-										/>
-									{/if}
-								</div>
+						<div class="flex items-center">
+							<div class="flex flex-1 items-center gap-2">
+								{#if teams[fixture.homeTeamId]?.logo}
+									<img
+										src={teams[fixture.homeTeamId].logo}
+										alt={teams[fixture.homeTeamId]?.name || fixture.homeTeamId}
+										class="h-8 w-8 object-contain"
+									/>
+								{/if}
+								<span class="font-semibold"
+									>{teams[fixture.homeTeamId]?.name || 'Unknown Team'}</span
+								>
 							</div>
 
-							<!-- Score inputs -->
-							<div
-								class=" inset-0 flex w-full items-center justify-center gap-2 @[500px]:absolute @[500px]:mt-5"
-							>
-								<div class="flex flex-col">
-									<input
-										type="number"
-										class="w-16 rounded-xl bg-slate-800 p-2 text-center {validationErrors[
-											fixture.id
-										]?.homeScore
-											? 'bg-error-500 '
-											: ''}"
-										min="0"
-										max="99"
-										on:input={(e) => handleInput(fixture.id, 'homeScore', e)}
-										bind:value={predictions[fixture.id].homeScore}
+							<div class="mx-4 text-center font-bold">vs</div>
+
+							<div class="flex flex-1 items-center justify-end gap-2">
+								<span class="font-semibold"
+									>{teams[fixture.awayTeamId]?.name || 'Unknown Team'}</span
+								>
+								{#if teams[fixture.awayTeamId]?.logo}
+									<img
+										src={teams[fixture.awayTeamId].logo}
+										alt={teams[fixture.awayTeamId]?.name || fixture.awayTeamId}
+										class="h-8 w-8 object-contain"
 									/>
-									{#if validationErrors[fixture.id]?.homeScore}
-										<small class="text-error-500">{validationErrors[fixture.id].homeScore}</small>
-									{/if}
-								</div>
-								<span class="text-lg">:</span>
-								<div class="flex flex-col">
-									<input
-										type="number"
-										class="w-16 rounded-xl bg-slate-800 p-2 text-center {validationErrors[
-											fixture.id
-										]?.awayScore
-											? 'bg-error-500 '
-											: ''}"
-										min="0"
-										max="99"
-										on:input={(e) => handleInput(fixture.id, 'awayScore', e)}
-										bind:value={predictions[fixture.id].awayScore}
-									/>
-									{#if validationErrors[fixture.id]?.awayScore}
-										<small class="text-error-500">{validationErrors[fixture.id].awayScore}</small>
-									{/if}
-								</div>
+								{/if}
 							</div>
 						</div>
-					</div>
-				</div>
-			{/each}
 
-			<div class="flex justify-end">
+						<div class="mt-4">
+							{#if canPredictFixture(fixture)}
+								<div class="flex items-center justify-center gap-4">
+									<div class="flex flex-col items-center">
+										<label for="home-{fixture.id}" class="mb-1 text-sm text-slate-300">
+											{teams[fixture.homeTeamId]?.shortName || 'Home'}
+										</label>
+										<input
+											id="home-{fixture.id}"
+											name="prediction-{fixture.id}-home"
+											type="number"
+											min="0"
+											class="w-16 rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-center text-white focus:border-transparent focus:ring-2 focus:ring-blue-500"
+											class:border-red-500={invalidPredictions.includes(fixture.id)}
+											value={predictionValues[fixture.id]?.home ?? 0}
+											oninput={(e) => {
+												// Initialize the fixture's prediction if it doesn't exist
+												if (!predictionValues[fixture.id]) {
+													predictionValues = {
+														...predictionValues,
+														[fixture.id]: { home: 0, away: 0 }
+													};
+												}
+
+												// Update the home score directly in the input event
+												const updatedValues = { ...predictionValues };
+												const target = e.currentTarget as HTMLInputElement;
+												updatedValues[fixture.id].home = Math.max(0, Number(target.value) || 0);
+												predictionValues = updatedValues;
+											}}
+										/>
+									</div>
+
+									<div class="font-bold">-</div>
+
+									<div class="flex flex-col items-center">
+										<label for="away-{fixture.id}" class="mb-1 text-sm text-slate-300">
+											{teams[fixture.awayTeamId]?.shortName || 'Away'}
+										</label>
+										<input
+											id="away-{fixture.id}"
+											name="prediction-{fixture.id}-away"
+											type="number"
+											min="0"
+											class="w-16 rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-center text-white focus:border-transparent focus:ring-2 focus:ring-blue-500"
+											class:border-red-500={invalidPredictions.includes(fixture.id)}
+											value={predictionValues[fixture.id]?.away ?? 0}
+											oninput={(e) => {
+												// Initialize the fixture's prediction if it doesn't exist
+												if (!predictionValues[fixture.id]) {
+													predictionValues = {
+														...predictionValues,
+														[fixture.id]: { home: 0, away: 0 }
+													};
+												}
+
+												// Update the away score directly in the input event
+												const updatedValues = { ...predictionValues };
+												const target = e.currentTarget as HTMLInputElement;
+												updatedValues[fixture.id].away = Math.max(0, Number(target.value) || 0);
+												predictionValues = updatedValues;
+											}}
+										/>
+									</div>
+								</div>
+								{#if isPredictionComplete(fixture.id)}
+									<div class="mt-2 text-center text-sm text-green-400">Prediction set</div>
+								{:else}
+									<div class="mt-2 text-center text-sm text-yellow-400">Enter your prediction</div>
+								{/if}
+							{:else if fixture.status === 'in_play' && fixture.homeScore !== undefined && fixture.awayScore !== undefined}
+								<div class="text-center">
+									<div class="flex items-center justify-center gap-2">
+										<span
+											class="animate-pulse rounded bg-red-500 px-2 py-0.5 text-xs font-bold text-white"
+											>LIVE</span
+										>
+										<div class="text-xl font-bold">
+											{fixture.homeScore} - {fixture.awayScore}
+										</div>
+									</div>
+									<div class="mt-1 text-sm opacity-75">Match in progress</div>
+									{#if predictions[fixture.id]}
+										<div class="mt-2 text-sm">
+											Your prediction: {predictions[fixture.id].predictedHomeScore} - {predictions[
+												fixture.id
+											].predictedAwayScore}
+										</div>
+									{/if}
+								</div>
+							{:else if fixture.homeScore !== undefined && fixture.awayScore !== undefined}
+								<div class="text-center">
+									<div class="text-xl font-bold">
+										{fixture.homeScore} - {fixture.awayScore}
+									</div>
+									<div class="mt-1 text-sm opacity-75">Final Score</div>
+									{#if predictions[fixture.id]}
+										<div class="mt-2 text-sm">
+											Your prediction: {predictions[fixture.id].predictedHomeScore} - {predictions[
+												fixture.id
+											].predictedAwayScore}
+											{#if predictions[fixture.id].points !== undefined}
+												<div class="mt-1 font-medium">
+													Points: <span class="text-green-400"
+														>{predictions[fixture.id].points}</span
+													>
+												</div>
+											{/if}
+										</div>
+									{:else}
+										<div class="mt-2 text-sm text-red-400">No prediction made</div>
+									{/if}
+								</div>
+							{:else}
+								<div class="text-center">
+									<div class="text-sm opacity-75">
+										{#if new Date(fixture.matchDate) < new Date()}
+											Result pending
+										{:else}
+											{new Date(fixture.matchDate) < new Date(new Date().getTime() + 15 * 60 * 1000)
+												? 'Match starting soon - prediction window closed'
+												: 'Prediction window closed for other reasons'}
+										{/if}
+									</div>
+									{#if predictions[fixture.id]}
+										<div class="mt-2 text-sm">
+											Your prediction: {predictions[fixture.id].predictedHomeScore} - {predictions[
+												fixture.id
+											].predictedAwayScore}
+										</div>
+									{:else}
+										<div class="mt-2 text-sm text-red-400">No prediction made</div>
+									{/if}
+								</div>
+							{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+
+			<div class="mt-6 flex justify-end">
 				<button
 					type="submit"
-					class="cursor-pointer rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 font-medium text-white transition-all hover:bg-slate-700"
-					disabled={submitting || !areAllPredictionsValid()}
+					class="rounded-xl border border-green-600 bg-green-700 px-6 py-2 font-medium text-white transition-all hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+					disabled={submitting}
 				>
-					{#if submitting}
-						<span class="loading loading-spinner"></span> Submitting...
-					{:else}
-						Submit Predictions
-					{/if}
+					{submitting ? 'Saving...' : 'Save Predictions'}
 				</button>
 			</div>
 		</form>

@@ -15,7 +15,14 @@
 		"db:push": "drizzle-kit push",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
-		"db:studio": "drizzle-kit studio"
+		"db:studio": "drizzle-kit studio",
+		"db:setup": "vite-node src/lib/scripts/db-setup.ts",
+		"db:run-migrations": "vite-node src/lib/scripts/db-migrate.ts",
+		"db:fetch-data": "vite-node src/lib/scripts/fetch-external-data.ts",
+		"db:init-teams": "vite-node src/lib/scripts/init-teams.ts",
+		"db:seed-fixtures": "vite-node src/lib/scripts/seed-fixtures.ts",
+		"db:process-fixture": "vite-node src/lib/scripts/process-fixture.ts",
+		"db:update-league-table": "vite-node src/lib/scripts/update-league-table.ts"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",
@@ -40,11 +47,13 @@
 		"svelte-check": "^4.0.0",
 		"tailwindcss": "^4.0.0",
 		"ts-node": "^10.9.2",
+		"tsx": "^4.19.3",
 		"typescript": "^5.0.0",
 		"typescript-eslint": "^8.20.0",
 		"vite": "^6.0.0"
 	},
 	"dependencies": {
+		"@lucide/svelte": "^0.479.0",
 		"@neondatabase/serverless": "^0.10.4",
 		"@node-rs/argon2": "^2.0.2",
 		"@oslojs/crypto": "^1.0.1",
@@ -56,6 +65,7 @@
 		"postgres": "^3.4.5",
 		"preline": "^2.7.0",
 		"tailwindcss-animate": "^1.0.7",
+		"vite-node": "^3.0.8",
 		"zod": "^3.24.2"
 	}
 }
