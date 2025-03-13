@@ -265,7 +265,7 @@ export async function getLeagueTable(): Promise<
 	return db
 		.select({
 			userId: leagueTable.userId,
-			username: user.name, // Changed from user.username to user.name
+			username: user.email, // Changed from user.username to user.name
 			totalPoints: leagueTable.totalPoints,
 			correctScorelines: leagueTable.correctScorelines,
 			correctOutcomes: leagueTable.correctOutcomes

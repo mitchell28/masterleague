@@ -1,100 +1,131 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { authClient } from '$lib/client/auth-client';
-	import { createFormValidator, handleInput } from '$lib/validation/formValidation';
-	import { authRegisterSchema, validateRegisterData } from '$lib/validation/auth-schemas';
+	import { authRegisterSchema } from '$lib/validation/auth-schemas';
+	import { z } from 'zod';
 
 	// Form state using $state
+	let email = $state('');
+	let password = $state('');
+	let confirmPassword = $state('');
+	let errors = $state<Record<string, string>>({});
 	let errorMessage = $state('');
 	let isLoading = $state(false);
-	let passwordsMatch = $state(true);
 
-	// Create form validator
-	const { formData, errors, isSubmitting, isValid, updateField } = createFormValidator(
-		authRegisterSchema,
-		{
-			email: '',
-			password: '',
-			confirmPassword: ''
-		}
+	// Computed values
+	let passwordsMatch = $derived(password === confirmPassword);
+	let isFormValid = $derived(
+		email.length > 0 &&
+			password.length >= 8 &&
+			confirmPassword.length > 0 &&
+			passwordsMatch &&
+			Object.keys(errors).length === 0
 	);
+	let submissionInProgress = $derived(isLoading);
 
-	// Handle form input changes
-	const handleFormInput = handleInput((field, value) => {
-		updateField(field, value);
+	// Handle input changes
+	function handleInput(e: Event) {
+		const target = e.target as HTMLInputElement;
+		const field = target.name;
+		const value = target.value;
 
-		// Check password match when either password field changes
-		if (field === 'password' || field === 'confirmPassword') {
-			checkPasswordsMatch();
+		// Update the appropriate state variable
+		if (field === 'email') email = value;
+		if (field === 'password') password = value;
+		if (field === 'confirmPassword') confirmPassword = value;
+
+		// Clear error for this field
+		if (field in errors) {
+			const newErrors = { ...errors };
+			delete newErrors[field];
+			errors = newErrors;
 		}
-	});
+
+		// Validate password match if relevant fields changed
+		if (field === 'password' || field === 'confirmPassword') {
+			validatePasswordMatch();
+		}
+	}
 
 	// Check if passwords match
-	function checkPasswordsMatch() {
-		const currentFormData = { ...$formData };
-		passwordsMatch = currentFormData.password === currentFormData.confirmPassword;
-		if (!passwordsMatch && currentFormData.confirmPassword) {
-			errors.update((e) => ({ ...e, confirmPassword: "Passwords don't match" }));
-		} else if (passwordsMatch && currentFormData.confirmPassword) {
-			errors.update((e) => {
-				const newErrors = { ...e };
-				delete newErrors.confirmPassword;
-				return newErrors;
-			});
+	function validatePasswordMatch() {
+		if (!passwordsMatch && confirmPassword) {
+			errors = { ...errors, confirmPassword: "Passwords don't match" };
+		} else if (
+			passwordsMatch &&
+			confirmPassword &&
+			errors.confirmPassword === "Passwords don't match"
+		) {
+			const newErrors = { ...errors };
+			delete newErrors.confirmPassword;
+			errors = newErrors;
 		}
 	}
 
-	// Computed values using $derived
-	let isFormValid = $derived($isValid && passwordsMatch);
-	let submissionInProgress = $derived($isSubmitting || isLoading);
-
-	// Custom form submission handler
+	// Form submission handler
 	function onSubmit(e: Event) {
 		e.preventDefault();
-		// Validate form data manually
-		const validationResult = validateRegisterData($formData);
+		errorMessage = '';
 
-		if (!validationResult.success) {
-			errorMessage = validationResult.error || 'Invalid form data';
-			return;
-		}
+		const formData = {
+			email,
+			password,
+			confirmPassword
+		};
 
-		// If validation passes, proceed with submission
-		isLoading = true;
+		try {
+			// Validate with Zod schema
+			const result = authRegisterSchema.parse(formData);
 
-		authClient.signUp
-			.email(
-				{
-					email: validationResult.data!.email, // Using email as email
-					password: validationResult.data!.password,
-					name: validationResult.data!.email, // Using email as name
-					callbackURL: '/predictions' // Redirect after email verification (if required)
-				},
-				{
-					onRequest: () => {
-						// Already handled by isLoading state
+			// Also check password match (could use a refined schema instead)
+			if (result.password !== result.confirmPassword) {
+				errorMessage = "Passwords don't match";
+				return;
+			}
+
+			// If validation passes, proceed with submission
+			isLoading = true;
+
+			authClient.signUp
+				.email(
+					{
+						email: result.email,
+						password: result.password,
+						name: result.email, // Using email as name
+						callbackURL: '/predictions' // Redirect after email verification (if required)
 					},
-					onSuccess: () => {
-						goto('/predictions'); // Redirect to dashboard if autoSignIn is true
-					},
-					onError: (ctx: { error: { message: string } }) => {
-						errorMessage = ctx.error.message;
-						isLoading = false;
+					{
+						onRequest: () => {
+							// Already handled by isLoading state
+						},
+						onSuccess: () => {
+							goto('/predictions'); // Redirect to dashboard if autoSignIn is true
+						},
+						onError: (ctx: { error: { message: string } }) => {
+							errorMessage = ctx.error.message;
+							isLoading = false;
+						}
 					}
-				}
-			)
-			.catch((error: unknown) => {
+				)
+				.catch((error: unknown) => {
+					errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+					isLoading = false;
+				});
+		} catch (error) {
+			if (error instanceof z.ZodError) {
+				// Update errors object with field-specific errors
+				const newErrors: Record<string, string> = {};
+				error.errors.forEach((err) => {
+					const field = err.path[0] as string;
+					newErrors[field] = err.message;
+				});
+				errors = newErrors;
+				errorMessage = error.errors[0]?.message || 'Invalid form data';
+			} else {
 				errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-				isLoading = false;
-			});
-	}
-
-	// Track validation errors with $effect
-	$effect(() => {
-		if ($errors.form) {
-			errorMessage = $errors.form;
+			}
 		}
-	});
+	}
 </script>
 
 <div class="mx-auto max-w-md p-8">
@@ -107,12 +138,12 @@
 				type="text"
 				id="email"
 				name="email"
-				oninput={handleFormInput}
-				value={$formData.email || ''}
+				oninput={handleInput}
+				value={email}
 				class="w-full rounded-md border border-gray-300 px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
 			/>
-			{#if $errors.email}
-				<p class="mt-1 text-sm text-red-500">{$errors.email}</p>
+			{#if errors.email}
+				<p class="mt-1 text-sm text-red-500">{errors.email}</p>
 			{/if}
 		</div>
 
@@ -122,12 +153,12 @@
 				type="password"
 				id="password"
 				name="password"
-				oninput={handleFormInput}
-				value={$formData.password || ''}
+				oninput={handleInput}
+				value={password}
 				class="w-full rounded-md border border-gray-300 px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
 			/>
-			{#if $errors.password}
-				<p class="mt-1 text-sm text-red-500">{$errors.password}</p>
+			{#if errors.password}
+				<p class="mt-1 text-sm text-red-500">{errors.password}</p>
 			{/if}
 		</div>
 
@@ -137,12 +168,12 @@
 				type="password"
 				id="confirmPassword"
 				name="confirmPassword"
-				oninput={handleFormInput}
-				value={$formData.confirmPassword || ''}
+				oninput={handleInput}
+				value={confirmPassword}
 				class="w-full rounded-md border border-gray-300 px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
 			/>
-			{#if $errors.confirmPassword}
-				<p class="mt-1 text-sm text-red-500">{$errors.confirmPassword}</p>
+			{#if errors.confirmPassword}
+				<p class="mt-1 text-sm text-red-500">{errors.confirmPassword}</p>
 			{/if}
 		</div>
 

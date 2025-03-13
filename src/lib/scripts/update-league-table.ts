@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { fixtures, predictions, leagueTable, user } from '../server/db/schema';
+import { predictions, leagueTable, user } from '$lib/server/db';
 import { eq, and, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -66,7 +66,7 @@ async function updateLeagueTable() {
 					correctOutcomes,
 					lastUpdated: now
 				});
-				console.log(`Created new league table entry for user ${user.username}`);
+				console.log(`Created new league table entry for user ${user.email}`);
 			} else {
 				// Update existing entry
 				await db
@@ -78,7 +78,7 @@ async function updateLeagueTable() {
 						lastUpdated: now
 					})
 					.where(eq(leagueTable.id, existingEntry.id));
-				console.log(`Updated league table entry for user ${user.username}`);
+				console.log(`Updated league table entry for user ${user.email}`);
 			}
 		}
 
@@ -88,7 +88,7 @@ async function updateLeagueTable() {
 		const currentTable = await db
 			.select({
 				userId: leagueTable.userId,
-				username: user.username,
+				username: user.email,
 				totalPoints: leagueTable.totalPoints,
 				correctScorelines: leagueTable.correctScorelines,
 				correctOutcomes: leagueTable.correctOutcomes
