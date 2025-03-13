@@ -14,7 +14,7 @@
 	};
 
 	// Use the new $props runes syntax
-	let { data, form } = $props<{
+	let { data } = $props<{
 		data: {
 			fixtures: Fixture[];
 			teams: Record<string, Team>;
@@ -231,7 +231,7 @@
 				<select
 					id="week-selector"
 					bind:value={week}
-					on:change={changeWeek}
+					onchange={changeWeek}
 					class="ml-2 rounded-lg border border-slate-600 bg-slate-700 px-3 py-1 text-slate-100 focus:border-blue-400 focus:outline-none"
 				>
 					{#each weeks as weekNum}

@@ -1,78 +1,130 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import { XCircle } from '@lucide/svelte';
-	import type { ActionData } from './$types';
+	import { goto } from '$app/navigation';
+	import { authClient } from '$lib/client/auth-client';
+	import { createFormValidator, handleInput } from '$lib/validation/formValidation';
+	import { authLoginSchema } from '$lib/validation/auth-schemas';
 
-	let { form }: { form: ActionData } = $props();
+	// Form state using $state rune
+	let errorMessage = $state('');
+	let isLoading = $state(false);
+
+	// Create form validator
+	const { formData, errors, isSubmitting, isValid, updateField } = createFormValidator(
+		authLoginSchema,
+		{
+			email: '',
+			password: ''
+		}
+	);
+
+	// Handle form input changes
+	const handleFormInput = handleInput(updateField);
+
+	// Computed values using $derived rune
+	let isFormValid = $derived($isValid);
+	let submissionInProgress = $derived($isSubmitting || isLoading);
+
+	// Custom form submission handler
+	function onSubmit(e: Event) {
+		e.preventDefault();
+		// Validate form data
+		try {
+			const validatedData = authLoginSchema.parse($formData);
+
+			// Proceed with submission
+			isLoading = true;
+			errorMessage = '';
+
+			authClient.signIn
+				.email(
+					{
+						email: validatedData.email, // Using email as email
+						password: validatedData.password
+					},
+					{
+						onRequest: () => {
+							// Already handled by isLoading state
+						},
+						onSuccess: () => {
+							goto('/dashboard');
+						},
+						onError: (ctx: { error: { message: string } }) => {
+							errorMessage = ctx.error.message;
+							isLoading = false;
+						}
+					}
+				)
+				.catch((error: unknown) => {
+					errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+					isLoading = false;
+				});
+		} catch (error) {
+			if (error instanceof Error) {
+				errorMessage = error.message;
+			} else {
+				errorMessage = 'Invalid form data';
+			}
+		}
+	}
+
+	// Track validation errors with $effect
+	$effect(() => {
+		if ($errors.form) {
+			errorMessage = $errors.form;
+		}
+	});
 </script>
 
-<div
-	class="flex min-h-[calc(100vh-10rem)] items-center justify-center bg-gray-50 p-4 dark:bg-gray-900"
->
-	<div
-		class="w-full max-w-md rounded-lg border border-gray-200 bg-white p-8 shadow-lg dark:border-gray-700 dark:bg-gray-800"
-	>
-		<header class="mb-6 text-center">
-			<h1 class="text-2xl font-bold text-gray-900 dark:text-white">Login/Register</h1>
-			<p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-				Enter your credentials to continue
-			</p>
-		</header>
+<div class="mx-auto max-w-md p-8">
+	<h1 class="mb-8 text-center text-2xl font-bold">Login</h1>
 
-		<section>
-			<form method="post" action="?/login" use:enhance class="space-y-6">
-				<div>
-					<label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-						>Username</label
-					>
-					<input
-						class="mt-1 block w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400"
-						id="username"
-						name="username"
-						placeholder="Enter username"
-						autocomplete="username"
-						required
-					/>
-				</div>
-
-				<div>
-					<label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-						>Password</label
-					>
-					<input
-						class="mt-1 block w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400"
-						id="password"
-						type="password"
-						name="password"
-						placeholder="Enter password"
-						autocomplete="current-password"
-						required
-					/>
-				</div>
-
-				<div class="flex gap-4 pt-2">
-					<button
-						class="w-1/2 rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none dark:bg-blue-500 dark:hover:bg-blue-600"
-					>
-						Login
-					</button>
-					<button
-						formaction="?/register"
-						class="w-1/2 rounded-md bg-gray-600 px-4 py-2 font-medium text-white hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:outline-none dark:bg-gray-700 dark:hover:bg-gray-600"
-					>
-						Register
-					</button>
-				</div>
-			</form>
-
-			{#if form?.message}
-				<div class="mt-6 rounded-md bg-red-50 p-4 dark:bg-red-900/30">
-					<div class="flex">
-						<XCircle class="h-5 w-5 text-red-400" />
-						<p class="ml-3 text-sm text-red-700 dark:text-red-200">{form.message}</p>
-					</div>
-				</div>
+	<form onsubmit={onSubmit}>
+		<div class="mb-4">
+			<label for="email" class="mb-2 block font-medium">Email</label>
+			<input
+				type="text"
+				id="email"
+				name="email"
+				oninput={handleFormInput}
+				value={$formData.email || ''}
+				class="w-full rounded-md border border-gray-300 px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+			/>
+			{#if $errors.email}
+				<p class="mt-1 text-sm text-red-500">{$errors.email}</p>
 			{/if}
-		</section>
-	</div>
+		</div>
+
+		<div class="mb-4">
+			<label for="password" class="mb-2 block font-medium">Password</label>
+			<input
+				type="password"
+				id="password"
+				name="password"
+				oninput={handleFormInput}
+				value={$formData.password || ''}
+				class="w-full rounded-md border border-gray-300 px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+			/>
+			{#if $errors.password}
+				<p class="mt-1 text-sm text-red-500">{$errors.password}</p>
+			{/if}
+		</div>
+
+		{#if errorMessage}
+			<p class="mb-4 text-sm text-red-500">{errorMessage}</p>
+		{/if}
+
+		<button
+			type="submit"
+			disabled={submissionInProgress || !isFormValid}
+			class="mb-4 w-full rounded-md bg-indigo-600 px-3 py-3 font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-400"
+		>
+			{submissionInProgress ? 'Logging in...' : 'Login'}
+		</button>
+	</form>
+
+	<p class="mt-6 text-center">
+		Don't have an account? <a href="/auth/signup" class="text-indigo-600 hover:text-indigo-800"
+			>Sign up</a
+		>
+	</p>
 </div>

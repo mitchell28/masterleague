@@ -12,7 +12,7 @@
 		fixture,
 		teams,
 		predictions = {},
-		predictionValues,
+		predictionValues = $bindable(),
 		invalidPredictions = []
 	}: {
 		fixture: Fixture;
@@ -21,8 +21,6 @@
 		predictionValues: Record<string, { home: number; away: number }>;
 		invalidPredictions?: string[];
 	} = $props();
-
-	$inspect(fixture);
 
 	// Helper functions
 	function formatDate(timestamp: number | Date): string {

@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { user, predictions, fixtures } from '$lib/server/db/schema';
+import { predictions, fixtures, user } from '$lib/server/db';
 import {
 	getCurrentWeek,
 	updateAllWeekMultipliers,

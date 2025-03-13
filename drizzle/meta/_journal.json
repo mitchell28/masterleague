@@ -15,6 +15,34 @@
       "when": 1741729414189,
       "tag": "0001_flat_kate_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1741900976340,
+      "tag": "0002_adorable_romulus",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1741901110127,
+      "tag": "0003_uneven_patriot",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1741901744401,
+      "tag": "0004_grey_rumiko_fujikawa",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1741902552138,
+      "tag": "0005_breezy_lila_cheney",
+      "breakpoints": true
     }
   ]
 }

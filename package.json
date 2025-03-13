@@ -55,16 +55,9 @@
 	"dependencies": {
 		"@lucide/svelte": "^0.479.0",
 		"@neondatabase/serverless": "^0.10.4",
-		"@node-rs/argon2": "^2.0.2",
-		"@oslojs/crypto": "^1.0.1",
-		"@oslojs/encoding": "^1.1.0",
-		"@types/bcryptjs": "^2.4.6",
-		"bcryptjs": "^3.0.2",
 		"better-auth": "^1.2.3",
 		"drizzle-orm": "^0.40.0",
 		"pg": "^8.11.3",
-		"postgres": "^3.4.5",
-		"preline": "^2.7.0",
 		"tailwindcss-animate": "^1.0.7",
 		"vite-node": "^3.0.8",
 		"zod": "^3.24.2"

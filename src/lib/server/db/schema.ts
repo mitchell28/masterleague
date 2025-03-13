@@ -1,21 +1,6 @@
 import { pgTable, varchar, integer, timestamp, unique } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-
-export const user = pgTable('user', {
-	id: varchar('id').primaryKey(),
-	age: integer('age'),
-	username: varchar('username').notNull().unique(),
-	passwordHash: varchar('password_hash').notNull(),
-	role: varchar('role').default('user').notNull()
-});
-
-export const session = pgTable('session', {
-	id: varchar('id').primaryKey(),
-	userId: varchar('user_id')
-		.notNull()
-		.references(() => user.id),
-	expiresAt: timestamp('expires_at').notNull()
-});
+import { user as authUser } from './auth/auth-schema';
 
 export const teams = pgTable('teams', {
 	id: varchar('id').primaryKey(),
@@ -45,7 +30,7 @@ export const predictions = pgTable('predictions', {
 	id: varchar('id').primaryKey(),
 	userId: varchar('user_id')
 		.notNull()
-		.references(() => user.id),
+		.references(() => authUser.id),
 	fixtureId: varchar('fixture_id')
 		.notNull()
 		.references(() => fixtures.id),
@@ -59,7 +44,7 @@ export const leagueTable = pgTable('league_table', {
 	id: varchar('id').primaryKey(),
 	userId: varchar('user_id')
 		.notNull()
-		.references(() => user.id),
+		.references(() => authUser.id),
 	totalPoints: integer('total_points').default(0).notNull(),
 	correctScorelines: integer('correct_scorelines').default(0).notNull(),
 	correctOutcomes: integer('correct_outcomes').default(0).notNull(),
@@ -67,11 +52,6 @@ export const leagueTable = pgTable('league_table', {
 });
 
 // Relations
-export const userRelations = relations(user, ({ many }) => ({
-	predictions: many(predictions),
-	leagueEntry: many(leagueTable)
-}));
-
 export const fixturesRelations = relations(fixtures, ({ one, many }) => ({
 	homeTeam: one(teams, {
 		fields: [fixtures.homeTeamId],
@@ -85,9 +65,9 @@ export const fixturesRelations = relations(fixtures, ({ one, many }) => ({
 }));
 
 export const predictionsRelations = relations(predictions, ({ one }) => ({
-	user: one(user, {
+	user: one(authUser, {
 		fields: [predictions.userId],
-		references: [user.id]
+		references: [authUser.id]
 	}),
 	fixture: one(fixtures, {
 		fields: [predictions.fixtureId],
@@ -96,15 +76,13 @@ export const predictionsRelations = relations(predictions, ({ one }) => ({
 }));
 
 export const leagueTableRelations = relations(leagueTable, ({ one }) => ({
-	user: one(user, {
+	user: one(authUser, {
 		fields: [leagueTable.userId],
-		references: [user.id]
+		references: [authUser.id]
 	})
 }));
 
 // Type exports
-export type Session = typeof session.$inferSelect;
-export type User = typeof user.$inferSelect;
 export type Team = typeof teams.$inferSelect;
 export type Fixture = typeof fixtures.$inferSelect;
 export type Prediction = typeof predictions.$inferSelect;
