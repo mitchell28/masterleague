@@ -274,3 +274,8 @@ export async function getLeagueTable(): Promise<
 		.innerJoin(user, eq(leagueTable.userId, user.id))
 		.orderBy(desc(leagueTable.totalPoints));
 }
+
+// Either export an existing function
+export function submitPredictions(/* params */) {
+	// Implementation code
+}

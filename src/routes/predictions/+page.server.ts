@@ -1,6 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { getFixturesByWeek, getCurrentWeek } from '$lib/server/football/fixtures';
-import { getUserPredictionsByWeek, submitPredictions } from '$lib/server/football/predictions';
+import { getUserPredictionsByWeek } from '$lib/server/football/predictions';
 import type { PageServerLoad, Actions } from './$types';
 import { db } from '$lib/server/db';
 import { teams, fixtures as fixturesSchema, predictions } from '$lib/server/db/schema';
