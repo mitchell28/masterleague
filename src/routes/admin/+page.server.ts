@@ -1,9 +1,13 @@
 import { error, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { user, predictions, fixtures } from '$lib/server/db/schema';
-import { getCurrentWeek } from '$lib/server/football/fixtures';
+import {
+	getCurrentWeek,
+	updateAllWeekMultipliers,
+	updateCurrentWeekMultipliers
+} from '$lib/server/football/fixtures';
 import { eq, count } from 'drizzle-orm';
-import type { PageServerLoad } from './$types';
+import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	// Check if user is authenticated and is an admin
@@ -42,5 +46,54 @@ export const load: PageServerLoad = async ({ locals }) => {
 	} catch (err) {
 		console.error('Error loading admin stats:', err);
 		throw error(500, { message: 'Failed to load admin stats' });
+	}
+};
+
+export const actions: Actions = {
+	updateMultipliers: async ({ locals }) => {
+		// Only accessible to admins
+		if (!locals.user?.id) {
+			throw redirect(302, '/auth/login');
+		}
+
+		if (locals.user.role !== 'admin') {
+			throw error(403, 'You do not have permission to perform this action');
+		}
+
+		try {
+			const success = await updateCurrentWeekMultipliers();
+
+			if (success) {
+				return { success: true };
+			} else {
+				return { success: false, error: 'Failed to update multipliers' };
+			}
+		} catch (err) {
+			console.error('Error updating multipliers:', err);
+			return { success: false, error: 'Server error' };
+		}
+	},
+	updateAllMultipliers: async ({ locals }) => {
+		// Only accessible to admins
+		if (!locals.user?.id) {
+			throw redirect(302, '/auth/login');
+		}
+
+		if (locals.user.role !== 'admin') {
+			throw error(403, 'You do not have permission to perform this action');
+		}
+
+		try {
+			const success = await updateAllWeekMultipliers();
+
+			if (success) {
+				return { success: true };
+			} else {
+				return { success: false, error: 'Failed to update multipliers' };
+			}
+		} catch (err) {
+			console.error('Error updating all multipliers:', err);
+			return { success: false, error: 'Server error' };
+		}
 	}
 };

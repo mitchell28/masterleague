@@ -60,6 +60,7 @@
 		"@oslojs/encoding": "^1.1.0",
 		"@types/bcryptjs": "^2.4.6",
 		"bcryptjs": "^3.0.2",
+		"better-auth": "^1.2.3",
 		"drizzle-orm": "^0.40.0",
 		"pg": "^8.11.3",
 		"postgres": "^3.4.5",

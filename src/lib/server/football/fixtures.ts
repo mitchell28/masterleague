@@ -132,6 +132,55 @@ interface ApiResponse {
 	matches: ApiMatch[];
 }
 
+// Set random multipliers for fixtures in a specific week
+export async function setRandomMultipliersForWeek(weekId: number): Promise<void> {
+	try {
+		// Get all fixtures for the week
+		const weekFixtures = await db.select().from(fixtures).where(eq(fixtures.weekId, weekId));
+
+		if (weekFixtures.length === 0) {
+			return;
+		}
+
+		// Check if there are already special multipliers set for this week
+		const specialMultipliers = weekFixtures.filter((fixture) => fixture.pointsMultiplier > 1);
+
+		// If special multipliers already exist, reset all to 1 first
+		if (specialMultipliers.length > 0) {
+			console.log(
+				`Resetting multipliers for week ${weekId} - found ${specialMultipliers.length} special multipliers`
+			);
+			await db.update(fixtures).set({ pointsMultiplier: 1 }).where(eq(fixtures.weekId, weekId));
+		}
+
+		// Choose one fixture for triple points (3x)
+		const triplePointsIndex = Math.floor(Math.random() * weekFixtures.length);
+
+		// Choose one different fixture for double points (2x)
+		let doublePointsIndex;
+		do {
+			doublePointsIndex = Math.floor(Math.random() * weekFixtures.length);
+		} while (doublePointsIndex === triplePointsIndex);
+
+		// Update the chosen fixtures with their multipliers
+		await db
+			.update(fixtures)
+			.set({ pointsMultiplier: 3 })
+			.where(eq(fixtures.id, weekFixtures[triplePointsIndex].id));
+
+		await db
+			.update(fixtures)
+			.set({ pointsMultiplier: 2 })
+			.where(eq(fixtures.id, weekFixtures[doublePointsIndex].id));
+
+		console.log(
+			`Set multipliers for week ${weekId}: 3x for fixture ${weekFixtures[triplePointsIndex].id}, 2x for fixture ${weekFixtures[doublePointsIndex].id}`
+		);
+	} catch (error) {
+		console.error(`Error setting multipliers for week ${weekId}:`, error);
+	}
+}
+
 /**
  * Fetch fixtures from Football-Data.org API and seed them into the database with match_id
  */
@@ -258,6 +307,34 @@ export async function seedFixturesWithMatchId(season: string = '2024'): Promise<
 		// Insert fixtures to database
 		if (fixtureValues.length > 0) {
 			await db.insert(fixtures).values(fixtureValues);
+
+			// Set random multipliers for this week's fixtures
+			await setRandomMultipliersForWeek(parseInt(weekId));
 		}
+	}
+}
+
+// Update multipliers for the current week's fixtures
+export async function updateCurrentWeekMultipliers(): Promise<boolean> {
+	try {
+		const currentWeek = getCurrentWeek();
+		await setRandomMultipliersForWeek(currentWeek);
+		return true;
+	} catch (error) {
+		console.error('Error updating current week multipliers:', error);
+		return false;
+	}
+}
+
+export async function updateAllWeekMultipliers(): Promise<boolean> {
+	try {
+		for (let week = 1; week <= 38; week++) {
+			console.log(`Updating multipliers for week ${week}`);
+			await setRandomMultipliersForWeek(week);
+		}
+		return true;
+	} catch (error) {
+		console.error('Error updating all week multipliers:', error);
+		return false;
 	}
 }
