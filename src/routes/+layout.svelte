@@ -2,15 +2,23 @@
 	import '../app.css';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { invalidate } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
 	import { Menu, X } from '@lucide/svelte';
+	import { authClient } from '$lib/client/auth-client';
 
+	// Use reactive session from authClient
+	const session = authClient.useSession();
+
+	// Component props
 	let { children } = $props();
+
+	// Reactive state
 	let isMenuOpen = $state(false);
 	let scrolled = $state(false);
 	let fixtureCheckDone = $state(false);
+	let email = $state('');
 
-	// Access the server-loaded data
+	// Derived values from page data
 	let fixtureUpdates = $derived(page.data.fixtureUpdates);
 
 	// Navigation items
@@ -46,7 +54,7 @@
 		};
 
 		// Only check for updates if user is logged in
-		if (page.data.user) {
+		if ($session.data?.user) {
 			checkFixtureUpdates();
 		}
 
@@ -91,7 +99,7 @@
 						? 'text-slate-400 transition-colors hover:text-slate-200'
 						: 'text-slate-400 transition-colors hover:text-white'}
 
-				{#if !item.adminOnly || page.data.user?.role === 'admin'}
+				{#if !item.adminOnly || $session.data?.user?.role === 'admin'}
 					<a
 						href={item.href}
 						class="relative px-3 py-2 text-sm font-medium {isActive ? activeClass : inactiveClass}"
@@ -102,20 +110,36 @@
 			{/each}
 
 			<div class="ml-4 flex items-center gap-2">
-				{#if page.data.user}
-					<a
-						href="/auth/signout"
-						class="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-slate-700"
-					>
-						Logout
-					</a>
+				{#if $session.data}
+					<div class="flex items-center gap-2">
+						<p class="text-sm text-white">
+							{$session.data.user.name}
+						</p>
+						<button
+							class="cursor-pointer rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-slate-700"
+							onclick={async () => {
+								await authClient.signOut();
+								goto('/auth/login');
+							}}
+						>
+							Logout
+						</button>
+					</div>
 				{:else}
-					<a
-						href="/auth/login"
-						class="silver-gradient glow-button rounded-lg px-4 py-2 text-sm font-medium text-black shadow-md transition-all hover:shadow-lg"
-					>
-						Login
-					</a>
+					<div class="flex items-center gap-2">
+						<a
+							href="/auth/login"
+							class="silver-gradient glow-button rounded-lg px-4 py-2 text-sm font-medium text-black shadow-md transition-all hover:shadow-lg"
+						>
+							Login
+						</a>
+						<a
+							href="/auth/signup"
+							class="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-slate-700"
+						>
+							Sign Up
+						</a>
+					</div>
 				{/if}
 			</div>
 		</nav>
@@ -150,7 +174,7 @@
 							? 'border-l-2 border-slate-400 bg-slate-900/30 text-slate-200'
 							: 'border-l-2 border-white bg-slate-900/30 text-white'}
 
-					{#if !item.adminOnly || page.data.user?.role === 'admin'}
+					{#if !item.adminOnly || $session.data?.user?.role === 'admin'}
 						<a
 							href={item.href}
 							class="rounded-lg px-4 py-3 text-sm font-medium {isActive
@@ -164,22 +188,36 @@
 				{/each}
 
 				<div class="mt-4 border-t border-slate-800 pt-4">
-					{#if page.data.user}
-						<a
-							href="/auth/signout"
-							class="block w-full rounded-lg bg-slate-800 py-3 text-center text-sm font-medium text-white"
-							onclick={() => (isMenuOpen = false)}
-						>
-							Logout
-						</a>
+					{#if $session.data}
+						<div class="flex flex-col gap-2">
+							<p class="text-center text-sm text-white">
+								{$session.data.user.name}
+							</p>
+							<button
+								class="block w-full rounded-lg bg-slate-800 py-3 text-center text-sm font-medium text-white"
+								onclick={async () => {
+									await authClient.signOut();
+									goto('/auth/login');
+								}}
+							>
+								Logout
+							</button>
+						</div>
 					{:else}
-						<a
-							href="/auth/login"
-							class="silver-gradient glow-button block w-full rounded-lg py-3 text-center text-sm font-medium text-black"
-							onclick={() => (isMenuOpen = false)}
-						>
-							Login
-						</a>
+						<div class="flex flex-col gap-3">
+							<a
+								href="/auth/login"
+								class="silver-gradient glow-button block w-full rounded-lg py-3 text-center text-sm font-medium text-black"
+							>
+								Login
+							</a>
+							<a
+								href="/auth/signup"
+								class="block w-full rounded-lg border border-slate-700 bg-slate-800 py-3 text-center text-sm font-medium text-white"
+							>
+								Sign Up
+							</a>
+						</div>
 					{/if}
 				</div>
 			</nav>

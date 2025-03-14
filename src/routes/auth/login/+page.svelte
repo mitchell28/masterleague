@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { authClient } from '$lib/client/auth-client';
+	import { goto, invalidate } from '$app/navigation';
+	import { authClient, signIn } from '$lib/client/auth-client';
 	import { authLoginSchema } from '$lib/validation/auth-schemas';
 	import { z } from 'zod';
 
@@ -59,37 +59,30 @@
 			isLoading = true;
 			console.log('Setting isLoading to true');
 
-			console.log('Calling authClient.signIn.email');
-			authClient.signIn
-				.email(
-					{
-						email: validatedData.email,
-						password: validatedData.password
+			console.log('Calling signIn wrapper function');
+			signIn(
+				{
+					email: validatedData.email,
+					password: validatedData.password
+				},
+				{
+					onRequest: () => {
+						console.log('Auth request started');
+						// Already handled by isLoading state
 					},
-					{
-						onRequest: () => {
-							console.log('Auth request started');
-							// Already handled by isLoading state
-						},
-						onSuccess: () => {
-							console.log('Auth successful, redirecting to /predictions');
-							goto('/predictions');
-						},
-						onError: (ctx: { error: { message: string } }) => {
-							console.log('Auth error:', ctx.error);
-							console.log('Error message:', ctx.error.message);
-							errorMessage = ctx.error.message;
-							isLoading = false;
-							console.log('Setting isLoading to false due to error');
-						}
+					onSuccess: () => {
+						console.log('Auth successful, redirecting to /predictions');
+						goto('/predictions');
+					},
+					onError: (ctx: { error: { message: string } }) => {
+						console.log('Auth error:', ctx.error);
+						console.log('Error message:', ctx.error.message);
+						errorMessage = ctx.error.message;
+						isLoading = false;
+						console.log('Setting isLoading to false due to error');
 					}
-				)
-				.catch((error: unknown) => {
-					console.log('Caught error in auth client call:', error);
-					errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-					isLoading = false;
-					console.log('Setting isLoading to false due to caught error');
-				});
+				}
+			);
 		} catch (error) {
 			console.log('Caught error in form validation:', error);
 			if (error instanceof z.ZodError) {

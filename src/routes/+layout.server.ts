@@ -2,17 +2,18 @@ import { db } from '$lib/server/db';
 import { fixtures } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { LayoutServerLoad } from './$types';
+import { auth } from '$lib/server/db/auth/auth';
 
-export const load: LayoutServerLoad = async ({ locals, depends }) => {
-	console.log(locals);
-	depends('fixtures:updates');
+export const load: LayoutServerLoad = async ({ request }) => {
+	const session = await auth.api.getSession({
+		headers: request.headers
+	});
 
 	let updatedFixtures = 0;
 
 	// Only check for updates if user is logged in
-	if (locals.user?.id) {
+	if (session?.user?.id) {
 		try {
-			// Get fixtures that need score updates
 			const pendingFixtures = await db
 				.select()
 				.from(fixtures)
@@ -28,7 +29,7 @@ export const load: LayoutServerLoad = async ({ locals, depends }) => {
 	}
 
 	return {
-		user: locals.user,
+		user: session?.user || null,
 		fixtureUpdates: {
 			success: true,
 			updated: updatedFixtures

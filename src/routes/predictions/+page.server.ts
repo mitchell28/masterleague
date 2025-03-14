@@ -1,11 +1,9 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { getFixturesByWeek, getCurrentWeek } from '$lib/server/football/fixtures';
-import { getUserPredictionsByWeek } from '$lib/server/football/predictions';
+import { getUserPredictionsByWeek, submitPrediction } from '$lib/server/football/predictions';
 import type { PageServerLoad, Actions } from './$types';
 import { db } from '$lib/server/db';
 import { teams, fixtures as fixturesSchema, predictions } from '$lib/server/db/schema';
-import { randomUUID } from 'crypto';
-import { eq } from 'drizzle-orm';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	// Check if user is authenticated
@@ -181,7 +179,7 @@ export const actions = {
 
 		try {
 			// Submit predictions
-			const results = await submitPredictions(userId, predictionsData);
+			const results = await submitPrediction(userId, predictionsData);
 			return {
 				success: true,
 				message: `Successfully saved ${results.length} predictions`

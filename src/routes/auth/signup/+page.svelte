@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { authClient } from '$lib/client/auth-client';
+	import { goto, invalidate } from '$app/navigation';
+	import { authClient, signUp } from '$lib/client/auth-client';
 	import { authRegisterSchema } from '$lib/validation/auth-schemas';
 	import { z } from 'zod';
 
@@ -86,31 +86,26 @@
 			// If validation passes, proceed with submission
 			isLoading = true;
 
-			authClient.signUp
-				.email(
-					{
-						email: result.email,
-						password: result.password,
-						name: result.email, // Using email as name
-						callbackURL: '/predictions' // Redirect after email verification (if required)
+			signUp(
+				{
+					email: result.email,
+					password: result.password,
+					name: result.email, // Using email as name
+					callbackURL: '/predictions' // Redirect after email verification (if required)
+				},
+				{
+					onRequest: () => {
+						// Already handled by isLoading state
 					},
-					{
-						onRequest: () => {
-							// Already handled by isLoading state
-						},
-						onSuccess: () => {
-							goto('/predictions'); // Redirect to dashboard if autoSignIn is true
-						},
-						onError: (ctx: { error: { message: string } }) => {
-							errorMessage = ctx.error.message;
-							isLoading = false;
-						}
+					onSuccess: () => {
+						goto('/predictions'); // Redirect to dashboard if autoSignIn is true
+					},
+					onError: (ctx: { error: { message: string } }) => {
+						errorMessage = ctx.error.message;
+						isLoading = false;
 					}
-				)
-				.catch((error: unknown) => {
-					errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-					isLoading = false;
-				});
+				}
+			);
 		} catch (error) {
 			if (error instanceof z.ZodError) {
 				// Update errors object with field-specific errors
