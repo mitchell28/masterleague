@@ -1,9 +1,8 @@
-import { auth } from '$lib/server/db/auth/auth';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async (event) => {
-	const session = await auth.api.getSession({ headers: event.request.headers });
+export const load: PageServerLoad = async ({ locals }) => {
+	const session = locals.session;
 
 	const redirectPath = '/predictions';
 
