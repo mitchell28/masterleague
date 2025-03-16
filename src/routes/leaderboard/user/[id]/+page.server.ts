@@ -24,7 +24,7 @@ export const load = (async ({ params, locals }) => {
 		.then((rows) => rows[0]?.weekId);
 
 	if (upcomingWeek) {
-		throw redirect(302, `/leaderboard/user/${userId}/week/${upcomingWeek}`);
+		throw redirect(302, `/leaderboard/user/${userId}/${upcomingWeek}`);
 	}
 
 	// If no upcoming fixtures, get the most recent week with predictions
@@ -38,7 +38,7 @@ export const load = (async ({ params, locals }) => {
 		.then((rows) => rows[0]?.weekId);
 
 	if (recentWeek) {
-		throw redirect(302, `/leaderboard/user/${userId}/week/${recentWeek}`);
+		throw redirect(302, `/leaderboard/user/${userId}/${recentWeek}`);
 	}
 
 	// If no weeks with predictions found, get the earliest week available
@@ -50,9 +50,9 @@ export const load = (async ({ params, locals }) => {
 		.then((rows) => rows[0]?.weekId);
 
 	if (firstWeek) {
-		throw redirect(302, `/leaderboard/user/${userId}/week/${firstWeek}`);
+		throw redirect(302, `/leaderboard/user/${userId}/${firstWeek}`);
 	}
 
 	// Fallback to week 1 if nothing else was found
-	throw redirect(302, `/leaderboard/user/${userId}/week/1`);
+	throw redirect(302, `/leaderboard/user/${userId}/1`);
 }) satisfies PageServerLoad;

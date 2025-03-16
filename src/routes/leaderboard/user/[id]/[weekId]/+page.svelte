@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-
 	type Prediction = {
 		prediction: {
 			id: string;
@@ -54,27 +52,6 @@
 			>;
 		};
 	}>();
-
-	// Helper function to navigate to a specific week
-	function goToWeek(weekId: number) {
-		goto(`/leaderboard/user/${data.user.id}/week/${weekId}`);
-	}
-
-	// Helper function to navigate to previous week
-	function goToPreviousWeek() {
-		const currentIndex = data.availableWeeks.indexOf(data.weekData.weekId);
-		if (currentIndex > 0) {
-			goToWeek(data.availableWeeks[currentIndex - 1]);
-		}
-	}
-
-	// Helper function to navigate to next week
-	function goToNextWeek() {
-		const currentIndex = data.availableWeeks.indexOf(data.weekData.weekId);
-		if (currentIndex < data.availableWeeks.length - 1) {
-			goToWeek(data.availableWeeks[currentIndex + 1]);
-		}
-	}
 
 	// Helper function to get result class
 	function getResultClass(points: number | null, status: string) {
@@ -134,39 +111,6 @@
 						)
 					: 0}%
 			</p>
-		</div>
-	</div>
-
-	<!-- Week Navigation -->
-	<div class="mb-6">
-		<div
-			class="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800 p-4 shadow"
-		>
-			<button
-				onclick={goToPreviousWeek}
-				class="rounded-md bg-slate-700 px-4 py-2 text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
-				disabled={data.availableWeeks.indexOf(data.weekData.weekId) === 0}
-			>
-				← Previous Week
-			</button>
-
-			<div class="text-center">
-				<h2 class="text-xl font-bold text-white">Week {data.weekData.weekId}</h2>
-				<p class="text-sm text-slate-400">
-					{data.availableWeeks.length > 0
-						? `${data.availableWeeks.indexOf(data.weekData.weekId) + 1} of ${data.availableWeeks.length} weeks`
-						: 'No weeks available'}
-				</p>
-			</div>
-
-			<button
-				onclick={goToNextWeek}
-				class="rounded-md bg-slate-700 px-4 py-2 text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
-				disabled={data.availableWeeks.indexOf(data.weekData.weekId) ===
-					data.availableWeeks.length - 1}
-			>
-				Next Week →
-			</button>
 		</div>
 	</div>
 
