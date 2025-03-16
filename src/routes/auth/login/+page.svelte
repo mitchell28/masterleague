@@ -33,33 +33,25 @@
 			delete newErrors[field];
 			errors = newErrors;
 		}
-
-		console.log(`Field ${field} updated to: ${value}`);
 	}
 
 	// Form submission handler
 	function onSubmit(e: Event) {
 		e.preventDefault();
 		errorMessage = '';
-		console.log('Form submission started');
 
 		const formData = {
 			email,
 			password
 		};
-		console.log('Form data:', formData);
 
 		try {
 			// Validate with Zod schema
-			console.log('Validating with Zod schema');
 			const validatedData = authLoginSchema.parse(formData);
-			console.log('Validation successful:', validatedData);
 
 			// Proceed with submission
 			isLoading = true;
-			console.log('Setting isLoading to true');
 
-			console.log('Calling signIn wrapper function');
 			signIn(
 				{
 					email: validatedData.email,
@@ -67,24 +59,18 @@
 				},
 				{
 					onRequest: () => {
-						console.log('Auth request started');
 						// Already handled by isLoading state
 					},
 					onSuccess: () => {
-						console.log('Auth successful, redirecting to /predictions');
 						goto('/predictions');
 					},
 					onError: (ctx: { error: { message: string } }) => {
-						console.log('Auth error:', ctx.error);
-						console.log('Error message:', ctx.error.message);
 						errorMessage = ctx.error.message;
 						isLoading = false;
-						console.log('Setting isLoading to false due to error');
 					}
 				}
 			);
 		} catch (error) {
-			console.log('Caught error in form validation:', error);
 			if (error instanceof z.ZodError) {
 				// Update errors object with field-specific errors
 				const newErrors: Record<string, string> = {};
