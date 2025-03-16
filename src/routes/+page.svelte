@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { AlertTriangle, CheckCircle, Heart, Award, Check, ArrowUpCircle } from '@lucide/svelte';
 
 	let initialized = $state(false);
@@ -11,7 +10,7 @@
 	let { data } = $props();
 	let initializedData = $derived(data.initialized);
 
-	onMount(async () => {
+	$effect(() => {
 		try {
 			// Use the server-loaded initialization data
 			if (initializedData.success) {
@@ -29,23 +28,13 @@
 </script>
 
 <div class="relative">
-	<!-- Hero Background Elements -->
-	<div class="absolute inset-0 -z-10 overflow-hidden">
-		<div
-			class="absolute top-0 left-0 h-full w-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-700/30 via-slate-900/80 to-slate-950"
-		></div>
-		<div class="absolute top-0 left-1/3 h-72 w-72 rounded-full bg-white/10 blur-3xl"></div>
-		<div class="absolute top-20 right-1/4 h-64 w-64 rounded-full bg-slate-400/10 blur-3xl"></div>
-		<div class="absolute right-1/3 bottom-0 h-80 w-80 rounded-full bg-slate-300/10 blur-3xl"></div>
-	</div>
-
 	<!-- Hero Section -->
 	<section class="container mx-auto px-4 py-16 md:py-24">
-		<div class="mx-auto max-w-4xl text-center">
+		<div class="mx-auto max-w-6xl text-center">
 			<h1 class="font-display mb-6 text-4xl font-bold md:text-6xl">
-				<span class="text-gradient">Premier League</span>
-				<br />
-				<span>Master League</span>
+				<span class="bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent"
+					>Master League</span
+				>
 			</h1>
 			<p class="mx-auto mb-10 max-w-2xl text-lg text-slate-300 md:text-xl">
 				Predict match scores, compete with friends, and climb the leaderboard in this AI-powered
@@ -95,14 +84,8 @@
 
 			<div class="flex flex-wrap justify-center gap-4">
 				<a
-					href="/fixtures"
-					class="silver-gradient glow-button rounded-xl px-6 py-3 font-medium text-black shadow-md transition-all hover:shadow-lg"
-				>
-					View This Week's Fixtures
-				</a>
-				<a
 					href="/predictions"
-					class="rounded-xl border border-slate-700 bg-slate-800 px-6 py-3 font-medium text-white transition-all hover:bg-slate-700"
+					class="silver-gradient glow-button rounded-xl px-6 py-3 font-medium text-black shadow-md transition-all hover:shadow-lg"
 				>
 					Make Predictions
 				</a>

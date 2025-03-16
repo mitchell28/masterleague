@@ -49,7 +49,6 @@
 
 	// Effect to track changes and call the update callback
 	$effect(() => {
-		// Only notify parent when we're allowed to update and not in read-only mode
 		if (shouldUpdateParent && !readOnly && prediction !== null) {
 			onUpdate(homeScore, awayScore);
 		}
@@ -80,21 +79,29 @@
 		return null;
 	}
 
-	// Increment/decrement functions
-	function incrementHome() {
+	// Increment/decrement functions with tick()
+	async function incrementHome() {
+		shouldUpdateParent = false;
 		homeScore = Math.min(20, homeScore + 1);
+		shouldUpdateParent = true;
 	}
 
-	function decrementHome() {
+	async function decrementHome() {
+		shouldUpdateParent = false;
 		homeScore = Math.max(0, homeScore - 1);
+		shouldUpdateParent = true;
 	}
 
-	function incrementAway() {
+	async function incrementAway() {
+		shouldUpdateParent = false;
 		awayScore = Math.min(20, awayScore + 1);
+		shouldUpdateParent = true;
 	}
 
-	function decrementAway() {
+	async function decrementAway() {
+		shouldUpdateParent = false;
 		awayScore = Math.max(0, awayScore - 1);
+		shouldUpdateParent = true;
 	}
 </script>
 
