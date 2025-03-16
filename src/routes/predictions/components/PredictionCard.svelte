@@ -7,20 +7,53 @@
 		canPredict?: boolean;
 	};
 
-	// Props
+	// Use runes for props with onUpdate callback instead of event dispatcher
 	let {
 		fixture,
-		teams,
-		predictions = {},
-		predictionValues = $bindable(),
-		invalidPredictions = []
-	}: {
+		homeTeam,
+		awayTeam,
+		prediction,
+		isInvalid = false,
+		onUpdate = (home: number, away: number) => {},
+		readOnly = false,
+		isPastWeek = false
+	} = $props<{
 		fixture: Fixture;
-		teams: Record<string, Team>;
-		predictions?: Record<string, Prediction>;
-		predictionValues: Record<string, { home: number; away: number }>;
-		invalidPredictions?: string[];
-	} = $props();
+		homeTeam: Team;
+		awayTeam: Team;
+		prediction?: { home: number; away: number } | null;
+		isInvalid?: boolean;
+		onUpdate?: (home: number, away: number) => void;
+		readOnly?: boolean;
+		isPastWeek?: boolean;
+	}>();
+
+	// Initialize state
+	let homeScore = $state(prediction?.home ?? 0);
+	let awayScore = $state(prediction?.away ?? 0);
+	let shouldUpdateParent = $state(false);
+
+	// Update state when prediction changes
+	$effect(() => {
+		if (prediction) {
+			// Temporarily disable parent updates while we sync from props
+			shouldUpdateParent = false;
+			homeScore = prediction.home;
+			awayScore = prediction.away;
+			// Re-enable parent updates after a small delay
+			setTimeout(() => {
+				shouldUpdateParent = true;
+			}, 0);
+		}
+	});
+
+	// Effect to track changes and call the update callback
+	$effect(() => {
+		// Only notify parent when we're allowed to update and not in read-only mode
+		if (shouldUpdateParent && !readOnly && prediction !== null) {
+			onUpdate(homeScore, awayScore);
+		}
+	});
 
 	// Helper functions
 	function formatDate(timestamp: number | Date): string {
@@ -37,9 +70,9 @@
 	function getSpecialBadge(fixture: Fixture): { text: string; color: string } | null {
 		if (fixture.pointsMultiplier > 1) {
 			if (fixture.pointsMultiplier === 3) {
-				return { text: '3x Points', color: 'bg-green-400' };
+				return { text: '3x Points', color: 'bg-green-800' };
 			} else if (fixture.pointsMultiplier === 2) {
-				return { text: '2x Points', color: 'bg-red-400' };
+				return { text: '2x Points', color: 'bg-red-800' };
 			} else {
 				return { text: `${fixture.pointsMultiplier}x Points`, color: 'bg-blue-400' };
 			}
@@ -47,200 +80,197 @@
 		return null;
 	}
 
-	function isPredictionComplete(fixtureId: string): boolean {
-		return (
-			predictionValues[fixtureId]?.home !== undefined &&
-			predictionValues[fixtureId]?.away !== undefined
-		);
+	// Increment/decrement functions
+	function incrementHome() {
+		homeScore = Math.min(20, homeScore + 1);
 	}
 
-	function canPredictFixture(fixture: Fixture): boolean {
-		// URGENT FIX: Allow all scheduled fixtures to be predicted regardless of date
-		// The date parsing was causing issues with different locales/formats
+	function decrementHome() {
+		homeScore = Math.max(0, homeScore - 1);
+	}
 
-		// First check if it's a scheduled match - this should ALWAYS be predictable
-		if (fixture.status === 'upcoming') {
-			return true;
-		}
+	function incrementAway() {
+		awayScore = Math.min(20, awayScore + 1);
+	}
 
-		// Check server's calculation as fallback
-		if (fixture.canPredict === true) {
-			return true;
-		}
-
-		// If neither of the above conditions are met, it's not predictable
-		return false;
+	function decrementAway() {
+		awayScore = Math.max(0, awayScore - 1);
 	}
 </script>
 
 <div
-	class="rounded-xl border border-slate-700 bg-slate-800/30 p-4 shadow-md transition-all hover:shadow-lg"
-	class:border-red-500={invalidPredictions.includes(fixture.id)}
+	class={`rounded-lg border ${isInvalid ? 'border-red-500' : 'border-slate-700'} overflow-hidden bg-slate-800 shadow-md`}
 >
-	<div class="mb-2 flex items-center justify-between">
-		<span class="text-sm font-medium text-slate-300">{formatDate(fixture.matchDate)}</span>
-		{#if getSpecialBadge(fixture)}
-			{@const badge = getSpecialBadge(fixture)}
-			<span class="badge rounded-full px-2 py-1 text-xs font-bold {badge?.color}"
-				>{badge?.text}</span
+	<div class="flex items-center justify-between border-b border-slate-700 bg-slate-900 p-3">
+		<div>
+			<span
+				class={`rounded-full px-2 py-1 text-xs font-medium ${fixture.status === 'upcoming' ? 'bg-blue-900 text-blue-200' : fixture.status === 'live' ? 'bg-red-900 text-red-200' : 'bg-green-900 text-green-200'}`}
 			>
-		{/if}
-	</div>
-
-	<div class="flex items-center">
-		<div class="flex flex-1 items-center gap-2">
-			{#if teams[fixture.homeTeamId]?.logo}
-				<img
-					src={teams[fixture.homeTeamId].logo}
-					alt={teams[fixture.homeTeamId]?.name || fixture.homeTeamId}
-					class="h-8 w-8 object-contain"
-				/>
-			{/if}
-			<span class="font-semibold">{teams[fixture.homeTeamId]?.name || 'Unknown Team'}</span>
-		</div>
-
-		<div class="mx-4 text-center font-bold">vs</div>
-
-		<div class="flex flex-1 items-center justify-end gap-2">
-			<span class="font-semibold">{teams[fixture.awayTeamId]?.name || 'Unknown Team'}</span>
-			{#if teams[fixture.awayTeamId]?.logo}
-				<img
-					src={teams[fixture.awayTeamId].logo}
-					alt={teams[fixture.awayTeamId]?.name || fixture.awayTeamId}
-					class="h-8 w-8 object-contain"
-				/>
+				{fixture.status === 'upcoming'
+					? 'Upcoming'
+					: fixture.status === 'live'
+						? 'Live'
+						: 'Completed'}
+			</span>
+			{#if getSpecialBadge(fixture)}
+				{@const badge = getSpecialBadge(fixture)}
+				<span class={`ml-2 rounded-full px-2 py-1 text-xs font-medium ${badge?.color} text-white`}>
+					{badge?.text}
+				</span>
 			{/if}
 		</div>
+		<span class="text-sm text-slate-400">{formatDate(fixture.matchDate)}</span>
 	</div>
 
-	<div class="mt-4">
-		{#if canPredictFixture(fixture)}
-			<div class="flex items-center justify-center gap-4">
-				<div class="flex flex-col items-center">
-					<label for="home-{fixture.id}" class="mb-1 text-sm text-slate-300">
-						{teams[fixture.homeTeamId]?.shortName || 'Home'}
-					</label>
-					<input
-						id="home-{fixture.id}"
-						name="prediction-{fixture.id}-home"
-						type="number"
-						min="0"
-						class="w-16 rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-center text-white focus:border-transparent focus:ring-2 focus:ring-blue-500"
-						class:border-red-500={invalidPredictions.includes(fixture.id)}
-						value={predictionValues[fixture.id]?.home ?? 0}
-						oninput={(e) => {
-							// Initialize the fixture's prediction if it doesn't exist
-							if (!predictionValues[fixture.id]) {
-								predictionValues = {
-									...predictionValues,
-									[fixture.id]: { home: 0, away: 0 }
-								};
-							}
-
-							// Update the home score directly in the input event
-							const updatedValues = { ...predictionValues };
-							const target = e.currentTarget as HTMLInputElement;
-							updatedValues[fixture.id].home = Math.max(0, Number(target.value) || 0);
-							predictionValues = updatedValues;
-						}}
-					/>
-				</div>
-
-				<div class="font-bold">-</div>
-
-				<div class="flex flex-col items-center">
-					<label for="away-{fixture.id}" class="mb-1 text-sm text-slate-300">
-						{teams[fixture.awayTeamId]?.shortName || 'Away'}
-					</label>
-					<input
-						id="away-{fixture.id}"
-						name="prediction-{fixture.id}-away"
-						type="number"
-						min="0"
-						class="w-16 rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-center text-white focus:border-transparent focus:ring-2 focus:ring-blue-500"
-						class:border-red-500={invalidPredictions.includes(fixture.id)}
-						value={predictionValues[fixture.id]?.away ?? 0}
-						oninput={(e) => {
-							// Initialize the fixture's prediction if it doesn't exist
-							if (!predictionValues[fixture.id]) {
-								predictionValues = {
-									...predictionValues,
-									[fixture.id]: { home: 0, away: 0 }
-								};
-							}
-
-							// Update the away score directly in the input event
-							const updatedValues = { ...predictionValues };
-							const target = e.currentTarget as HTMLInputElement;
-							updatedValues[fixture.id].away = Math.max(0, Number(target.value) || 0);
-							predictionValues = updatedValues;
-						}}
-					/>
-				</div>
+	<div class="flex flex-col gap-3 p-4">
+		<div class="flex items-center justify-between gap-2">
+			<!-- Home team -->
+			<div class="flex items-center gap-2">
+				{#if homeTeam.logo}
+					<img src={homeTeam.logo} alt={homeTeam.name} class="h-8 w-8 object-contain" />
+				{/if}
+				<span class="font-medium text-white">{homeTeam.name}</span>
 			</div>
-			{#if isPredictionComplete(fixture.id)}
-				<div class="mt-2 text-center text-sm text-green-400">Prediction set</div>
-			{:else}
-				<div class="mt-2 text-center text-sm text-yellow-400">Enter your prediction</div>
-			{/if}
-		{:else if fixture.status === 'in_play' && fixture.homeScore !== undefined && fixture.awayScore !== undefined}
-			<div class="text-center">
-				<div class="flex items-center justify-center gap-2">
-					<span class="animate-pulse rounded bg-red-500 px-2 py-0.5 text-xs font-bold text-white"
-						>LIVE</span
-					>
-					<div class="text-xl font-bold">
-						{fixture.homeScore} - {fixture.awayScore}
-					</div>
-				</div>
-				<div class="mt-1 text-sm opacity-75">Match in progress</div>
-				{#if predictions[fixture.id]}
-					<div class="mt-2 text-sm">
-						Your prediction: {predictions[fixture.id].predictedHomeScore} - {predictions[fixture.id]
-							.predictedAwayScore}
-					</div>
+
+			<!-- Away team -->
+			<div class="flex items-center gap-2">
+				<span class="font-medium text-white">{awayTeam.name}</span>
+				{#if awayTeam.logo}
+					<img src={awayTeam.logo} alt={awayTeam.name} class="h-8 w-8 object-contain" />
 				{/if}
 			</div>
-		{:else if fixture.homeScore !== undefined && fixture.awayScore !== undefined}
-			<div class="text-center">
-				<div class="text-xl font-bold">
-					{fixture.homeScore} - {fixture.awayScore}
-				</div>
-				<div class="mt-1 text-sm opacity-75">Final Score</div>
-				{#if predictions[fixture.id]}
-					<div class="mt-2 text-sm">
-						Your prediction: {predictions[fixture.id].predictedHomeScore} - {predictions[fixture.id]
-							.predictedAwayScore}
-						{#if predictions[fixture.id].points !== undefined}
-							<div class="mt-1 font-medium">
-								Points: <span class="text-green-400">{predictions[fixture.id].points}</span>
-							</div>
-						{/if}
+		</div>
+
+		<div class="flex items-center justify-center">
+			{#if fixture.status === 'completed' && fixture.homeScore !== null && fixture.awayScore !== null}
+				<!-- For completed fixtures, show the actual result -->
+				<div class="flex flex-col items-center gap-2">
+					<div class="flex items-center gap-2">
+						<span class="text-lg font-bold text-white">{fixture.homeScore}</span>
+						<span class="text-lg text-slate-400">-</span>
+						<span class="text-lg font-bold text-white">{fixture.awayScore}</span>
 					</div>
-				{:else}
-					<div class="mt-2 text-sm text-red-400">No prediction made</div>
-				{/if}
-			</div>
-		{:else}
-			<div class="text-center">
-				<div class="text-sm opacity-75">
-					{#if new Date(fixture.matchDate) < new Date()}
-						Result pending
+
+					{#if prediction !== undefined && prediction !== null}
+						<div class="flex items-center gap-2">
+							<span class="text-sm text-slate-400">Your prediction:</span>
+							<span class="text-sm text-slate-300">{prediction.home} - {prediction.away}</span>
+
+							{#if isPastWeek && fixture.status === 'completed'}
+								<span
+									class={`rounded-full px-2 py-0.5 text-xs ${
+										prediction.home === fixture.homeScore && prediction.away === fixture.awayScore
+											? 'bg-green-500 text-white'
+											: (prediction.home > prediction.away &&
+														fixture.homeScore > fixture.awayScore) ||
+												  (prediction.home < prediction.away &&
+														fixture.homeScore < fixture.awayScore) ||
+												  (prediction.home === prediction.away &&
+														fixture.homeScore === fixture.awayScore)
+												? 'bg-yellow-500 text-black'
+												: 'bg-red-500 text-white'
+									}`}
+								>
+									{prediction.home === fixture.homeScore && prediction.away === fixture.awayScore
+										? 'Perfect'
+										: (prediction.home > prediction.away &&
+													fixture.homeScore > fixture.awayScore) ||
+											  (prediction.home < prediction.away &&
+													fixture.homeScore < fixture.awayScore) ||
+											  (prediction.home === prediction.away &&
+													fixture.homeScore === fixture.awayScore)
+											? 'Correct Outcome'
+											: 'Incorrect'}
+								</span>
+							{/if}
+						</div>
 					{:else}
-						{new Date(fixture.matchDate) < new Date(new Date().getTime() + 15 * 60 * 1000)
-							? 'Match starting soon - prediction window closed'
-							: 'Prediction window closed for other reasons'}
+						<div class="flex items-center gap-2">
+							<span class="text-slate-400 italic">No prediction made</span>
+							{#if isPastWeek}
+								<span class="rounded-full bg-gray-600 px-2 py-0.5 text-xs text-white"
+									>No Points</span
+								>
+							{/if}
+						</div>
 					{/if}
 				</div>
-				{#if predictions[fixture.id]}
-					<div class="mt-2 text-sm">
-						Your prediction: {predictions[fixture.id].predictedHomeScore} - {predictions[fixture.id]
-							.predictedAwayScore}
+			{:else if fixture.canPredict && !readOnly}
+				<!-- For predictable fixtures in current week -->
+				<div class="flex items-center gap-2">
+					<!-- Home score input -->
+					<div class="flex items-center">
+						<button
+							type="button"
+							class="flex h-8 w-8 items-center justify-center rounded-l bg-slate-700 text-white hover:bg-slate-600"
+							onclick={decrementHome}
+						>
+							-
+						</button>
+						<input
+							type="number"
+							min="0"
+							max="20"
+							class="h-8 w-10 border-t border-b border-slate-600 bg-slate-800 text-center text-white"
+							bind:value={homeScore}
+						/>
+						<button
+							type="button"
+							class="flex h-8 w-8 items-center justify-center rounded-r bg-slate-700 text-white hover:bg-slate-600"
+							onclick={incrementHome}
+						>
+							+
+						</button>
 					</div>
-				{:else}
-					<div class="mt-2 text-sm text-red-400">No prediction made</div>
-				{/if}
-			</div>
+
+					<span class="mx-1 text-lg text-slate-400">-</span>
+
+					<!-- Away score input -->
+					<div class="flex items-center">
+						<button
+							type="button"
+							class="flex h-8 w-8 items-center justify-center rounded-l bg-slate-700 text-white hover:bg-slate-600"
+							onclick={decrementAway}
+						>
+							-
+						</button>
+						<input
+							type="number"
+							min="0"
+							max="20"
+							class="h-8 w-10 border-t border-b border-slate-600 bg-slate-800 text-center text-white"
+							bind:value={awayScore}
+						/>
+						<button
+							type="button"
+							class="flex h-8 w-8 items-center justify-center rounded-r bg-slate-700 text-white hover:bg-slate-600"
+							onclick={incrementAway}
+						>
+							+
+						</button>
+					</div>
+				</div>
+			{:else if readOnly && prediction}
+				<!-- For readonly predictions (past weeks or completed matches) -->
+				<div class="flex flex-col items-center gap-1">
+					<div class="flex items-center gap-2">
+						<span class="text-sm text-slate-400">Your prediction:</span>
+						<span class="text-sm font-medium text-slate-300"
+							>{prediction.home} - {prediction.away}</span
+						>
+					</div>
+
+					{#if fixture.status === 'upcoming'}
+						<span class="text-xs text-slate-500 italic">Match not played yet</span>
+					{/if}
+				</div>
+			{:else}
+				<span class="text-sm text-slate-500 italic">No prediction</span>
+			{/if}
+		</div>
+
+		{#if isInvalid}
+			<div class="mt-2 text-xs text-red-500">Please enter valid scores for this match</div>
 		{/if}
 	</div>
 </div>

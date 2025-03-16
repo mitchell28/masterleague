@@ -10,7 +10,18 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	try {
 		const leaderboard = await getLeagueTable();
-		return { leaderboard };
+
+		// Calculate some stats for display
+		const scoringRules = {
+			correctScoreline: 3,
+			correctOutcome: 1
+		};
+
+		// Return data to page
+		return {
+			leaderboard,
+			scoringRules
+		};
 	} catch (err) {
 		console.error('Error loading leaderboard data:', err);
 		throw error(500, { message: 'Failed to load leaderboard data' });

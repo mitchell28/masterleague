@@ -1,11 +1,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
-	import { Info, Check, AlertTriangle } from '@lucide/svelte';
+	import { Check, AlertTriangle } from '@lucide/svelte';
 	import type { Team, Prediction } from '$lib/server/db/schema';
 	import type { Fixture as BaseFixture } from '$lib/server/db/schema';
-	import type { SubmitFunction } from './$types';
 	import PredictionCard from './components/PredictionCard.svelte';
 
 	// Extended Fixture type with canPredict property
@@ -49,11 +46,12 @@
 	let invalidPredictions = $state<string[]>([]);
 
 	// Initialize prediction form data
-	let predictionValues = $state<Record<string, { home: number; away: number }>>({});
+	let predictionValues = $state<Record<string, { home: number; away: number } | null>>({});
 
-	// Effect to sync prediction values from API data
+	// Effect to sync prediction values from API data - optimized to avoid infinite loops
 	$effect(() => {
-		const newPredictionValues: Record<string, { home: number; away: number }> = {};
+		// Create a new object instance each time (don't modify existing one)
+		const newPredictionValues: Record<string, { home: number; away: number } | null> = {};
 
 		// Initialize prediction values from existing predictions
 		for (const fixtureId in predictions) {
@@ -64,24 +62,38 @@
 			};
 		}
 
-		// Also initialize empty predictions for fixtures that can be predicted
-		for (const fixture of fixtures) {
-			if (canPredictFixture(fixture) && !newPredictionValues[fixture.id]) {
-				newPredictionValues[fixture.id] = {
-					home: 0,
-					away: 0
-				};
+		// For past weeks, explicitly set null (no prediction) for fixtures without predictions
+		if (week < currentWeek) {
+			for (const fixture of fixtures) {
+				if (!newPredictionValues[fixture.id]) {
+					// For past weeks, explicitly don't set any prediction
+					newPredictionValues[fixture.id] = null;
+				}
+			}
+		} else {
+			// For current/future weeks, initialize empty predictions for fixtures that can be predicted
+			for (const fixture of fixtures) {
+				if (canPredictFixture(fixture) && !newPredictionValues[fixture.id]) {
+					newPredictionValues[fixture.id] = {
+						home: 0,
+						away: 0
+					};
+				}
 			}
 		}
 
+		// Set the entire object at once to reduce reactivity triggers
 		predictionValues = newPredictionValues;
 	});
 
 	// Help function to determine if a prediction can be made
 	function canPredictFixture(fixture: Fixture): boolean {
-		// URGENT FIX: Allow all scheduled fixtures to be predicted regardless of date
-		// The date parsing was causing issues with different locales/formats
+		// If we're viewing a past week, fixtures can't be predicted (read-only)
+		if (week < currentWeek) {
+			return false;
+		}
 
+		// For current or future weeks:
 		// First check if it's a scheduled match - this should ALWAYS be predictable
 		if (fixture.status === 'upcoming') {
 			return true;
@@ -104,7 +116,7 @@
 			const prediction = predictionValues[fixtureId];
 			const fixture = fixtures.find((f) => f.id === fixtureId);
 
-			if (fixture && canPredictFixture(fixture)) {
+			if (fixture && canPredictFixture(fixture) && prediction !== null) {
 				if (
 					prediction.home < 0 ||
 					prediction.away < 0 ||
@@ -118,9 +130,8 @@
 
 		return invalidPredictions.length === 0;
 	}
-
 	// Form submission handler using SvelteKit 5 approach
-	const handleSubmit: SubmitFunction = ({ cancel }) => {
+	const handleSubmit = () => {
 		submitting = true;
 
 		// Validate before submitting
@@ -131,12 +142,10 @@
 			setTimeout(() => {
 				showError = false;
 			}, 5000);
-			cancel();
 			return;
 		}
-
 		// Return processing function for after submission
-		return async ({ result }) => {
+		return async ({ result }: { result: { type: string; data?: { message: string } } }) => {
 			submitting = false;
 
 			if (result.type === 'success') {
@@ -154,191 +163,100 @@
 		};
 	};
 
-	// Change week from dropdown
-	function changeWeek(event: Event) {
-		const target = event.target as HTMLSelectElement;
-		const newWeek = target.value;
-		goto(`?week=${newWeek}`);
-	}
-
 	function isPredictionComplete(fixtureId: string): boolean {
 		return (
+			predictionValues[fixtureId] !== null &&
 			predictionValues[fixtureId]?.home !== undefined &&
 			predictionValues[fixtureId]?.away !== undefined
 		);
 	}
 </script>
 
-<div class="container mx-auto max-w-6xl p-4">
-	<div class="mb-6 flex items-center justify-between">
-		<h1 class="text-3xl font-bold">Week {week} Predictions</h1>
-	</div>
-
-	{#if week > currentWeek}
-		<div class="mb-4 rounded-lg bg-blue-500/20 p-4 text-blue-100 shadow-lg">
+{#if showSuccess}
+	<div class="mb-4 animate-pulse rounded-lg bg-green-500/20 p-4 text-green-100 shadow-lg">
+		<div class="flex items-center justify-between">
 			<div class="flex items-center gap-2">
-				<Info class="size-5" />
-				<span>
-					You're viewing a future week. You can make predictions for any match with "upcoming"
-					status. All upcoming matches should be available for prediction regardless of date.
-				</span>
-			</div>
-		</div>
-	{/if}
-
-	{#if showSuccess}
-		<div class="mb-4 animate-pulse rounded-lg bg-green-500/20 p-4 text-green-100 shadow-lg">
-			<div class="flex items-center justify-between">
-				<div class="flex items-center gap-2">
-					<Check class="size-5" />
-					<span class="font-medium">Predictions saved successfully!</span>
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	{#if showError}
-		<div class="mb-4 animate-pulse rounded-lg bg-red-500/20 p-4 text-red-100 shadow-lg">
-			<div class="flex items-center justify-between">
-				<div class="flex items-center gap-2">
-					<AlertTriangle class="size-5" />
-					<span class="font-medium">{errorMessage}</span>
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	<!-- Week navigation panel -->
-	<div class="mb-8 rounded-xl border border-slate-700 bg-slate-800/50 p-4 shadow-lg">
-		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-			<!-- Current week indicator -->
-			<div>
-				<span class="text-sm font-medium text-slate-300">Current League Week: {currentWeek}</span>
-				{#if week !== currentWeek}
-					<span class="ml-2 rounded-full bg-yellow-500 px-2 py-0.5 text-xs font-bold text-black">
-						You're viewing week {week}
-					</span>
-				{:else}
-					<span class="ml-2 rounded-full bg-green-500 px-2 py-0.5 text-xs font-bold text-black">
-						Current
-					</span>
-				{/if}
-			</div>
-
-			<!-- Week selector dropdown -->
-			<div>
-				<label for="week-selector" class="font-medium">Go to week:</label>
-				<select
-					id="week-selector"
-					bind:value={week}
-					onchange={changeWeek}
-					class="ml-2 rounded-lg border border-slate-600 bg-slate-700 px-3 py-1 text-slate-100 focus:border-blue-400 focus:outline-none"
-				>
-					{#each weeks as weekNum}
-						<option value={weekNum}>{weekNum}</option>
-					{/each}
-				</select>
+				<Check class="size-5" />
+				<span class="font-medium">Predictions saved successfully!</span>
 			</div>
 		</div>
 	</div>
+{/if}
 
-	{#if fixtures?.length === 0}
-		<div class="rounded-xl border border-slate-700 bg-slate-800/50 p-6 text-center shadow-lg">
-			<p class="text-lg">No fixtures found for Week {week}.</p>
+{#if showError}
+	<div class="mb-4 animate-pulse rounded-lg bg-red-500/20 p-4 text-red-100 shadow-lg">
+		<div class="flex items-center justify-between">
+			<div class="flex items-center gap-2">
+				<AlertTriangle class="size-5" />
+				<span class="font-medium">{errorMessage}</span>
+			</div>
 		</div>
-	{:else}
-		<form method="POST" action="?/savePredictions" use:enhance={handleSubmit}>
-			<div class="mb-6 rounded-xl border border-slate-700 bg-slate-800/50 p-4 shadow-lg">
-				{#if fixtures?.filter((f) => canPredictFixture(f)).length === 0}
-					<p class="text-center">
-						{#if fixtures.length > 0}
-							{#if week < currentWeek}
-								Prediction window for Week {week} is closed.
-							{:else if week === currentWeek}
-								There are no matches available for prediction at this time. All matches may have
-								already started or been completed.
-							{:else}
-								This is a future week. You can predict matches once the fixtures are upcoming.
+	</div>
+{/if}
+
+{#if fixtures?.length === 0}
+	<div class="rounded-xl border border-slate-700 bg-slate-800/50 p-6 text-center shadow-lg">
+		<p class="text-lg">No fixtures found for Week {week}.</p>
+	</div>
+{:else}
+	<div class="w-full">
+		<form method="POST" action="?/submitPredictions" use:enhance={handleSubmit} class="space-y-6">
+			<input type="hidden" name="week" value={week} />
+
+			<!-- Grid to display match predictions -->
+			<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+				{#each fixtures as fixture (fixture.id)}
+					<!-- Always show fixtures for past weeks regardless of status -->
+					<!-- For current/future weeks, only show predictable fixtures -->
+					{#if week < currentWeek || canPredictFixture(fixture)}
+						<PredictionCard
+							{fixture}
+							homeTeam={teams[fixture.homeTeamId]}
+							awayTeam={teams[fixture.awayTeamId]}
+							prediction={predictionValues[fixture.id] ?? undefined}
+							isInvalid={invalidPredictions.includes(fixture.id)}
+							onUpdate={(home, away) => {
+								predictionValues[fixture.id] = { home, away };
+							}}
+							readOnly={!canPredictFixture(fixture)}
+							isPastWeek={week < currentWeek}
+						/>
+
+						<!-- Hidden input fields to ensure data is submitted (only for predictable fixtures) -->
+						{#if canPredictFixture(fixture)}
+							{#if predictionValues[fixture.id] !== null}
+								<input
+									type="hidden"
+									name="prediction-{fixture.id}-home"
+									value={predictionValues[fixture.id]?.home || 0}
+								/>
+								<input
+									type="hidden"
+									name="prediction-{fixture.id}-away"
+									value={predictionValues[fixture.id]?.away || 0}
+								/>
 							{/if}
 						{/if}
-					</p>
-				{:else}
-					<div class="flex items-center justify-between">
-						<div>
-							<p>
-								<span class="font-medium"
-									>{fixtures.filter((f) => canPredictFixture(f)).length}</span
-								>
-								match{fixtures.filter((f) => canPredictFixture(f)).length !== 1 ? 'es' : ''} available
-								for prediction
-							</p>
-							<p>
-								<span class="font-medium">
-									{fixtures.filter((f) => canPredictFixture(f) && isPredictionComplete(f.id))
-										.length}
-								</span>
-								prediction{fixtures.filter(
-									(f) => canPredictFixture(f) && isPredictionComplete(f.id)
-								).length !== 1
-									? 's'
-									: ''} set
-							</p>
-						</div>
-
-						{#if fixtures.filter( (f) => canPredictFixture(f) ).length - fixtures.filter((f) => canPredictFixture(f) && isPredictionComplete(f.id)).length > 0}
-							<div class="rounded-lg bg-yellow-500/20 p-2 text-sm text-yellow-100">
-								<span class="font-medium">
-									{fixtures.filter((f) => canPredictFixture(f)).length -
-										fixtures.filter((f) => canPredictFixture(f) && isPredictionComplete(f.id))
-											.length}
-								</span>
-								match{fixtures.filter((f) => canPredictFixture(f)).length -
-									fixtures.filter((f) => canPredictFixture(f) && isPredictionComplete(f.id))
-										.length !==
-								1
-									? 'es'
-									: ''} still need predictions
-							</div>
-						{:else if fixtures.filter((f) => canPredictFixture(f)).length > 0}
-							<div class="rounded-lg bg-green-500/20 p-2 text-sm text-green-100">
-								All predictions complete! ✅
-							</div>
-						{/if}
-					</div>
-				{/if}
-			</div>
-
-			<div class="mb-6 flex justify-end">
-				<button
-					type="submit"
-					class="rounded-xl border border-green-600 bg-green-700 px-6 py-2 font-medium text-white transition-all hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
-					disabled={submitting}
-				>
-					{submitting ? 'Saving...' : 'Save Predictions'}
-				</button>
-			</div>
-
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-				{#each fixtures as fixture}
-					<PredictionCard
-						{fixture}
-						{teams}
-						{predictions}
-						bind:predictionValues
-						{invalidPredictions}
-					/>
+					{/if}
 				{/each}
 			</div>
 
-			<div class="mt-6 flex justify-end">
-				<button
-					type="submit"
-					class="rounded-xl border border-green-600 bg-green-700 px-6 py-2 font-medium text-white transition-all hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
-					disabled={submitting}
-				>
-					{submitting ? 'Saving...' : 'Save Predictions'}
-				</button>
-			</div>
+			<!-- Submit button - only shown for current or future weeks -->
+			{#if week >= currentWeek}
+				<div class="flex justify-end">
+					<button
+						type="submit"
+						class="rounded-md bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+						disabled={submitting}
+					>
+						{submitting ? 'Saving...' : 'Save Predictions'}
+					</button>
+				</div>
+			{:else}
+				<div class="mt-4 text-center text-sm text-slate-400 italic">
+					Viewing past predictions - no changes allowed
+				</div>
+			{/if}
 		</form>
-	{/if}
-</div>
+	</div>
+{/if}

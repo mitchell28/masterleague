@@ -56,13 +56,15 @@ export async function getPredictionsForFixture(fixtureId: string): Promise<Predi
 	}
 }
 
-// Submit a prediction for a fixture
+// Implement proper bulk prediction submission
 export async function submitPrediction(
 	userId: string,
-	fixtureId: string,
-	homeScore: number,
-	awayScore: number
-): Promise<Prediction> {
+	predictionsData: Array<{
+		fixtureId: string;
+		homeScore: number;
+		awayScore: number;
+	}>
+): Promise<Prediction[]> {
 	try {
 		// Validate user exists
 		const userExists = await db.select().from(user).where(eq(user.id, userId));
@@ -71,59 +73,74 @@ export async function submitPrediction(
 			throw new Error('User not found');
 		}
 
-		// Validate fixture exists and is upcoming
-		const fixture = await db
-			.select()
-			.from(schema.fixtures)
-			.where(eq(schema.fixtures.id, fixtureId));
+		const results: Prediction[] = [];
 
-		if (fixture.length === 0) {
-			throw new Error('Fixture not found');
+		// Process each prediction
+		for (const predictionData of predictionsData) {
+			const { fixtureId, homeScore, awayScore } = predictionData;
+
+			// Validate fixture exists and is upcoming
+			const fixture = await db
+				.select()
+				.from(schema.fixtures)
+				.where(eq(schema.fixtures.id, fixtureId));
+
+			if (fixture.length === 0) {
+				console.warn(`Fixture ${fixtureId} not found, skipping prediction`);
+				continue;
+			}
+
+			if (fixture[0].status !== 'upcoming') {
+				console.warn(`Fixture ${fixtureId} is not upcoming, skipping prediction`);
+				continue;
+			}
+
+			// Check if user already has a prediction for this fixture
+			const existingPrediction = await db
+				.select()
+				.from(schema.predictions)
+				.where(
+					and(eq(schema.predictions.userId, userId), eq(schema.predictions.fixtureId, fixtureId))
+				);
+
+			let result: Prediction;
+
+			// If prediction exists, update it
+			if (existingPrediction.length > 0) {
+				const updatedPrediction = await db
+					.update(schema.predictions)
+					.set({
+						predictedHomeScore: homeScore,
+						predictedAwayScore: awayScore,
+						createdAt: new Date()
+					})
+					.where(eq(schema.predictions.id, existingPrediction[0].id))
+					.returning();
+
+				result = updatedPrediction[0];
+			} else {
+				// Otherwise, create a new prediction
+				const newPrediction = await db
+					.insert(schema.predictions)
+					.values({
+						id: randomUUID(),
+						userId,
+						fixtureId,
+						predictedHomeScore: homeScore,
+						predictedAwayScore: awayScore,
+						createdAt: new Date()
+					})
+					.returning();
+
+				result = newPrediction[0];
+			}
+
+			results.push(result);
 		}
 
-		if (fixture[0].status !== 'upcoming') {
-			throw new Error('Cannot submit prediction for non-upcoming fixture');
-		}
-
-		// Check if user already has a prediction for this fixture
-		const existingPrediction = await db
-			.select()
-			.from(schema.predictions)
-			.where(
-				and(eq(schema.predictions.userId, userId), eq(schema.predictions.fixtureId, fixtureId))
-			);
-
-		// If prediction exists, update it
-		if (existingPrediction.length > 0) {
-			const updatedPrediction = await db
-				.update(schema.predictions)
-				.set({
-					predictedHomeScore: homeScore,
-					predictedAwayScore: awayScore,
-					createdAt: new Date()
-				})
-				.where(eq(schema.predictions.id, existingPrediction[0].id))
-				.returning();
-
-			return updatedPrediction[0];
-		}
-
-		// Otherwise, create a new prediction
-		const newPrediction = await db
-			.insert(schema.predictions)
-			.values({
-				id: randomUUID(),
-				userId,
-				fixtureId,
-				predictedHomeScore: homeScore,
-				predictedAwayScore: awayScore,
-				createdAt: new Date()
-			})
-			.returning();
-
-		return newPrediction[0];
+		return results;
 	} catch (error) {
-		console.error('Failed to submit prediction:', error);
+		console.error('Failed to submit predictions:', error);
 		throw error;
 	}
 }
@@ -198,6 +215,16 @@ export async function processPredictionsForFixture(
 
 		// Process each prediction
 		for (const prediction of predictions) {
+			// Skip if there's no actual prediction (predicted scores are null or undefined)
+			if (
+				prediction.predictedHomeScore === null ||
+				prediction.predictedAwayScore === null ||
+				prediction.predictedHomeScore === undefined ||
+				prediction.predictedAwayScore === undefined
+			) {
+				continue;
+			}
+
 			// Calculate points
 			const points = calculatePredictionPoints(prediction, homeScore, awayScore, pointsMultiplier);
 
@@ -265,7 +292,7 @@ export async function getLeagueTable(): Promise<
 	return db
 		.select({
 			userId: leagueTable.userId,
-			username: user.email, // Changed from user.username to user.name
+			username: user.name,
 			totalPoints: leagueTable.totalPoints,
 			correctScorelines: leagueTable.correctScorelines,
 			correctOutcomes: leagueTable.correctOutcomes
@@ -275,7 +302,7 @@ export async function getLeagueTable(): Promise<
 		.orderBy(desc(leagueTable.totalPoints));
 }
 
-// Either export an existing function
-export function submitPredictions(/* params */) {
-	// Implementation code
-}
+// Since we've implemented the bulk version above, we can remove this placeholder
+// export function submitPredictions(/* params */) {
+//   // Implementation code
+// }

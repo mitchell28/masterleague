@@ -11,6 +11,14 @@ export default defineConfig(({ mode }) => {
 		// Make Vite aware of environment variables
 		define: {
 			'process.env.BETTER_AUTH_URL': JSON.stringify(env.BETTER_AUTH_URL)
+		},
+		server: {
+			allowedHosts: [
+				'localhost',
+				'127.0.0.1',
+				'0.0.0.0',
+				'cure-pts-spin-equation.trycloudflare.com'
+			]
 		}
 	};
 });
