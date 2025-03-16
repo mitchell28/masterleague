@@ -198,57 +198,46 @@
 			{:else if fixture.canPredict && !readOnly}
 				<!-- For predictable fixtures in current week -->
 				<div class="flex items-center gap-2">
-					<!-- Home score input -->
-					<div class="flex items-center">
-						<button
-							type="button"
-							class="flex h-8 w-8 items-center justify-center rounded-l bg-slate-700 text-white hover:bg-slate-600"
-							onclick={decrementHome}
-						>
-							-
-						</button>
-						<input
-							type="number"
-							min="0"
-							max="20"
-							class="h-8 w-10 border-t border-b border-slate-600 bg-slate-800 text-center text-white"
-							bind:value={homeScore}
-						/>
-						<button
-							type="button"
-							class="flex h-8 w-8 items-center justify-center rounded-r bg-slate-700 text-white hover:bg-slate-600"
-							onclick={incrementHome}
-						>
-							+
-						</button>
-					</div>
+					{#each ['home', 'away'] as team, index}
+						{#if index === 1}
+							<span class="mx-1 text-lg text-slate-400">-</span>
+						{/if}
 
-					<span class="mx-1 text-lg text-slate-400">-</span>
-
-					<!-- Away score input -->
-					<div class="flex items-center">
-						<button
-							type="button"
-							class="flex h-8 w-8 items-center justify-center rounded-l bg-slate-700 text-white hover:bg-slate-600"
-							onclick={decrementAway}
-						>
-							-
-						</button>
-						<input
-							type="number"
-							min="0"
-							max="20"
-							class="h-8 w-10 border-t border-b border-slate-600 bg-slate-800 text-center text-white"
-							bind:value={awayScore}
-						/>
-						<button
-							type="button"
-							class="flex h-8 w-8 items-center justify-center rounded-r bg-slate-700 text-white hover:bg-slate-600"
-							onclick={incrementAway}
-						>
-							+
-						</button>
-					</div>
+						<!-- Score input control -->
+						<div class="flex items-center">
+							<button
+								type="button"
+								class="flex h-8 w-8 cursor-pointer items-center justify-center rounded-l bg-slate-700 text-white hover:bg-slate-600"
+								onclick={() => (team === 'home' ? decrementHome() : decrementAway())}
+							>
+								-
+							</button>
+							<input
+								type="number"
+								min="0"
+								max="20"
+								class="h-8 w-10 border-t border-b border-slate-600 bg-slate-800 text-center text-white"
+								value={team === 'home' ? homeScore : awayScore}
+								oninput={(e) => {
+									if (e && e.target && 'value' in e.target) {
+										const value = parseInt(e.target.value as string);
+										if (team === 'home') {
+											homeScore = isNaN(value) ? 0 : value;
+										} else {
+											awayScore = isNaN(value) ? 0 : value;
+										}
+									}
+								}}
+							/>
+							<button
+								type="button"
+								class="flex h-8 w-8 cursor-pointer items-center justify-center rounded-r bg-slate-700 text-white hover:bg-slate-600"
+								onclick={() => (team === 'home' ? incrementHome() : incrementAway())}
+							>
+								+
+							</button>
+						</div>
+					{/each}
 				</div>
 			{:else if readOnly && prediction}
 				<!-- For readonly predictions (past weeks or completed matches) -->

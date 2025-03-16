@@ -128,10 +128,6 @@ interface ApiMatch {
 	};
 }
 
-interface ApiResponse {
-	matches: ApiMatch[];
-}
-
 // Set random multipliers for fixtures in a specific week
 export async function setRandomMultipliersForWeek(weekId: number): Promise<void> {
 	try {

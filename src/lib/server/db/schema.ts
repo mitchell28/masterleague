@@ -48,6 +48,8 @@ export const leagueTable = pgTable('league_table', {
 	totalPoints: integer('total_points').default(0).notNull(),
 	correctScorelines: integer('correct_scorelines').default(0).notNull(),
 	correctOutcomes: integer('correct_outcomes').default(0).notNull(),
+	predictedFixtures: integer('predicted_fixtures').default(0),
+	completedFixtures: integer('completed_fixtures').default(0),
 	lastUpdated: timestamp('last_updated').notNull()
 });
 

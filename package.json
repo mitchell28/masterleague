@@ -23,6 +23,9 @@
 		"db:fetch-data": "vite-node src/lib/scripts/fetch-external-data.ts",
 		"db:init-teams": "vite-node src/lib/scripts/init-teams.ts",
 		"db:seed-fixtures": "vite-node src/lib/scripts/seed-fixtures.ts",
+		"db:seed-fake-data": "vite-node src/lib/scripts/seed-fake-users-predictions.ts",
+		"db:check-league-table": "vite-node src/lib/scripts/check-league-table.ts",
+		"db:user-prediction-report": "vite-node src/lib/scripts/user-prediction-report.ts",
 		"db:process-fixture": "vite-node src/lib/scripts/process-fixture.ts",
 		"db:update-league-table": "vite-node src/lib/scripts/update-league-table.ts"
 	},

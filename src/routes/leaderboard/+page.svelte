@@ -1,126 +1,170 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { Trophy } from '@lucide/svelte';
+
 	type LeaderboardEntry = {
 		userId: string;
-		username: string;
-		totalPoints: number;
+		userName: string;
+		points: number;
 		correctScorelines: number;
 		correctOutcomes: number;
+		predictedFixtures: number;
+		completedFixtures: number;
+		rank: number;
 	};
 
-	// Use new runes syntax
+	// Use runes syntax
 	let { data } = $props<{ data: { leaderboard: LeaderboardEntry[] } }>();
-	let leaderboard = $derived(data.leaderboard || []);
+
+	// Access leaderboard data with debug info
+	let leaderboard = $derived(data?.leaderboard || []);
+
+	// Track hovered row for styling
+	let hoveredRow: number | null = $state(null);
 
 	// Add some additional derived values for display
-	let userCount = $derived(leaderboard.length);
-	let topScore = $derived(leaderboard.length > 0 ? leaderboard[0].totalPoints : 0);
+	let totalEntries = $derived(leaderboard.length);
 </script>
 
-<div class="container mx-auto px-10 py-8">
-	<h1 class="mb-6 text-3xl font-bold text-white">Master League Table</h1>
-
-	<div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-		<div class="rounded-lg border border-slate-700 bg-slate-800 p-4 shadow">
-			<p class="text-sm font-medium text-blue-400">Total Players</p>
-			<p class="text-2xl font-bold text-white">{userCount}</p>
-		</div>
-		<div class="rounded-lg border border-slate-700 bg-slate-800 p-4 shadow">
-			<p class="text-sm font-medium text-green-400">Scoring Rules</p>
-			<p class="text-base text-white">Correct Scoreline: <span class="font-bold">3 points</span></p>
-			<p class="text-base text-white">Correct Outcome: <span class="font-bold">1 point</span></p>
-		</div>
-		<div class="rounded-lg border border-slate-700 bg-slate-800 p-4 shadow">
-			<p class="text-sm font-medium text-purple-400">Top Score</p>
-			<p class="text-2xl font-bold text-white">{topScore} points</p>
-		</div>
+<div class="container mx-auto px-4 py-8">
+	<div class="mb-8 text-center">
+		<h1 class="mb-2 text-4xl font-bold text-white">
+			<span class="bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+				Leaderboard
+			</span>
+		</h1>
+		<p class="text-slate-300">Click on a user to view their detailed prediction history</p>
 	</div>
 
-	{#if !leaderboard || leaderboard.length === 0}
-		<div class="rounded-md bg-slate-700 p-4 text-center">
-			<p class="text-blue-300">No leaderboard data available yet. Make some predictions!</p>
-		</div>
-	{:else}
-		<div class="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800 shadow">
-			<table class="w-full table-auto border-collapse">
-				<thead class="bg-slate-700">
-					<tr>
-						<th
-							scope="col"
-							class="border-b border-slate-600 px-6 py-3 text-left text-xs font-medium tracking-wider text-slate-300 uppercase"
-						>
+	<!-- Debug info to verify what data is available -->
+	<!-- <pre class="mb-4 overflow-auto rounded bg-slate-900 p-4 text-xs text-green-400">
+		{JSON.stringify(leaderboard, null, 2)}
+	</pre> -->
+
+	<div class="rounded-lg border border-slate-700/50 bg-slate-800/70 p-1 shadow-xl backdrop-blur-md">
+		<div class="overflow-x-auto">
+			<table class="min-w-full divide-y divide-slate-700/50">
+				<thead>
+					<tr class="bg-slate-800/80">
+						<th class="px-6 py-4 text-left text-xs font-medium tracking-wider text-white uppercase">
 							Rank
 						</th>
-						<th
-							scope="col"
-							class="border-b border-slate-600 px-6 py-3 text-left text-xs font-medium tracking-wider text-slate-300 uppercase"
-						>
-							Player
+						<th class="px-6 py-4 text-left text-xs font-medium tracking-wider text-white uppercase">
+							Name
 						</th>
 						<th
-							scope="col"
-							class="border-b border-slate-600 px-6 py-3 text-left text-xs font-medium tracking-wider text-slate-300 uppercase"
+							class="px-6 py-4 text-center text-xs font-medium tracking-wider text-white uppercase"
 						>
 							Points
 						</th>
 						<th
-							scope="col"
-							class="border-b border-slate-600 px-6 py-3 text-left text-xs font-medium tracking-wider text-slate-300 uppercase"
+							class="hidden px-6 py-4 text-center text-xs font-medium tracking-wider text-white uppercase sm:table-cell"
 						>
-							Correct Scores
+							Exact<span class="hidden md:inline"> Score</span>
 						</th>
 						<th
-							scope="col"
-							class="border-b border-slate-600 px-6 py-3 text-left text-xs font-medium tracking-wider text-slate-300 uppercase"
+							class="hidden px-6 py-4 text-center text-xs font-medium tracking-wider text-white uppercase sm:table-cell"
 						>
-							Correct Outcomes
+							Outcome
+						</th>
+						<th
+							class="hidden px-6 py-4 text-center text-xs font-medium tracking-wider text-white uppercase md:table-cell"
+						>
+							Pred/Comp
+						</th>
+						<th
+							class="hidden px-6 py-4 text-center text-xs font-medium tracking-wider text-white uppercase lg:table-cell"
+						>
+							Success Rate
 						</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-slate-700">
-					{#each leaderboard as entry, index}
-						<tr class={index === 0 ? 'bg-yellow-900/30' : index < 3 ? 'bg-slate-700/50' : ''}>
-							<td class="px-6 py-4 text-sm font-medium whitespace-nowrap text-white">
-								{#if index < 3}
-									<span
-										class="inline-flex h-6 w-6 items-center justify-center rounded-full
-										{index === 0
-											? 'bg-yellow-600 text-yellow-100'
-											: index === 1
-												? 'bg-slate-500 text-slate-100'
-												: 'bg-amber-800 text-amber-100'}"
-									>
-										{index + 1}
-									</span>
-								{:else}
-									{index + 1}
-								{/if}
-							</td>
-							<td class="px-6 py-4 text-sm font-medium whitespace-nowrap text-white">
-								{entry.username || 'Unknown Player'}
-							</td>
-							<td class="px-6 py-4 text-sm font-bold whitespace-nowrap text-white">
-								{entry.totalPoints}
-							</td>
-							<td class="px-6 py-4 text-sm whitespace-nowrap text-slate-300">
-								{entry.correctScorelines}
-								<span class="text-xs text-slate-400">({entry.correctScorelines * 3} pts)</span>
-							</td>
-							<td class="px-6 py-4 text-sm whitespace-nowrap text-slate-300">
-								{entry.correctOutcomes}
-								<span class="text-xs text-slate-400">({entry.correctOutcomes} pts)</span>
+				<tbody class="divide-y divide-slate-700/50">
+					{#if !leaderboard || leaderboard.length === 0}
+						<tr>
+							<td colspan="7" class="px-6 py-8 text-center text-lg font-medium text-white">
+								No entries yet
 							</td>
 						</tr>
-					{/each}
+					{:else}
+						{#each leaderboard as entry, index}
+							<!-- Debug to see what's in each entry -->
+							<!-- <tr><td colspan="7"><pre class="text-xs">{JSON.stringify(entry)}</pre></td></tr> -->
+							<tr
+								tabindex="0"
+								data-user-id={entry.userId}
+								onclick={() => goto(`/leaderboard/user/${entry.userId}`)}
+								onkeydown={(e) => e.key === 'Enter' && goto(`/leaderboard/user/${entry.userId}`)}
+								onfocus={() => (hoveredRow = index)}
+								onblur={() => (hoveredRow = null)}
+								class="cursor-pointer transition-colors {index === 0
+									? 'bg-yellow-900/30'
+									: index < 3
+										? 'bg-slate-800/50'
+										: 'bg-slate-800/20'} {hoveredRow === index
+									? 'bg-slate-700'
+									: 'hover:bg-slate-700/70'}"
+							>
+								<td class="px-6 py-4 text-sm font-medium whitespace-nowrap text-white">
+									<span
+										class="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold {index ===
+										0
+											? 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-black shadow-[0_0_10px_rgba(255,215,0,0.5)]'
+											: index === 1
+												? 'bg-gradient-to-r from-slate-300 to-slate-400 text-black'
+												: index === 2
+													? 'bg-gradient-to-r from-amber-700 to-amber-800 text-white'
+													: 'bg-slate-700 text-white'}"
+									>
+										{entry.rank || index + 1}
+									</span>
+								</td>
+								<td class="px-6 py-4 text-sm font-semibold whitespace-nowrap text-white">
+									{entry.userName || 'Unknown User'}
+								</td>
+								<td class="px-6 py-4 text-center text-base font-bold text-white">
+									{entry.points || 0}
+								</td>
+								<td
+									class="hidden px-6 py-4 text-center text-sm font-medium text-green-400 sm:table-cell"
+								>
+									{entry.correctScorelines || 0}
+									<span class="text-xs font-medium text-slate-300">
+										({(entry.correctScorelines || 0) * 3})
+									</span>
+								</td>
+								<td
+									class="hidden px-6 py-4 text-center text-sm font-medium text-blue-400 sm:table-cell"
+								>
+									{entry.correctOutcomes || 0}
+								</td>
+								<td
+									class="hidden px-6 py-4 text-center text-sm font-medium text-white md:table-cell"
+								>
+									{entry.predictedFixtures || 0}/{entry.completedFixtures || 0}
+								</td>
+								<td
+									class="hidden px-6 py-4 text-center text-sm font-medium text-yellow-400 lg:table-cell"
+								>
+									{entry.completedFixtures
+										? Math.round(
+												((entry.correctScorelines + entry.correctOutcomes) /
+													entry.completedFixtures) *
+													100
+											)
+										: 0}%
+								</td>
+							</tr>
+						{/each}
+					{/if}
 				</tbody>
 			</table>
 		</div>
+	</div>
 
-		<div class="mt-8 text-center text-slate-400">
-			<p class="text-sm">Leaderboard is updated automatically when match results are entered.</p>
-			<p class="mt-2 text-sm">
-				<span class="font-medium text-slate-300">Correct Scoreline:</span> 3 points |
-				<span class="font-medium text-slate-300">Correct Match Outcome:</span> 1 point
-			</p>
+	{#if totalEntries > 0}
+		<div class="mt-4 text-right text-sm font-medium text-white">
+			Total entries: {totalEntries}
 		</div>
 	{/if}
 </div>

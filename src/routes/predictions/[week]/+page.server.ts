@@ -10,7 +10,15 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	// Check if user is authenticated - this is already done in the layout
 	const userId = locals.user?.id;
 	if (!userId) {
-		return { fixtures: [], predictions: {}, teams: {} };
+		return {
+			fixtures: [],
+			predictions: {},
+			teams: {},
+			week: parseInt(params.week) || 1,
+			currentWeek: 1,
+			weeks: [],
+			isPastWeek: false
+		};
 	}
 
 	// Get week from route parameter
@@ -23,24 +31,32 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	const parentData = await parent();
 	const { currentWeek, weeks } = parentData;
 
-	// Get fixtures for the selected week
+	// Get fixtures for the selected week - sort them by date server-side
 	const fixtures = await getFixturesByWeek(week);
 
+	// Sort fixtures by date server-side to avoid client-side sorting
+	const sortedFixtures = [...fixtures].sort(
+		(a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
+	);
+
 	// Get user's predictions for this week
-	const predictions = await getUserPredictionsByWeek(userId, week);
+	const userPredictions = await getUserPredictionsByWeek(userId, week);
 
 	// If no fixtures found, return early with empty data
-	if (!fixtures.length) {
+	if (!sortedFixtures.length) {
 		return {
 			week,
+			weeks,
+			currentWeek,
 			fixtures: [],
 			predictions: {},
-			teams: {}
+			teams: {},
+			isPastWeek: week < currentWeek
 		};
 	}
 
 	// Extract unique team IDs for the fixtures
-	const teamIds = [...new Set(fixtures.flatMap((f) => [f.homeTeamId, f.awayTeamId]))];
+	const teamIds = [...new Set(sortedFixtures.flatMap((f) => [f.homeTeamId, f.awayTeamId]))];
 
 	// Only fetch teams that are needed for the current fixtures
 	const allTeams = await db.select().from(teams).where(inArray(teams.id, teamIds));
@@ -54,20 +70,23 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	);
 
 	// Prepare fixtures with prediction info - ensure all fixtures for past weeks are included
-	const fixturesWithPrediction = fixtures.map((fixture) => {
+	const fixturesWithPrediction = sortedFixtures.map((fixture) => {
+		const isPastWeek = week < currentWeek;
+
 		return {
 			...fixture,
 			// For past weeks, still include all fixtures regardless of status
 			// For current or future weeks, only mark upcoming fixtures as predictable
-			canPredict:
-				week < currentWeek
-					? false // Past week fixtures can't be predicted (read-only)
-					: fixture.status === 'upcoming' // Current/future week - only upcoming matches
+			canPredict: isPastWeek
+				? false // Past week fixtures can't be predicted (read-only)
+				: fixture.status === 'upcoming', // Current/future week - only upcoming matches
+			isPastWeek // Add this flag to help client-side rendering
 		};
 	});
 
 	// Convert predictions to a map for easier access in the frontend
-	const predictionsMap = predictions.reduce(
+	// Pre-process the prediction data to match the expected client format
+	const predictionsMap = userPredictions.reduce(
 		(acc, prediction) => {
 			// Only include actual predictions with scores
 			if (
@@ -76,18 +95,35 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 				prediction.predictedHomeScore !== undefined &&
 				prediction.predictedAwayScore !== undefined
 			) {
-				acc[prediction.fixtureId] = prediction;
+				acc[prediction.fixtureId] = {
+					fixtureId: prediction.fixtureId,
+					userId: prediction.userId,
+					predictedHomeScore: prediction.predictedHomeScore,
+					predictedAwayScore: prediction.predictedAwayScore,
+					createdAt: prediction.createdAt,
+					// Add client-friendly properties
+					home: prediction.predictedHomeScore,
+					away: prediction.predictedAwayScore
+				};
 			}
 			return acc;
 		},
-		{} as Record<string, (typeof predictions)[0]>
+		{} as Record<string, any>
+	);
+
+	// Pre-compute which fixtures should be shown (filtering on server instead of client)
+	const visibleFixtures = fixturesWithPrediction.filter(
+		(fixture) => week < currentWeek || fixture.canPredict
 	);
 
 	return {
 		week,
-		fixtures: fixturesWithPrediction,
+		weeks,
+		currentWeek,
+		fixtures: visibleFixtures, // Only send fixtures that should be displayed
 		predictions: predictionsMap,
-		teams: teamsMap
+		teams: teamsMap,
+		isPastWeek: week < currentWeek
 	};
 };
 

@@ -76,17 +76,3 @@ export async function initializeTeams(): Promise<void> {
 	// Insert teams
 	await db.insert(teams).values(premierLeagueTeams);
 }
-
-// Get top teams for interesting fixtures
-export function getTopTeams(): string[] {
-	return [
-		'arsenal',
-		'chelsea',
-		'liverpool',
-		'man-city',
-		'man-utd',
-		'tottenham',
-		'aston-villa',
-		'newcastle'
-	];
-}

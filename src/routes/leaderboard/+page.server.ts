@@ -9,6 +9,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	try {
+		// Get the leaderboard data - the function now includes all required fields
 		const leaderboard = await getLeagueTable();
 
 		// Calculate some stats for display
@@ -16,6 +17,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 			correctScoreline: 3,
 			correctOutcome: 1
 		};
+
+		// Log the data for debugging
+		console.log('Server returning leaderboard data:', leaderboard);
 
 		// Return data to page
 		return {

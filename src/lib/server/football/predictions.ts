@@ -74,6 +74,7 @@ export async function submitPrediction(
 		}
 
 		const results: Prediction[] = [];
+		let newPredictionsCount = 0;
 
 		// Process each prediction
 		for (const predictionData of predictionsData) {
@@ -133,9 +134,41 @@ export async function submitPrediction(
 					.returning();
 
 				result = newPrediction[0];
+				newPredictionsCount++;
 			}
 
 			results.push(result);
+		}
+
+		// Update the user's predictedFixtures count if there are new predictions
+		if (newPredictionsCount > 0) {
+			// Get the user's current league table entry
+			const userLeagueEntry = await db
+				.select()
+				.from(schema.leagueTable)
+				.where(eq(schema.leagueTable.userId, userId));
+
+			if (userLeagueEntry.length > 0) {
+				// Increment the predictedFixtures count
+				await db
+					.update(schema.leagueTable)
+					.set({
+						predictedFixtures: (userLeagueEntry[0].predictedFixtures || 0) + newPredictionsCount
+					})
+					.where(eq(schema.leagueTable.id, userLeagueEntry[0].id));
+			} else {
+				// Create a new entry if one doesn't exist
+				await db.insert(schema.leagueTable).values({
+					id: randomUUID(),
+					userId,
+					totalPoints: 0,
+					correctScorelines: 0,
+					correctOutcomes: 0,
+					predictedFixtures: newPredictionsCount,
+					completedFixtures: 0,
+					lastUpdated: new Date()
+				});
+			}
 		}
 
 		return results;
@@ -257,7 +290,9 @@ export async function processPredictionsForFixture(
 					.set({
 						totalPoints: userData[0].totalPoints + points,
 						correctScorelines: userData[0].correctScorelines + (isPerfectScore ? 1 : 0),
-						correctOutcomes: userData[0].correctOutcomes + (isCorrectOutcome ? 1 : 0),
+						correctOutcomes:
+							userData[0].correctOutcomes + (isCorrectOutcome && !isPerfectScore ? 1 : 0),
+						completedFixtures: (userData[0].completedFixtures || 0) + 1,
 						lastUpdated: new Date()
 					})
 					.where(eq(schema.leagueTable.userId, prediction.userId));
@@ -268,7 +303,9 @@ export async function processPredictionsForFixture(
 					userId: prediction.userId,
 					totalPoints: points,
 					correctScorelines: isPerfectScore ? 1 : 0,
-					correctOutcomes: isCorrectOutcome ? 1 : 0,
+					correctOutcomes: isCorrectOutcome && !isPerfectScore ? 1 : 0,
+					predictedFixtures: 1,
+					completedFixtures: 1,
 					lastUpdated: new Date()
 				});
 			}
@@ -283,26 +320,66 @@ export async function processPredictionsForFixture(
 export async function getLeagueTable(): Promise<
 	Array<{
 		userId: string;
-		username: string;
-		totalPoints: number;
+		userName: string;
+		points: number;
 		correctScorelines: number;
 		correctOutcomes: number;
+		predictedFixtures: number;
+		completedFixtures: number;
+		rank: number;
 	}>
 > {
-	return db
+	// First get the base leaderboard data
+	const leaderboardData = await db
 		.select({
 			userId: leagueTable.userId,
-			username: user.name,
-			totalPoints: leagueTable.totalPoints,
+			userName: user.name,
+			points: leagueTable.totalPoints,
 			correctScorelines: leagueTable.correctScorelines,
 			correctOutcomes: leagueTable.correctOutcomes
 		})
 		.from(leagueTable)
 		.innerJoin(user, eq(leagueTable.userId, user.id))
 		.orderBy(desc(leagueTable.totalPoints));
-}
 
-// Since we've implemented the bulk version above, we can remove this placeholder
-// export function submitPredictions(/* params */) {
-//   // Implementation code
-// }
+	// For each user, count their predictions and completed fixtures
+	const enrichedLeaderboard = await Promise.all(
+		leaderboardData.map(async (entry, index) => {
+			// Get all predictions for this user
+			const predictions = await db
+				.select()
+				.from(schema.predictions)
+				.where(eq(schema.predictions.userId, entry.userId));
+
+			// Get all fixtures to check which ones are completed
+			const fixtureIds = predictions.map((p) => p.fixtureId);
+
+			// If no predictions, return 0 for both counts
+			if (fixtureIds.length === 0) {
+				return {
+					...entry,
+					predictedFixtures: 0,
+					completedFixtures: 0,
+					rank: index + 1 // Add rank based on position in the sorted array
+				};
+			}
+
+			// Count completed fixtures that this user predicted
+			const completedFixtures = await db
+				.select()
+				.from(schema.fixtures)
+				.where(
+					and(inArray(schema.fixtures.id, fixtureIds), eq(schema.fixtures.status, 'completed'))
+				);
+
+			return {
+				...entry,
+				predictedFixtures: predictions.length,
+				completedFixtures: completedFixtures.length,
+				rank: index + 1 // Add rank based on position in the sorted array
+			};
+		})
+	);
+
+	return enrichedLeaderboard;
+}
