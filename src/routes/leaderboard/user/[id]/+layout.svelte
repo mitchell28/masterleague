@@ -57,41 +57,38 @@
 	<!-- Week navigation panel -->
 	{#if availableWeeks && availableWeeks.length > 0}
 		<div class="mb-8 rounded-xl border border-slate-700 bg-slate-800/70 p-4 shadow-lg">
-			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<!-- Week navigation controls -->
+			<div class="flex flex-nowrap items-center justify-between">
 				<div class="flex items-center gap-2">
 					<button
 						onclick={goToPreviousWeek}
-						class="cursor-pointer rounded-md bg-slate-700 px-3 py-1 text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+						class="rounded-md bg-slate-700 px-2 py-1 text-white hover:bg-slate-600 disabled:opacity-50"
 						disabled={availableWeeks.indexOf(weekId) === 0}
 					>
-						← Previous
+						←
 					</button>
 
-					<div class="mx-2 text-center">
-						<span class="font-medium text-white">Week {weekId}</span>
-						<p class="text-xs text-slate-400">
-							{availableWeeks.length > 0
-								? `${availableWeeks.indexOf(weekId) + 1} of ${availableWeeks.length}`
-								: 'No weeks available'}
-						</p>
-					</div>
+					<span class="font-medium whitespace-nowrap text-white">Week {weekId}</span>
 
 					<button
 						onclick={goToNextWeek}
-						class="cursor-pointer rounded-md bg-slate-700 px-3 py-1 text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+						class="rounded-md bg-slate-700 px-2 py-1 text-white hover:bg-slate-600 disabled:opacity-50"
 						disabled={availableWeeks.indexOf(weekId) === availableWeeks.length - 1}
 					>
-						Next →
+						→
 					</button>
+
+					<span class="hidden text-xs text-slate-400 sm:inline">
+						{availableWeeks.indexOf(weekId) + 1} of {availableWeeks.length}
+					</span>
 				</div>
 
-				<!-- Week selector dropdown -->
-				<div>
-					<label for="week-selector" class="font-medium text-white">Jump to week:</label>
+				<div class="flex items-center">
+					<label for="week-selector" class="mr-1 text-sm font-medium whitespace-nowrap text-white"
+						>Jump to:</label
+					>
 					<select
 						id="week-selector"
-						class="ml-2 rounded-lg border border-slate-600 bg-slate-700 px-3 py-1 text-white focus:border-blue-400 focus:outline-none"
+						class="rounded-lg border border-slate-600 bg-slate-700 px-2 py-1 text-white focus:border-blue-400 focus:outline-none"
 						onchange={changeWeek}
 						value={weekId}
 					>

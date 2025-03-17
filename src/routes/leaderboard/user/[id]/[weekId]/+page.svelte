@@ -71,46 +71,48 @@
 </script>
 
 <div>
-	<!-- Stats Cards -->
-	<div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-		<div class="rounded-lg border border-slate-700 bg-slate-800 p-4 shadow">
-			<p class="text-sm font-medium text-blue-400">Total Points</p>
-			<p class="text-2xl font-bold text-white">{data.stats.totalPoints}</p>
-		</div>
+	<!-- Stats Cards - Responsive layout with single row on mobile -->
+	<div class="mb-8 overflow-hidden rounded-lg border border-slate-700 bg-slate-800 shadow">
+		<div class="grid grid-cols-2 gap-4 p-4 md:grid-cols-3 lg:grid-cols-6">
+			<div class="flex flex-col">
+				<p class="text-sm font-medium text-blue-400">Total Points</p>
+				<p class="text-2xl font-bold text-white">{data.stats.totalPoints}</p>
+			</div>
 
-		<div class="rounded-lg border border-slate-700 bg-slate-800 p-4 shadow">
-			<p class="text-sm font-medium text-green-400">Correct Scores</p>
-			<p class="text-2xl font-bold text-white">{data.stats.correctScorelines}</p>
-			<p class="text-xs text-slate-400">({data.stats.correctScorelines * 3} pts)</p>
-		</div>
+			<div class="flex flex-col">
+				<p class="text-sm font-medium text-green-400">Correct Scores</p>
+				<p class="text-2xl font-bold text-white">{data.stats.correctScorelines}</p>
+				<p class="text-xs text-slate-400">({data.stats.correctScorelines * 3} pts)</p>
+			</div>
 
-		<div class="rounded-lg border border-slate-700 bg-slate-800 p-4 shadow">
-			<p class="text-sm font-medium text-blue-400">Correct Outcomes</p>
-			<p class="text-2xl font-bold text-white">{data.stats.correctOutcomes}</p>
-			<p class="text-xs text-slate-400">({data.stats.correctOutcomes} pts)</p>
-		</div>
+			<div class="flex flex-col">
+				<p class="text-sm font-medium text-blue-400">Correct Outcomes</p>
+				<p class="text-2xl font-bold text-white">{data.stats.correctOutcomes}</p>
+				<p class="text-xs text-slate-400">({data.stats.correctOutcomes} pts)</p>
+			</div>
 
-		<div class="rounded-lg border border-slate-700 bg-slate-800 p-4 shadow">
-			<p class="text-sm font-medium text-red-400">Incorrect</p>
-			<p class="text-2xl font-bold text-white">{data.stats.incorrectPredictions}</p>
-		</div>
+			<div class="flex flex-col">
+				<p class="text-sm font-medium text-red-400">Incorrect</p>
+				<p class="text-2xl font-bold text-white">{data.stats.incorrectPredictions}</p>
+			</div>
 
-		<div class="rounded-lg border border-slate-700 bg-slate-800 p-4 shadow">
-			<p class="text-sm font-medium text-purple-400">Predictions</p>
-			<p class="text-2xl font-bold text-white">{data.stats.totalPredictions}</p>
-		</div>
+			<div class="flex flex-col">
+				<p class="text-sm font-medium text-purple-400">Predictions</p>
+				<p class="text-2xl font-bold text-white">{data.stats.totalPredictions}</p>
+			</div>
 
-		<div class="rounded-lg border border-slate-700 bg-slate-800 p-4 shadow">
-			<p class="text-sm font-medium text-yellow-400">Success Rate</p>
-			<p class="text-2xl font-bold text-white">
-				{data.stats.completedPredictions
-					? Math.round(
-							((data.stats.correctScorelines + data.stats.correctOutcomes) /
-								data.stats.completedPredictions) *
-								100
-						)
-					: 0}%
-			</p>
+			<div class="flex flex-col">
+				<p class="text-sm font-medium text-yellow-400">Success Rate</p>
+				<p class="text-2xl font-bold text-white">
+					{data.stats.completedPredictions
+						? Math.round(
+								((data.stats.correctScorelines + data.stats.correctOutcomes) /
+									data.stats.completedPredictions) *
+									100
+							)
+						: 0}%
+				</p>
+			</div>
 		</div>
 	</div>
 
