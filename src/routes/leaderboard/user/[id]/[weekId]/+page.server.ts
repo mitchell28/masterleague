@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { and, eq, count, sum, isNull, asc } from 'drizzle-orm';
+import { and, eq, count, sum, asc } from 'drizzle-orm';
 import { fixtures, predictions, leagueTable, teams } from '$lib/server/db/schema';
 import { user } from '$lib/server/db/auth/auth-schema';
 
@@ -64,7 +64,15 @@ export const load = (async ({ params, locals }) => {
 	const weekPredictions = await db
 		.select({
 			prediction: predictions,
-			fixture: fixtures,
+			fixture: {
+				id: fixtures.id,
+				weekId: fixtures.weekId,
+				homeScore: fixtures.homeScore,
+				awayScore: fixtures.awayScore,
+				matchDate: fixtures.matchDate,
+				status: fixtures.status,
+				pointsMultiplier: fixtures.pointsMultiplier
+			},
 			homeTeam: {
 				id: teams.id,
 				name: teams.name,
@@ -100,20 +108,48 @@ export const load = (async ({ params, locals }) => {
 		.where(eq(predictions.userId, userId))
 		.then((rows) => rows[0]);
 
-	// Get count of different point values
-	const pointCounts = await db
+	// Get all predictions with fixture data in a single query
+	const predictionData = await db
 		.select({
-			correctScorelines: count(predictions.id),
-			points: predictions.points
+			prediction: {
+				id: predictions.id,
+				points: predictions.points,
+				predictedHomeScore: predictions.predictedHomeScore,
+				predictedAwayScore: predictions.predictedAwayScore
+			},
+			fixture: {
+				id: fixtures.id,
+				homeScore: fixtures.homeScore,
+				awayScore: fixtures.awayScore,
+				pointsMultiplier: fixtures.pointsMultiplier,
+				status: fixtures.status
+			}
 		})
 		.from(predictions)
-		.where(eq(predictions.userId, userId))
-		.groupBy(predictions.points);
+		.innerJoin(fixtures, eq(predictions.fixtureId, fixtures.id))
+		.where(eq(predictions.userId, userId));
 
-	// Parse the results to get individual counts
-	const correctScorelines = pointCounts.find((row) => row.points === 3)?.correctScorelines || 0;
-	const correctOutcomes = pointCounts.find((row) => row.points === 1)?.correctScorelines || 0;
-	const incorrectPredictions = pointCounts.find((row) => row.points === 0)?.correctScorelines || 0;
+	// Calculate counts efficiently without additional queries
+	let correctScorelines = 0;
+	let correctOutcomes = 0;
+	let incorrectPredictions = 0;
+
+	for (const item of predictionData) {
+		const { prediction, fixture } = item;
+
+		if (fixture.status === 'FINISHED') {
+			if (prediction.points === 0) {
+				incorrectPredictions++;
+			} else if (
+				prediction.predictedHomeScore === fixture.homeScore &&
+				prediction.predictedAwayScore === fixture.awayScore
+			) {
+				correctScorelines++;
+			} else if (prediction.points !== null && prediction.points > 0) {
+				correctOutcomes++;
+			}
+		}
+	}
 
 	const stats = {
 		totalPredictions: predictionResults.totalPredictions,

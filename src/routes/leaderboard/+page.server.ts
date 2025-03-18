@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { getLeagueTable } from '$lib/server/football/predictions';
+import { getLeagueTable, checkAndUpdateRecentFixtures } from '$lib/server/football/predictions';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -9,22 +9,30 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	try {
-		// Get the leaderboard data - the function now includes all required fields
+		// Check for fixtures that need updates - leaderboard is where users
+		// will look for updated standings after matches complete
+		// Force the update on leaderboard views to ensure latest scores
+		checkAndUpdateRecentFixtures(true)
+			.then((result) => {
+				if (result.potentiallyMissed > 0) {
+					console.log(
+						`Leaderboard: Found ${result.potentiallyMissed} fixtures that might have been missed, updating their scores and points.`
+					);
+				}
+				if (result.updated > 0) {
+					console.log(
+						`Leaderboard: Updated ${result.updated} fixtures, including ${result.live} live ones and ${result.recentlyCompleted} recently completed.`
+					);
+				}
+			})
+			.catch((err) => {
+				console.error('Error updating fixture statuses:', err);
+			});
+
 		const leaderboard = await getLeagueTable();
 
-		// Calculate some stats for display
-		const scoringRules = {
-			correctScoreline: 3,
-			correctOutcome: 1
-		};
-
-		// Log the data for debugging
-		console.log('Server returning leaderboard data:', leaderboard);
-
-		// Return data to page
 		return {
-			leaderboard,
-			scoringRules
+			leaderboard
 		};
 	} catch (err) {
 		console.error('Error loading leaderboard data:', err);

@@ -341,9 +341,6 @@
 								>
 									<a href={`/leaderboard/user/${entry.userId}`} class="inline-block h-full w-full">
 										{entry.correctScorelines || 0}
-										<span class="text-xs font-medium text-slate-300">
-											({(entry.correctScorelines || 0) * 3})
-										</span>
 									</a>
 								</td>
 								<td
@@ -393,6 +390,44 @@
 			{#if searchQuery && filteredLeaderboard.length < totalEntries}
 				<div>Showing {filteredLeaderboard.length} of {totalEntries} players</div>
 			{/if}
+		</div>
+	{/if}
+
+	<!-- Only show explanation if we have data -->
+	{#if totalEntries > 0}
+		<div class="mt-6 rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-sm text-slate-300">
+			<h2 class="mb-2 text-lg font-bold text-white">Scoring System</h2>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+				<div>
+					<h3 class="mb-1 font-semibold text-white">Base Points</h3>
+					<ul class="list-inside list-disc space-y-1">
+						<li>Exact score: <span class="font-bold text-green-400">3 points</span></li>
+						<li>Correct outcome only: <span class="font-bold text-blue-400">1 point</span></li>
+					</ul>
+				</div>
+				<div>
+					<h3 class="mb-1 font-semibold text-white">Match Multipliers</h3>
+					<ul class="list-inside list-disc space-y-1">
+						<li>Regular matches: <span class="font-bold text-slate-400">1×</span></li>
+						<li>Exciting matches: <span class="font-bold text-yellow-400">2×</span></li>
+						<li>Derby matches: <span class="font-bold text-yellow-400">3×</span></li>
+					</ul>
+				</div>
+				<div>
+					<h3 class="mb-1 font-semibold text-white">Examples</h3>
+					<ul class="list-inside list-disc space-y-1">
+						<li>
+							Perfect prediction on 3× match: <span class="font-bold text-green-400">9 points</span>
+						</li>
+						<li>
+							Correct outcome on 3× match: <span class="font-bold text-blue-400">3 points</span>
+						</li>
+						<li>
+							Perfect prediction on 2× match: <span class="font-bold text-green-400">6 points</span>
+						</li>
+					</ul>
+				</div>
+			</div>
 		</div>
 	{/if}
 </div>

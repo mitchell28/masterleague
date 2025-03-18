@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv';
 import './db-connection'; // Import this first to set up the environment and mocks
 // Get the db instance from the db-connection module, not from ../server/db
 import { db } from './db-connection';
-import { fixtures, teams } from '../server/db/schema';
+import { fixtures, teams } from '../lib/server/db/schema';
 import { count } from 'drizzle-orm';
 
 // Load environment variables from .env file

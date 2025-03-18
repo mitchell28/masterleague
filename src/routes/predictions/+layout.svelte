@@ -6,13 +6,11 @@
 	// Correct way to handle slots in SvelteKit 5
 	let { children } = $props();
 
-	// Using runes to access page data - memoize derived values
-	let data = $derived(page.data);
-	let week = $derived(data?.week || 1);
-	let weeks = $derived(data?.weeks || []);
-	let currentWeek = $derived(data?.currentWeek || 1);
+	// Using runes to access page data
+	let { weeks, currentWeek } = $derived(page.data);
+	let week = $derived(page.params.week ? parseInt(page.params.week) : currentWeek);
 
-	// Change week from dropdown - optimized for performance
+	// Change week from dropdown
 	function changeWeek(event: Event) {
 		const target = event.target as HTMLSelectElement;
 		const newWeek = parseInt(target.value);

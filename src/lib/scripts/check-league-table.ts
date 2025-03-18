@@ -1,8 +1,8 @@
 import * as dotenv from 'dotenv';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { leagueTable } from '../server/db/schema';
-import { user as authUser } from '../server/db/auth/auth-schema';
+import { leagueTable } from '../lib/server/db/schema';
+import { user as authUser } from '../lib/server/db/auth/auth-schema';
 import { eq, desc } from 'drizzle-orm';
 
 // Load environment variables from .env file

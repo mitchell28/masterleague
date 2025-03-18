@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { fixtures } from '../server/db/schema';
+import { fixtures } from '../lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
 // Load environment variables from .env file

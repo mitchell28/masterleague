@@ -4,6 +4,7 @@
 	import type { Team, Prediction } from '$lib/server/db/schema';
 	import type { Fixture as BaseFixture } from '$lib/server/db/schema';
 	import PredictionCard from './components/PredictionCard.svelte';
+	import { page } from '$app/state';
 
 	// Extended Fixture type with canPredict property
 	type Fixture = BaseFixture & {
@@ -15,14 +16,12 @@
 	interface PredictionsPageData {
 		fixtures: Fixture[];
 		teams: Record<string, Team>;
-		week: number;
-		weeks: number[];
 		predictions: Record<string, Prediction & { home: number; away: number }>;
 		isPastWeek: boolean;
 	}
 
-	// Use the new $props runes syntax
-	let { data, form } = $props<{
+	// Use the new $props runes syntax and derive from page
+	let { data } = $props<{
 		data: PredictionsPageData;
 		form?: {
 			success: boolean;
@@ -30,10 +29,13 @@
 		};
 	}>();
 
+	// Get week from layout data/params
+	let { currentWeek } = $derived(page.data);
+	let week = $derived(page.params.week ? parseInt(page.params.week) : currentWeek);
+
 	// Access data safely with fallbacks if needed
 	let fixtures = $derived(data?.fixtures || []);
 	let teams = $derived(data?.teams || {});
-	let week = $derived(data?.week || 1);
 	let predictions = $derived(data?.predictions || {});
 	let isPastWeek = $derived(data?.isPastWeek || false);
 

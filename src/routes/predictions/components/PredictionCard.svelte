@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Team, Prediction } from '$lib/server/db/schema';
+	import type { Team } from '$lib/server/db/schema';
 	import type { Fixture as BaseFixture } from '$lib/server/db/schema';
 
 	// Extended Fixture type with canPredict property
@@ -33,28 +33,21 @@
 	// Initialize state with runes
 	let homeScore = $state(prediction?.home ?? 0);
 	let awayScore = $state(prediction?.away ?? 0);
-	let shouldUpdateParent = $state(false);
 
 	// Update state when prediction changes using effect
 	$effect(() => {
 		if (prediction) {
-			// Temporarily disable parent updates while we sync from props
-			shouldUpdateParent = false;
 			homeScore = prediction.home;
 			awayScore = prediction.away;
-			// Re-enable parent updates after a small delay
-			setTimeout(() => {
-				shouldUpdateParent = true;
-			}, 0);
 		}
 	});
 
-	// Effect to track changes and call the update callback
-	$effect(() => {
-		if (shouldUpdateParent && !readOnly && prediction !== null) {
+	// Direct handler for score changes
+	function handleScoreChange() {
+		if (!readOnly && prediction !== null) {
 			onUpdate(homeScore, awayScore);
 		}
-	});
+	}
 
 	// Helper functions
 	function formatDate(timestamp: number | Date): string {
@@ -73,17 +66,17 @@
 			case 'FINISHED':
 				return { text: 'Completed', classes: 'bg-green-900 text-green-200' };
 			case 'IN_PLAY':
-				return { text: 'LIVE', classes: 'animate-pulse bg-red-900 text-red-200' };
+				return { text: 'Live', classes: 'animate-pulse bg-red-900 text-red-200' };
 			case 'PAUSED':
-				return { text: 'PAUSED', classes: 'animate-pulse bg-orange-900 text-orange-200' };
+				return { text: 'Paused', classes: 'animate-pulse bg-orange-900 text-orange-200' };
 			case 'SUSPENDED':
-				return { text: 'SUSPENDED', classes: 'bg-yellow-900 text-yellow-200' };
+				return { text: 'Suspended', classes: 'bg-yellow-900 text-yellow-200' };
 			case 'POSTPONED':
-				return { text: 'POSTPONED', classes: 'bg-purple-900 text-purple-200' };
+				return { text: 'Postponed', classes: 'bg-purple-900 text-purple-200' };
 			case 'CANCELLED':
-				return { text: 'CANCELLED', classes: 'bg-gray-900 text-gray-200' };
+				return { text: 'Cancelled', classes: 'bg-gray-900 text-gray-200' };
 			case 'AWARDED':
-				return { text: 'AWARDED', classes: 'bg-blue-900 text-blue-200' };
+				return { text: 'Awarded', classes: 'bg-blue-900 text-blue-200' };
 			case 'TIMED':
 				return { text: 'Upcoming', classes: 'bg-blue-900 text-blue-200' };
 			case 'SCHEDULED':
@@ -96,11 +89,11 @@
 	function getSpecialBadge(fixture: Fixture): { text: string; color: string } | null {
 		if (fixture.pointsMultiplier > 1) {
 			if (fixture.pointsMultiplier === 3) {
-				return { text: '3x Points', color: 'bg-green-800' };
+				return { text: '3x Points', color: 'bg-gradient-to-r from-amber-500 to-yellow-400' };
 			} else if (fixture.pointsMultiplier === 2) {
-				return { text: '2x Points', color: 'bg-red-800' };
+				return { text: '2x Points', color: 'bg-gradient-to-r from-blue-500 to-indigo-400' };
 			} else {
-				return { text: `${fixture.pointsMultiplier}x Points`, color: 'bg-blue-400' };
+				return { text: `${fixture.pointsMultiplier}x Points`, color: 'bg-amber-400' };
 			}
 		}
 		return null;
@@ -108,27 +101,23 @@
 
 	// Increment/decrement functions
 	function incrementHome(): void {
-		shouldUpdateParent = false;
 		homeScore = Math.min(20, homeScore + 1);
-		shouldUpdateParent = true;
+		handleScoreChange();
 	}
 
 	function decrementHome(): void {
-		shouldUpdateParent = false;
 		homeScore = Math.max(0, homeScore - 1);
-		shouldUpdateParent = true;
+		handleScoreChange();
 	}
 
 	function incrementAway(): void {
-		shouldUpdateParent = false;
 		awayScore = Math.min(20, awayScore + 1);
-		shouldUpdateParent = true;
+		handleScoreChange();
 	}
 
 	function decrementAway(): void {
-		shouldUpdateParent = false;
 		awayScore = Math.max(0, awayScore - 1);
-		shouldUpdateParent = true;
+		handleScoreChange();
 	}
 
 	// Helper function to determine if a fixture is live
@@ -217,16 +206,13 @@
 												: 'bg-red-500 text-white'
 									}`}
 								>
-									{prediction.home === fixture.homeScore && prediction.away === fixture.awayScore
-										? 'Perfect'
-										: (prediction.home > prediction.away &&
-													fixture.homeScore > fixture.awayScore) ||
-											  (prediction.home < prediction.away &&
-													fixture.homeScore < fixture.awayScore) ||
-											  (prediction.home === prediction.away &&
-													fixture.homeScore === fixture.awayScore)
-											? 'Correct Outcome'
-											: 'Incorrect'}
+									{#if prediction.home === fixture.homeScore && prediction.away === fixture.awayScore}
+										Perfect: {3 * fixture.pointsMultiplier} pts
+									{:else if (prediction.home > prediction.away && fixture.homeScore > fixture.awayScore) || (prediction.home < prediction.away && fixture.homeScore < fixture.awayScore) || (prediction.home === prediction.away && fixture.homeScore === fixture.awayScore)}
+										Correct Outcome: {1 * fixture.pointsMultiplier} pts
+									{:else}
+										Incorrect: 0 pts
+									{/if}
 								</span>
 							{/if}
 						</div>
@@ -272,6 +258,7 @@
 										} else {
 											awayScore = isNaN(value) ? 0 : value;
 										}
+										handleScoreChange();
 									}
 								}}
 							/>

@@ -93,14 +93,6 @@ export async function deleteFixturesByWeek(weekId: number): Promise<void> {
 	await db.delete(fixtures).where(eq(fixtures.weekId, weekId));
 }
 
-interface ApiTeam {
-	id: number;
-	name: string;
-	shortName: string;
-	tla: string;
-	crest: string;
-}
-
 interface ApiMatchTeam {
 	id: number;
 	name: string;
@@ -363,6 +355,11 @@ export async function updateFixtureStatuses(
 		throw new Error('FOOTBALL_DATA_API_KEY not found in environment variables');
 	}
 
+	// Simple in-memory cache implementation
+	// This will be local to this instance of the server
+	const CACHE_TTL = 2 * 60 * 1000; // 2 minutes cache TTL
+	const apiCache: Record<string, { data: any; timestamp: number }> = {};
+
 	// Determine which fixtures to check
 	let fixturesToCheck: (typeof fixtures.$inferSelect)[] = [];
 
@@ -418,91 +415,146 @@ export async function updateFixtureStatuses(
 	let updatedCount = 0;
 	let liveCount = 0;
 
-	// Process fixtures in batches to avoid API rate limits
-	const batchSize = 10;
+	// Process fixtures in batches to respect API rate limits (10 calls per minute)
+	const batchSize = 5; // Process 5 matches per API call
+	const callsPerMinute = 10;
+	const callInterval = 60000 / callsPerMinute; // Time between API calls in ms (6000ms)
+
+	// Track API call timestamps to manage rate limiting
+	const apiCallTimestamps: number[] = [];
+
 	for (let i = 0; i < matchIds.length; i += batchSize) {
 		const batchIds = matchIds.slice(i, i + batchSize);
-
-		// Create a comma-separated list of match IDs
 		const matchIdsParam = batchIds.join(',');
 
-		try {
-			// Fetch match data
-			const MATCHES_API_URL = `https://api.football-data.org/v4/matches?ids=${matchIdsParam}`;
-			const matchesResponse = await fetch(MATCHES_API_URL, {
-				headers: {
-					'X-Auth-Token': apiKey
-				}
-			});
+		// Generate cache key for this batch
+		const cacheKey = `matches_${matchIdsParam}`;
+		const now = Date.now();
+		let apiMatches;
 
-			if (!matchesResponse.ok) {
-				console.error(`Matches API request failed with status ${matchesResponse.status}`);
-				continue;
+		// Check cache first
+		if (apiCache[cacheKey] && now - apiCache[cacheKey].timestamp < CACHE_TTL) {
+			console.log(`Using cached data for matches: ${matchIdsParam}`);
+			apiMatches = apiCache[cacheKey].data;
+		} else {
+			// Check if we need to wait before making another API call
+			apiCallTimestamps.push(now);
+
+			// Remove timestamps older than 1 minute
+			const oneMinuteAgo = now - 60000;
+			while (apiCallTimestamps.length > 0 && apiCallTimestamps[0] < oneMinuteAgo) {
+				apiCallTimestamps.shift();
 			}
 
-			const data = await matchesResponse.json();
-			const apiMatches = data.matches || [];
+			// If we've made 10 calls in the last minute, wait until we can make another
+			if (apiCallTimestamps.length >= callsPerMinute) {
+				const oldestCall = apiCallTimestamps[0];
+				const timeToWait = Math.max(oldestCall + 60000 - now, 0);
 
-			// Update fixtures based on API response
-			for (const match of apiMatches) {
-				const fixture = fixturesByMatchId[match.id.toString()];
-				if (!fixture) continue;
+				if (timeToWait > 0) {
+					console.log(`Rate limit approaching. Waiting ${timeToWait}ms before next API call`);
+					await new Promise((resolve) => setTimeout(resolve, timeToWait));
+				}
+			} else if (i > 0) {
+				// Add a small delay between calls even if we haven't hit the limit
+				await new Promise((resolve) => setTimeout(resolve, callInterval));
+			}
 
-				// Use the API status directly
-				const fixtureStatus = match.status;
+			try {
+				// Fetch match data
+				const MATCHES_API_URL = `https://api.football-data.org/v4/matches?ids=${matchIdsParam}`;
+				const matchesResponse = await fetch(MATCHES_API_URL, {
+					headers: {
+						'X-Auth-Token': apiKey
+					}
+				});
 
-				// Count live fixtures
-				if (fixtureStatus === 'IN_PLAY' || fixtureStatus === 'PAUSED') {
-					liveCount++;
+				if (matchesResponse.status === 429) {
+					// If we hit rate limit despite our precautions, wait a full minute
+					console.warn('Rate limit hit (429). Waiting 60 seconds before continuing.');
+					await new Promise((resolve) => setTimeout(resolve, 60000));
+
+					// Retry this batch by decrementing i
+					i -= batchSize;
+					continue;
 				}
 
-				// Get scores if available
-				const homeScore =
-					match.score.fullTime.home !== null
-						? match.score.fullTime.home
-						: match.score.halfTime.home !== null
-							? match.score.halfTime.home
-							: null;
-				const awayScore =
-					match.score.fullTime.away !== null
-						? match.score.fullTime.away
-						: match.score.halfTime.away !== null
-							? match.score.halfTime.away
-							: null;
+				if (!matchesResponse.ok) {
+					console.error(`Matches API request failed with status ${matchesResponse.status}`);
+					continue;
+				}
 
-				// Only update if there's a change in status or score
-				if (
-					fixtureStatus !== fixture.status ||
-					(homeScore !== null && homeScore !== fixture.homeScore) ||
-					(awayScore !== null && awayScore !== fixture.awayScore)
-				) {
-					// Update the fixture in the database
-					await db
-						.update(fixtures)
-						.set({
-							status: fixtureStatus,
-							homeScore: homeScore !== null ? homeScore : fixture.homeScore,
-							awayScore: awayScore !== null ? awayScore : fixture.awayScore,
-							lastUpdated: new Date()
-						})
-						.where(eq(fixtures.id, fixture.id));
+				const data = await matchesResponse.json();
+				apiMatches = data.matches || [];
 
-					updatedCount++;
+				// Store in cache
+				apiCache[cacheKey] = {
+					data: apiMatches,
+					timestamp: now
+				};
+			} catch (error) {
+				console.error(`Error fetching match data for batch ${i}:`, error);
+				continue;
+			}
+		}
 
-					// Process predictions if the match is completed
-					if (fixtureStatus === 'FINISHED' && homeScore !== null && awayScore !== null) {
-						try {
-							// Import here to avoid circular dependency
-							const { processPredictionsForFixture } = await import('./predictions');
-							await processPredictionsForFixture(fixture.id, homeScore, awayScore);
-						} catch (error) {
-							console.error(`Error processing predictions for fixture ${fixture.id}:`, error);
-						}
+		// Update fixtures based on API response
+		for (const match of apiMatches) {
+			const fixture = fixturesByMatchId[match.id.toString()];
+			if (!fixture) continue;
+
+			// Use the API status directly
+			const fixtureStatus = match.status;
+
+			// Count live fixtures
+			if (fixtureStatus === 'IN_PLAY' || fixtureStatus === 'PAUSED') {
+				liveCount++;
+			}
+
+			// Get scores if available
+			const homeScore =
+				match.score.fullTime.home !== null
+					? match.score.fullTime.home
+					: match.score.halfTime.home !== null
+						? match.score.halfTime.home
+						: null;
+			const awayScore =
+				match.score.fullTime.away !== null
+					? match.score.fullTime.away
+					: match.score.halfTime.away !== null
+						? match.score.halfTime.away
+						: null;
+
+			// Only update if there's a change in status or score
+			if (
+				fixtureStatus !== fixture.status ||
+				(homeScore !== null && homeScore !== fixture.homeScore) ||
+				(awayScore !== null && awayScore !== fixture.awayScore)
+			) {
+				// Update the fixture in the database
+				await db
+					.update(fixtures)
+					.set({
+						status: fixtureStatus,
+						homeScore: homeScore !== null ? homeScore : fixture.homeScore,
+						awayScore: awayScore !== null ? awayScore : fixture.awayScore,
+						lastUpdated: new Date()
+					})
+					.where(eq(fixtures.id, fixture.id));
+
+				updatedCount++;
+
+				// Process predictions if the match is completed
+				if (fixtureStatus === 'FINISHED' && homeScore !== null && awayScore !== null) {
+					try {
+						// Import here to avoid circular dependency
+						const { processPredictionsForFixture } = await import('./predictions');
+						await processPredictionsForFixture(fixture.id, homeScore, awayScore);
+					} catch (error) {
+						console.error(`Error processing predictions for fixture ${fixture.id}:`, error);
 					}
 				}
 			}
-		} catch (error) {
-			console.error(`Error fetching match data for batch ${i}:`, error);
 		}
 	}
 

@@ -7,6 +7,10 @@ export const load: LayoutServerLoad = async ({ request }) => {
 	});
 
 	return {
-		user: session?.user || null
+		user: session?.user || null,
+		fixtureUpdates: {
+			success: true,
+			updated: 0
+		}
 	};
 };

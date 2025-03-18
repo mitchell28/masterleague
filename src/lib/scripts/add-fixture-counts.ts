@@ -1,5 +1,5 @@
-import { db } from '../server/db';
-import { predictions, fixtures, leagueTable } from '../server/db/schema';
+import { db } from '$lib/server/db';
+import { predictions, fixtures, leagueTable } from '$lib/server/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 

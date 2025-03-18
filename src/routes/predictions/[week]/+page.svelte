@@ -141,7 +141,7 @@
 	}
 
 	// Setup auto-refresh for live fixtures
-	let refreshTimer: number;
+	let refreshTimer: NodeJS.Timeout | number;
 
 	// Effect to handle auto-refreshing for live fixtures
 	$effect(() => {

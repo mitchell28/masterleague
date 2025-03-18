@@ -26,6 +26,7 @@
 		"db:seed-fake-data": "vite-node src/lib/scripts/seed-fake-users-predictions.ts",
 		"db:check-league-table": "vite-node src/lib/scripts/check-league-table.ts",
 		"db:user-prediction-report": "vite-node src/lib/scripts/user-prediction-report.ts",
+		"db:recalculate-points": "vite-node src/lib/scripts/recalculate-points.ts",
 		"db:process-fixture": "vite-node src/lib/scripts/process-fixture.ts",
 		"db:update-league-table": "vite-node src/lib/scripts/update-league-table.ts"
 	},
@@ -63,6 +64,7 @@
 		"better-auth": "^1.2.3",
 		"drizzle-orm": "^0.40.0",
 		"pg": "^8.11.3",
+		"postgres": "^3.4.5",
 		"tailwindcss-animate": "^1.0.7",
 		"vite-node": "^3.0.8",
 		"zod": "^3.24.2"

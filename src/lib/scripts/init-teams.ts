@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { teams } from '../server/db/schema';
+import { teams } from '../lib/server/db/schema';
 import { randomUUID } from 'crypto';
 
 // Load environment variables from .env file

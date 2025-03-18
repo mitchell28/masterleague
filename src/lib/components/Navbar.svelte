@@ -4,7 +4,7 @@
 	import { Menu, X, Trophy, Home, Settings, LogOut, LogIn, UserPlus } from '@lucide/svelte';
 	import { authClient } from '$lib/client/auth-client';
 	import { fly } from 'svelte/transition';
-
+	import logo from '$lib/assets/logo/master_league_logo.png';
 	// Use reactive session from authClient
 	const session = authClient.useSession();
 
@@ -52,11 +52,7 @@
 >
 	<div class="container mx-auto flex items-center justify-between px-4">
 		<a href="/" class="group flex items-center gap-3">
-			<div
-				class="silver-gradient flex size-10 items-center justify-center rounded-xl text-xl font-bold text-black shadow-lg transition-all duration-300 group-hover:scale-105 group-hover:shadow-indigo-500/20"
-			>
-				ML
-			</div>
+			<img src={logo} alt="Master League Logo" class="h-10 w-10" />
 			<span class="font-display text-gradient text-xl font-bold tracking-tight">Master League</span>
 		</a>
 
@@ -99,7 +95,7 @@
 							</p>
 						</div>
 						<button
-							class="flex items-center gap-1.5 rounded-lg bg-slate-800/80 px-4 py-2 text-sm font-medium text-white transition-all hover:translate-y-[-1px] hover:bg-slate-700 hover:shadow-lg"
+							class="flex cursor-pointer items-center gap-1.5 rounded-lg bg-slate-800/80 px-4 py-2 text-sm font-medium text-white transition-all hover:translate-y-[-1px] hover:bg-slate-700 hover:shadow-lg"
 							onclick={async () => {
 								await authClient.signOut();
 								goto('/auth/login');

@@ -2,6 +2,7 @@ import { db } from '$lib/server/db';
 import { fixtures as fixturesSchema } from '$lib/server/db/schema';
 import { redirect } from '@sveltejs/kit';
 import { getCurrentWeek } from '$lib/server/football/fixtures';
+import { checkAndUpdateRecentFixtures } from '$lib/server/football/predictions';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
@@ -10,7 +11,31 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		throw redirect(302, '/auth/login');
 	}
 
-	// Get current week - this will be available in both layout and child routes
+	// Update fixture statuses if needed - this will update scores and calculate points
+	// We do this in the predictions route since it's the most relevant place for live updates
+	try {
+		// Check for any fixtures that need updating - this handles live matches,
+		// recent matches, and upcoming matches efficiently
+		checkAndUpdateRecentFixtures(false) // Use cooldown system
+			.then((result) => {
+				if (result.potentiallyMissed > 0) {
+					console.log(
+						`Found ${result.potentiallyMissed} fixtures that might have been missed, updating them now.`
+					);
+				}
+				if (result.updated > 0) {
+					console.log(
+						`Updated ${result.updated} fixtures, including ${result.live} live ones and ${result.recentlyCompleted} recently completed.`
+					);
+				}
+			})
+			.catch((err) => {
+				console.error('Error updating fixture statuses:', err);
+			});
+	} catch (err) {
+		console.error('Error checking fixtures that need updates:', err);
+	}
+
 	const currentWeek = getCurrentWeek();
 
 	// Get all available weeks - cached for better performance
@@ -24,6 +49,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 
 	return {
 		currentWeek,
-		weeks
+		weeks,
+		user: locals.user
 	};
 };

@@ -23,6 +23,9 @@ importers:
       pg:
         specifier: ^8.11.3
         version: 8.13.3
+      postgres:
+        specifier: ^3.4.5
+        version: 3.4.5
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@4.0.9)
@@ -3755,8 +3758,7 @@ snapshots:
 
   postgres-range@1.1.4: {}
 
-  postgres@3.4.5:
-    optional: true
+  postgres@3.4.5: {}
 
   prelude-ls@1.2.1: {}
 

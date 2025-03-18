@@ -61,7 +61,7 @@
 				<div class="flex items-center gap-2">
 					<button
 						onclick={goToPreviousWeek}
-						class="rounded-md bg-slate-700 px-2 py-1 text-white hover:bg-slate-600 disabled:opacity-50"
+						class="cursor-pointer rounded-md bg-slate-700 px-2 py-1 text-white hover:bg-slate-600 disabled:opacity-50"
 						disabled={availableWeeks.indexOf(weekId) === 0}
 					>
 						←
@@ -71,7 +71,7 @@
 
 					<button
 						onclick={goToNextWeek}
-						class="rounded-md bg-slate-700 px-2 py-1 text-white hover:bg-slate-600 disabled:opacity-50"
+						class="cursor-pointer rounded-md bg-slate-700 px-2 py-1 text-white hover:bg-slate-600 disabled:opacity-50"
 						disabled={availableWeeks.indexOf(weekId) === availableWeeks.length - 1}
 					>
 						→

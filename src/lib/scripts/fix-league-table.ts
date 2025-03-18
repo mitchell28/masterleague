@@ -1,4 +1,4 @@
-import { db } from '../server/db';
+import { db } from '../lib/server/db';
 import { sql } from 'drizzle-orm';
 
 /**
