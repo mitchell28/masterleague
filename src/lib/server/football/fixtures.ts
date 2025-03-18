@@ -115,7 +115,7 @@ interface ApiMatch {
 	homeTeam: ApiMatchTeam;
 	awayTeam: ApiMatchTeam;
 	utcDate: string;
-	status: string;
+	status: string; // API statuses: SCHEDULED, TIMED, IN_PLAY, PAUSED, FINISHED
 	score: {
 		fullTime: {
 			home: number | null;
@@ -174,6 +174,28 @@ export async function setRandomMultipliersForWeek(weekId: number): Promise<void>
 		);
 	} catch (error) {
 		console.error(`Error setting multipliers for week ${weekId}:`, error);
+	}
+}
+
+/**
+ * Map API status to our database status
+ */
+export function mapApiStatusToDbStatus(apiStatus: string): string {
+	// API statuses: SCHEDULED, TIMED, IN_PLAY, PAUSED, FINISHED
+	// DB statuses: upcoming, live, completed
+
+	switch (apiStatus) {
+		case 'FINISHED':
+			return 'completed';
+		case 'IN_PLAY':
+		case 'PAUSED':
+		case 'SUSPENDED':
+			return 'live';
+		case 'SCHEDULED':
+		case 'TIMED':
+		case 'POSTPONED':
+		default:
+			return 'upcoming';
 	}
 }
 
@@ -274,16 +296,10 @@ export async function seedFixturesWithMatchId(season: string = '2024'): Promise<
 
 				// Get scores if available
 				const homeScore = match.score.fullTime.home !== null ? match.score.fullTime.home : null;
-
 				const awayScore = match.score.fullTime.away !== null ? match.score.fullTime.away : null;
 
-				// Map API status to our status
-				let status = 'upcoming';
-				if (match.status === 'FINISHED') {
-					status = 'completed';
-				} else if (['IN_PLAY', 'PAUSED', 'SUSPENDED'].includes(match.status)) {
-					status = 'in_play';
-				}
+				// Map API status to our status using the new function
+				const status = mapApiStatusToDbStatus(match.status);
 
 				return {
 					id: randomUUID(),
@@ -333,4 +349,162 @@ export async function updateAllWeekMultipliers(): Promise<boolean> {
 		console.error('Error updating all week multipliers:', error);
 		return false;
 	}
+}
+
+/**
+ * Fetch current status of fixtures from the football API and update the database
+ */
+export async function updateFixtureStatuses(
+	fixtureIds: string[] = []
+): Promise<{ updated: number; live: number }> {
+	// Get the API key
+	const apiKey = FOOTBALL_DATA_API_KEY;
+	if (!apiKey) {
+		throw new Error('FOOTBALL_DATA_API_KEY not found in environment variables');
+	}
+
+	// Determine which fixtures to check
+	let fixturesToCheck: (typeof fixtures.$inferSelect)[] = [];
+
+	if (fixtureIds.length > 0) {
+		// If specific fixture IDs are provided, use those
+		fixturesToCheck = await db
+			.select()
+			.from(fixtures)
+			.where(drizzleInArray(fixtures.id, fixtureIds));
+	} else {
+		// Check all fixtures that are not FINISHED
+		fixturesToCheck = await db
+			.select()
+			.from(fixtures)
+			.where(
+				drizzleInArray(fixtures.status, [
+					'SCHEDULED',
+					'TIMED',
+					'IN_PLAY',
+					'PAUSED',
+					'SUSPENDED',
+					'POSTPONED'
+				])
+			);
+	}
+
+	if (fixturesToCheck.length === 0) {
+		return { updated: 0, live: 0 };
+	}
+
+	// Get fixtures with matchId to query the Football Data API
+	const fixturesWithMatchId = fixturesToCheck.filter((f) => f.matchId != null);
+
+	if (fixturesWithMatchId.length === 0) {
+		return { updated: 0, live: 0 };
+	}
+
+	// Get unique match IDs to check
+	const matchIds = [...new Set(fixturesWithMatchId.map((f) => f.matchId).filter(Boolean))];
+
+	// Create a map to look up fixtures by match ID
+	const fixturesByMatchId = fixturesWithMatchId.reduce(
+		(acc, fixture) => {
+			if (fixture.matchId) {
+				acc[fixture.matchId] = fixture;
+			}
+			return acc;
+		},
+		{} as Record<string, typeof fixtures.$inferSelect>
+	);
+
+	// Fetch current status for these matches
+	let updatedCount = 0;
+	let liveCount = 0;
+
+	// Process fixtures in batches to avoid API rate limits
+	const batchSize = 10;
+	for (let i = 0; i < matchIds.length; i += batchSize) {
+		const batchIds = matchIds.slice(i, i + batchSize);
+
+		// Create a comma-separated list of match IDs
+		const matchIdsParam = batchIds.join(',');
+
+		try {
+			// Fetch match data
+			const MATCHES_API_URL = `https://api.football-data.org/v4/matches?ids=${matchIdsParam}`;
+			const matchesResponse = await fetch(MATCHES_API_URL, {
+				headers: {
+					'X-Auth-Token': apiKey
+				}
+			});
+
+			if (!matchesResponse.ok) {
+				console.error(`Matches API request failed with status ${matchesResponse.status}`);
+				continue;
+			}
+
+			const data = await matchesResponse.json();
+			const apiMatches = data.matches || [];
+
+			// Update fixtures based on API response
+			for (const match of apiMatches) {
+				const fixture = fixturesByMatchId[match.id.toString()];
+				if (!fixture) continue;
+
+				// Use the API status directly
+				const fixtureStatus = match.status;
+
+				// Count live fixtures
+				if (fixtureStatus === 'IN_PLAY' || fixtureStatus === 'PAUSED') {
+					liveCount++;
+				}
+
+				// Get scores if available
+				const homeScore =
+					match.score.fullTime.home !== null
+						? match.score.fullTime.home
+						: match.score.halfTime.home !== null
+							? match.score.halfTime.home
+							: null;
+				const awayScore =
+					match.score.fullTime.away !== null
+						? match.score.fullTime.away
+						: match.score.halfTime.away !== null
+							? match.score.halfTime.away
+							: null;
+
+				// Only update if there's a change in status or score
+				if (
+					fixtureStatus !== fixture.status ||
+					(homeScore !== null && homeScore !== fixture.homeScore) ||
+					(awayScore !== null && awayScore !== fixture.awayScore)
+				) {
+					// Update the fixture in the database
+					await db
+						.update(fixtures)
+						.set({
+							status: fixtureStatus,
+							homeScore: homeScore !== null ? homeScore : fixture.homeScore,
+							awayScore: awayScore !== null ? awayScore : fixture.awayScore,
+							lastUpdated: new Date()
+						})
+						.where(eq(fixtures.id, fixture.id));
+
+					updatedCount++;
+
+					// Process predictions if the match is completed
+					if (fixtureStatus === 'FINISHED' && homeScore !== null && awayScore !== null) {
+						try {
+							// Import here to avoid circular dependency
+							const { processPredictionsForFixture } = await import('./predictions');
+							await processPredictionsForFixture(fixture.id, homeScore, awayScore);
+						} catch (error) {
+							console.error(`Error processing predictions for fixture ${fixture.id}:`, error);
+						}
+					}
+				}
+			}
+		} catch (error) {
+			console.error(`Error fetching match data for batch ${i}:`, error);
+		}
+	}
+
+	return { updated: updatedCount, live: liveCount };
 }

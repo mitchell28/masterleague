@@ -23,7 +23,8 @@ export const fixtures = pgTable('fixtures', {
 	awayScore: integer('away_score'),
 	matchDate: timestamp('match_date').notNull(),
 	pointsMultiplier: integer('points_multiplier').default(1).notNull(),
-	status: varchar('status').default('upcoming').notNull() // upcoming, live, completed
+	status: varchar('status').default('TIMED').notNull(), // Valid values: SCHEDULED, TIMED, IN_PLAY, PAUSED, FINISHED, SUSPENDED, POSTPONED, CANCELLED, AWARDED
+	lastUpdated: timestamp('last_updated')
 });
 
 export const predictions = pgTable('predictions', {

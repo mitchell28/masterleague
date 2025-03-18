@@ -44,9 +44,6 @@
 			{#if loading}
 				<div class="glass-panel mb-10 flex items-center justify-center rounded-2xl p-6">
 					<div class="flex flex-col items-center gap-4">
-						<div
-							class="size-16 animate-spin rounded-full border-4 border-t-slate-300 border-r-slate-400 border-b-slate-500 border-l-transparent"
-						></div>
 						<p class="text-slate-300">Initializing application...</p>
 					</div>
 				</div>

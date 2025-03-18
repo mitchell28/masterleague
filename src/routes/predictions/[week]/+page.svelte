@@ -4,11 +4,16 @@
 	import { page } from '$app/state';
 	import type { Fixture as BaseFixture } from '$lib/server/db/schema';
 	import PredictionCard from '../components/PredictionCard.svelte';
+	import { onDestroy } from 'svelte';
+	import { browser } from '$app/environment';
 
 	// Extended Fixture type with canPredict property
 	type Fixture = BaseFixture & {
 		canPredict?: boolean;
 		isPastWeek?: boolean;
+		isWeekend?: boolean;
+		predictionClosesAt?: Date;
+		isLive?: boolean;
 	};
 
 	// Use single-source-of-truth data from the page store
@@ -19,8 +24,15 @@
 	$inspect(fixtures);
 	let teams = $derived(data?.teams || {});
 	let week = $derived(data?.week || 1);
+	let currentWeek = $derived(data?.currentWeek || 1);
 	let predictions = $derived(data?.predictions || {});
 	let isPastWeek = $derived(data?.isPastWeek || false);
+	let lastUpdated = $derived(data?.lastUpdated || '');
+
+	// Check if we have any live games
+	let hasLiveFixtures = $derived(
+		fixtures.some((f: Fixture) => f.status === 'IN_PLAY' || f.status === 'PAUSED')
+	);
 
 	// For form handling and UI
 	let submitting = $state(false);
@@ -127,6 +139,36 @@
 	function updatePrediction(fixtureId: string, home: number, away: number): void {
 		predictionValues[fixtureId] = { home, away };
 	}
+
+	// Setup auto-refresh for live fixtures
+	let refreshTimer: number;
+
+	// Effect to handle auto-refreshing for live fixtures
+	$effect(() => {
+		// Only run in the browser
+		if (!browser) return;
+
+		// Clear any existing timer
+		if (refreshTimer) {
+			clearTimeout(refreshTimer);
+			refreshTimer = 0;
+		}
+
+		// Only set up auto-refresh if we're looking at the current week and have live games
+		if (week === currentWeek && hasLiveFixtures) {
+			// Refresh the page every 30 seconds to get updated fixture data
+			refreshTimer = setTimeout(() => {
+				window.location.reload();
+			}, 30000);
+
+			// Return cleanup function
+			return () => {
+				if (refreshTimer) {
+					clearTimeout(refreshTimer);
+				}
+			};
+		}
+	});
 </script>
 
 {#if showSuccess}
@@ -157,6 +199,15 @@
 	</div>
 {:else}
 	<div class="w-full">
+		{#if hasLiveFixtures}
+			<div class="mb-4 rounded-lg border border-red-800 bg-red-900/30 p-4 text-center text-red-300">
+				<p>
+					<span class="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-red-500"></span>
+					Live matches in progress - page will refresh automatically every 30 seconds
+				</p>
+			</div>
+		{/if}
+
 		<form method="POST" action="?/submitPredictions" use:enhance={handleSubmit} class="space-y-6">
 			<input type="hidden" name="week" value={week} />
 

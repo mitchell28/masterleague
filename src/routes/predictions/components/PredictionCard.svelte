@@ -5,9 +5,11 @@
 	// Extended Fixture type with canPredict property
 	type Fixture = BaseFixture & {
 		canPredict?: boolean;
+		isWeekend?: boolean;
+		predictionClosesAt?: Date;
 	};
 
-	// Use runes for props with onUpdate callback instead of event dispatcher
+	// Use runes for props instead of exports
 	let {
 		fixture,
 		homeTeam,
@@ -28,12 +30,12 @@
 		isPastWeek?: boolean;
 	}>();
 
-	// Initialize state
+	// Initialize state with runes
 	let homeScore = $state(prediction?.home ?? 0);
 	let awayScore = $state(prediction?.away ?? 0);
 	let shouldUpdateParent = $state(false);
 
-	// Update state when prediction changes
+	// Update state when prediction changes using effect
 	$effect(() => {
 		if (prediction) {
 			// Temporarily disable parent updates while we sync from props
@@ -66,6 +68,31 @@
 		});
 	}
 
+	function getStatusDisplay(status: string): { text: string; classes: string } {
+		switch (status) {
+			case 'FINISHED':
+				return { text: 'Completed', classes: 'bg-green-900 text-green-200' };
+			case 'IN_PLAY':
+				return { text: 'LIVE', classes: 'animate-pulse bg-red-900 text-red-200' };
+			case 'PAUSED':
+				return { text: 'PAUSED', classes: 'animate-pulse bg-orange-900 text-orange-200' };
+			case 'SUSPENDED':
+				return { text: 'SUSPENDED', classes: 'bg-yellow-900 text-yellow-200' };
+			case 'POSTPONED':
+				return { text: 'POSTPONED', classes: 'bg-purple-900 text-purple-200' };
+			case 'CANCELLED':
+				return { text: 'CANCELLED', classes: 'bg-gray-900 text-gray-200' };
+			case 'AWARDED':
+				return { text: 'AWARDED', classes: 'bg-blue-900 text-blue-200' };
+			case 'TIMED':
+				return { text: 'Upcoming', classes: 'bg-blue-900 text-blue-200' };
+			case 'SCHEDULED':
+				return { text: 'Scheduled', classes: 'bg-indigo-900 text-indigo-200' };
+			default:
+				return { text: status, classes: 'bg-gray-900 text-gray-200' };
+		}
+	}
+
 	function getSpecialBadge(fixture: Fixture): { text: string; color: string } | null {
 		if (fixture.pointsMultiplier > 1) {
 			if (fixture.pointsMultiplier === 3) {
@@ -79,29 +106,39 @@
 		return null;
 	}
 
-	// Increment/decrement functions with tick()
-	async function incrementHome() {
+	// Increment/decrement functions
+	function incrementHome(): void {
 		shouldUpdateParent = false;
 		homeScore = Math.min(20, homeScore + 1);
 		shouldUpdateParent = true;
 	}
 
-	async function decrementHome() {
+	function decrementHome(): void {
 		shouldUpdateParent = false;
 		homeScore = Math.max(0, homeScore - 1);
 		shouldUpdateParent = true;
 	}
 
-	async function incrementAway() {
+	function incrementAway(): void {
 		shouldUpdateParent = false;
 		awayScore = Math.min(20, awayScore + 1);
 		shouldUpdateParent = true;
 	}
 
-	async function decrementAway() {
+	function decrementAway(): void {
 		shouldUpdateParent = false;
 		awayScore = Math.max(0, awayScore - 1);
 		shouldUpdateParent = true;
+	}
+
+	// Helper function to determine if a fixture is live
+	function isLive(fixture: Fixture): boolean {
+		return fixture.status === 'IN_PLAY' || fixture.status === 'PAUSED';
+	}
+
+	// Helper function to determine if a fixture is completed
+	function isCompleted(fixture: Fixture): boolean {
+		return fixture.status === 'FINISHED';
 	}
 </script>
 
@@ -111,13 +148,9 @@
 	<div class="flex items-center justify-between border-b border-slate-700 bg-slate-900 p-3">
 		<div>
 			<span
-				class={`rounded-full px-2 py-1 text-xs font-medium ${fixture.status === 'upcoming' ? 'bg-blue-900 text-blue-200' : fixture.status === 'live' ? 'bg-red-900 text-red-200' : 'bg-green-900 text-green-200'}`}
+				class={`rounded-full px-2 py-1 text-xs font-medium ${getStatusDisplay(fixture.status).classes}`}
 			>
-				{fixture.status === 'upcoming'
-					? 'Upcoming'
-					: fixture.status === 'live'
-						? 'Live'
-						: 'Completed'}
+				{getStatusDisplay(fixture.status).text}
 			</span>
 			{#if getSpecialBadge(fixture)}
 				{@const badge = getSpecialBadge(fixture)}
@@ -149,10 +182,16 @@
 		</div>
 
 		<div class="flex items-center justify-center">
-			{#if fixture.status === 'completed' && fixture.homeScore !== null && fixture.awayScore !== null}
-				<!-- For completed fixtures, show the actual result -->
+			{#if (isCompleted(fixture) || isLive(fixture)) && fixture.homeScore !== null && fixture.awayScore !== null}
+				<!-- For completed fixtures or live matches, show the actual result -->
 				<div class="flex flex-col items-center gap-2">
 					<div class="flex items-center gap-2">
+						{#if isLive(fixture)}
+							<div class="flex items-center gap-2">
+								<div class="h-2 w-2 animate-pulse rounded-full bg-red-500"></div>
+								<span class="animate-pulse text-xs font-bold text-red-400">LIVE</span>
+							</div>
+						{/if}
 						<span class="text-lg font-bold text-white">{fixture.homeScore}</span>
 						<span class="text-lg text-slate-400">-</span>
 						<span class="text-lg font-bold text-white">{fixture.awayScore}</span>
@@ -163,7 +202,7 @@
 							<span class="text-sm text-slate-400">Your prediction:</span>
 							<span class="text-sm text-slate-300">{prediction.home} - {prediction.away}</span>
 
-							{#if isPastWeek && fixture.status === 'completed'}
+							{#if isCompleted(fixture)}
 								<span
 									class={`rounded-full px-2 py-0.5 text-xs ${
 										prediction.home === fixture.homeScore && prediction.away === fixture.awayScore
@@ -246,22 +285,24 @@
 						</div>
 					{/each}
 				</div>
-			{:else if readOnly && prediction}
-				<!-- For readonly predictions (past weeks or completed matches) -->
-				<div class="flex flex-col items-center gap-1">
-					<div class="flex items-center gap-2">
-						<span class="text-sm text-slate-400">Your prediction:</span>
-						<span class="text-sm font-medium text-slate-300"
-							>{prediction.home} - {prediction.away}</span
-						>
-					</div>
-
-					{#if fixture.status === 'upcoming'}
-						<span class="text-xs text-slate-500 italic">Match not played yet</span>
+			{:else}
+				<!-- For non-predictable fixtures -->
+				<div class="flex flex-col items-center gap-2">
+					{#if !readOnly && !isPastWeek && (fixture.status === 'SCHEDULED' || fixture.status === 'TIMED') && fixture.predictionClosesAt}
+						<div class="rounded-md bg-amber-900/30 p-2 text-center text-sm text-amber-300">
+							<span>Predictions close {formatDate(fixture.predictionClosesAt)}</span>
+						</div>
+					{:else if prediction}
+						<div class="flex items-center gap-2">
+							<span class="text-sm text-slate-400">Your prediction:</span>
+							<span class="text-sm text-slate-300">{prediction.home} - {prediction.away}</span>
+						</div>
+					{:else}
+						<div class="flex items-center">
+							<span class="text-slate-500 italic">No prediction</span>
+						</div>
 					{/if}
 				</div>
-			{:else}
-				<span class="text-sm text-slate-500 italic">No prediction</span>
 			{/if}
 		</div>
 

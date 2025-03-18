@@ -43,6 +43,13 @@
       "when": 1741902552138,
       "tag": "0005_breezy_lila_cheney",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1742326646068,
+      "tag": "0006_slimy_nocturne",
+      "breakpoints": true
     }
   ]
 }

@@ -7,7 +7,7 @@ import { redirect } from '@sveltejs/kit';
 export const load = (async ({ params, locals }) => {
 	// Check for authentication
 	if (!locals.session) {
-		throw redirect(303, '/login');
+		throw redirect(303, '/auth/login');
 	}
 
 	const userId = params.id;

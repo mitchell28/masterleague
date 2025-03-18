@@ -1,10 +1,59 @@
 import { error, fail } from '@sveltejs/kit';
-import { getFixturesByWeek } from '$lib/server/football/fixtures';
+import { getFixturesByWeek, updateFixtureStatuses } from '$lib/server/football/fixtures';
 import { getUserPredictionsByWeek, submitPrediction } from '$lib/server/football/predictions';
 import type { PageServerLoad, Actions } from './$types';
 import { db } from '$lib/server/db';
 import { teams, predictions } from '$lib/server/db/schema';
 import { inArray } from 'drizzle-orm';
+
+// Function to check if a fixture can be predicted (more than 1 hour before kickoff)
+function canPredictFixture(fixture: any): boolean {
+	// Don't allow prediction if fixture is already in progress or completed
+	const inProgressOrCompleted = [
+		'IN_PLAY',
+		'PAUSED',
+		'FINISHED',
+		'SUSPENDED',
+		'POSTPONED',
+		'CANCELLED',
+		'AWARDED'
+	].includes(fixture.status);
+	if (inProgressOrCompleted) return false;
+
+	// Check if it's more than 1 hour before kickoff
+	const matchDate = new Date(fixture.matchDate);
+	const now = new Date();
+	const oneHourBeforeMatch = new Date(matchDate.getTime() - 60 * 60 * 1000);
+
+	return now < oneHourBeforeMatch;
+}
+
+// Function to check if a fixture is live
+function isFixtureLive(status: string): boolean {
+	return ['IN_PLAY', 'PAUSED'].includes(status);
+}
+
+// Function to determine if a week's fixtures need to be updated
+function needsFixtureUpdates(fixtures: any[]): boolean {
+	// Get today's date range
+	const now = new Date();
+	const todayStart = new Date(now);
+	todayStart.setHours(0, 0, 0, 0);
+	const todayEnd = new Date(now);
+	todayEnd.setHours(23, 59, 59, 999);
+
+	// Check if any fixtures are today or currently live
+	return fixtures.some((fixture) => {
+		// Check if fixture is already live
+		if (isFixtureLive(fixture.status)) {
+			return true;
+		}
+
+		// Check if fixture is scheduled for today
+		const fixtureDate = new Date(fixture.matchDate);
+		return fixtureDate >= todayStart && fixtureDate <= todayEnd;
+	});
+}
 
 export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	// Check if user is authenticated - this is already done in the layout
@@ -31,8 +80,27 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	const parentData = await parent();
 	const { currentWeek, weeks } = parentData;
 
-	// Get fixtures for the selected week - sort them by date server-side
-	const fixtures = await getFixturesByWeek(week);
+	// Get fixtures for the selected week
+	let fixtures = await getFixturesByWeek(week);
+
+	// Check if we should update fixture statuses (only for fixtures that are today or live)
+	if (fixtures.length > 0 && week === currentWeek && needsFixtureUpdates(fixtures)) {
+		try {
+			console.log(`Updating status for ${fixtures.length} fixtures in week ${week}`);
+
+			// Update fixture statuses by calling the function directly (no API needed)
+			const updateResult = await updateFixtureStatuses();
+
+			if (updateResult.updated > 0) {
+				// Reload fixtures if any were updated
+				fixtures = await getFixturesByWeek(week);
+				console.log(`Updated ${updateResult.updated} fixtures (${updateResult.live} now live)`);
+			}
+		} catch (error) {
+			console.error('Error updating fixture statuses:', error);
+			// Continue execution even if update fails
+		}
+	}
 
 	// Sort fixtures by date server-side to avoid client-side sorting
 	const sortedFixtures = [...fixtures].sort(
@@ -69,18 +137,25 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 		{} as Record<string, typeof teams.$inferSelect>
 	);
 
-	// Prepare fixtures with prediction info - ensure all fixtures for past weeks are included
+	// Prepare fixtures with prediction info - ensure all fixtures are included
 	const fixturesWithPrediction = sortedFixtures.map((fixture) => {
 		const isPastWeek = week < currentWeek;
+		const matchDate = new Date(fixture.matchDate);
+		const isWeekend = matchDate.getDay() === 0 || matchDate.getDay() === 6; // 0 = Sunday, 6 = Saturday
+
+		// Calculate when predictions close
+		const oneHourBeforeMatch = new Date(matchDate.getTime() - 60 * 60 * 1000);
+
+		// Determine if fixture can be predicted
+		const canPredict = !isPastWeek && canPredictFixture(fixture);
 
 		return {
 			...fixture,
-			// For past weeks, still include all fixtures regardless of status
-			// For current or future weeks, only mark upcoming fixtures as predictable
-			canPredict: isPastWeek
-				? false // Past week fixtures can't be predicted (read-only)
-				: fixture.status === 'upcoming', // Current/future week - only upcoming matches
-			isPastWeek // Add this flag to help client-side rendering
+			canPredict,
+			isPastWeek,
+			isWeekend,
+			isLive: isFixtureLive(fixture.status),
+			predictionClosesAt: oneHourBeforeMatch
 		};
 	});
 
@@ -111,19 +186,16 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 		{} as Record<string, any>
 	);
 
-	// Pre-compute which fixtures should be shown (filtering on server instead of client)
-	const visibleFixtures = fixturesWithPrediction.filter(
-		(fixture) => week < currentWeek || fixture.canPredict
-	);
-
+	// Return all fixtures for the week - don't filter them on the server
 	return {
 		week,
 		weeks,
 		currentWeek,
-		fixtures: visibleFixtures, // Only send fixtures that should be displayed
+		fixtures: fixturesWithPrediction, // Include all fixtures for the week
 		predictions: predictionsMap,
 		teams: teamsMap,
-		isPastWeek: week < currentWeek
+		isPastWeek: week < currentWeek,
+		lastUpdated: new Date().toISOString() // Add timestamp for when data was last fetched
 	};
 };
 
@@ -143,7 +215,10 @@ export const actions = {
 
 		// Get the valid fixtures for this week
 		const validFixtures = await getFixturesByWeek(week);
-		const validFixtureIds = new Set(validFixtures.map((fixture) => fixture.id));
+
+		// Filter to only include fixtures that can be predicted
+		const predictableFixtures = validFixtures.filter(canPredictFixture);
+		const validFixtureIds = new Set(predictableFixtures.map((fixture) => fixture.id));
 
 		const data = await request.formData();
 		const predictionsData: Array<{

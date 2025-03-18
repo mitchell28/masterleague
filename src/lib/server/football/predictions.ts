@@ -91,9 +91,23 @@ export async function submitPrediction(
 				continue;
 			}
 
-			if (fixture[0].status !== 'upcoming') {
-				console.warn(`Fixture ${fixtureId} is not upcoming, skipping prediction`);
+			// Only allow predictions for fixtures that are SCHEDULED or TIMED
+			const isUpcoming = ['SCHEDULED', 'TIMED'].includes(fixture[0].status);
+			if (!isUpcoming) {
+				console.warn(
+					`Fixture ${fixtureId} is not upcoming (status: ${fixture[0].status}), skipping prediction`
+				);
 				continue;
+			}
+
+			// Check if prediction is being made too late (< 1 hour before kickoff)
+			const matchDate = new Date(fixture[0].matchDate);
+			const now = new Date();
+			const oneHourBeforeMatch = new Date(matchDate.getTime() - 60 * 60 * 1000);
+
+			if (now >= oneHourBeforeMatch) {
+				console.warn(`Prediction for fixture ${fixtureId} rejected - cutoff time has passed`);
+				throw new Error(`The cutoff time has passed for match ${fixture[0].id}`);
 			}
 
 			// Check if user already has a prediction for this fixture
@@ -233,8 +247,8 @@ export async function processPredictionsForFixture(
 			throw new Error('Fixture not found');
 		}
 
-		// Only process if fixture is marked as completed
-		if (fixture[0].status !== 'completed') {
+		// Only process if fixture is marked as FINISHED
+		if (fixture[0].status !== 'FINISHED') {
 			throw new Error('Cannot process predictions for non-completed fixture');
 		}
 
@@ -248,70 +262,36 @@ export async function processPredictionsForFixture(
 
 		// Process each prediction
 		for (const prediction of predictions) {
-			// Skip if there's no actual prediction (predicted scores are null or undefined)
-			if (
-				prediction.predictedHomeScore === null ||
-				prediction.predictedAwayScore === null ||
-				prediction.predictedHomeScore === undefined ||
-				prediction.predictedAwayScore === undefined
-			) {
-				continue;
-			}
-
 			// Calculate points
 			const points = calculatePredictionPoints(prediction, homeScore, awayScore, pointsMultiplier);
 
-			// Update prediction with points
+			// Update the prediction with points
 			await db
 				.update(schema.predictions)
-				.set({ points })
+				.set({
+					points
+				})
 				.where(eq(schema.predictions.id, prediction.id));
 
-			// Update user stats in league table
-			const userData = await db
-				.select()
-				.from(schema.leagueTable)
-				.where(eq(schema.leagueTable.userId, prediction.userId));
+			// Update user's league table
+			await updateUserLeagueTable(prediction.userId, points > 0, points === 3 * pointsMultiplier);
+		}
 
-			// Determine what to update
-			const isPerfectScore =
-				prediction.predictedHomeScore === homeScore && prediction.predictedAwayScore === awayScore;
-
-			const isCorrectOutcome =
-				(prediction.predictedHomeScore > prediction.predictedAwayScore && homeScore > awayScore) ||
-				(prediction.predictedHomeScore < prediction.predictedAwayScore && homeScore < awayScore) ||
-				(prediction.predictedHomeScore === prediction.predictedAwayScore &&
-					homeScore === awayScore);
-
-			// User exists in league table, update their stats
-			if (userData.length > 0) {
-				await db
-					.update(schema.leagueTable)
-					.set({
-						totalPoints: userData[0].totalPoints + points,
-						correctScorelines: userData[0].correctScorelines + (isPerfectScore ? 1 : 0),
-						correctOutcomes:
-							userData[0].correctOutcomes + (isCorrectOutcome && !isPerfectScore ? 1 : 0),
-						completedFixtures: (userData[0].completedFixtures || 0) + 1,
-						lastUpdated: new Date()
-					})
-					.where(eq(schema.leagueTable.userId, prediction.userId));
-			} else {
-				// User doesn't exist in league table, create a new entry
-				await db.insert(schema.leagueTable).values({
-					id: randomUUID(),
-					userId: prediction.userId,
-					totalPoints: points,
-					correctScorelines: isPerfectScore ? 1 : 0,
-					correctOutcomes: isCorrectOutcome && !isPerfectScore ? 1 : 0,
-					predictedFixtures: 1,
-					completedFixtures: 1,
+		// Check if the fixture's home and away scores need to be updated
+		if (fixture[0].homeScore !== homeScore || fixture[0].awayScore !== awayScore) {
+			// Update the fixture with the final score
+			await db
+				.update(schema.fixtures)
+				.set({
+					homeScore,
+					awayScore,
+					status: 'FINISHED',
 					lastUpdated: new Date()
-				});
-			}
+				})
+				.where(eq(schema.fixtures.id, fixtureId));
 		}
 	} catch (error) {
-		console.error('Failed to process predictions:', error);
+		console.error('Failed to process predictions for fixture:', error);
 		throw error;
 	}
 }
@@ -382,4 +362,52 @@ export async function getLeagueTable(): Promise<
 	);
 
 	return enrichedLeaderboard;
+}
+
+/**
+ * Update a user's league table entry
+ */
+async function updateUserLeagueTable(
+	userId: string,
+	isCorrect: boolean,
+	isPerfectScore: boolean
+): Promise<void> {
+	try {
+		// Get the user's current league table entry
+		const userData = await db
+			.select()
+			.from(schema.leagueTable)
+			.where(eq(schema.leagueTable.userId, userId));
+
+		// Determine points based on perfect or partial match
+		const pointsToAdd = isPerfectScore ? 3 : isCorrect ? 1 : 0;
+
+		// User exists in league table, update their stats
+		if (userData.length > 0) {
+			await db
+				.update(schema.leagueTable)
+				.set({
+					totalPoints: userData[0].totalPoints + pointsToAdd,
+					correctScorelines: userData[0].correctScorelines + (isPerfectScore ? 1 : 0),
+					correctOutcomes: userData[0].correctOutcomes + (isCorrect && !isPerfectScore ? 1 : 0),
+					completedFixtures: (userData[0].completedFixtures || 0) + 1,
+					lastUpdated: new Date()
+				})
+				.where(eq(schema.leagueTable.userId, userId));
+		} else {
+			// User doesn't exist in league table, create a new entry
+			await db.insert(schema.leagueTable).values({
+				id: randomUUID(),
+				userId: userId,
+				totalPoints: pointsToAdd,
+				correctScorelines: isPerfectScore ? 1 : 0,
+				correctOutcomes: isCorrect && !isPerfectScore ? 1 : 0,
+				predictedFixtures: 1,
+				completedFixtures: 1,
+				lastUpdated: new Date()
+			});
+		}
+	} catch (error) {
+		console.error(`Failed to update league table for user ${userId}:`, error);
+	}
 }
