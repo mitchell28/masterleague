@@ -21,8 +21,8 @@
 		}
 	}
 
-	// Memoize week info message
-	let showFutureWeekMessage = $derived(week > currentWeek);
+	// Fix the condition to correctly check for future weeks
+	let showFutureWeekMessage = $derived(parseInt(week) > parseInt(currentWeek));
 </script>
 
 <div class="container mx-auto max-w-6xl p-4">

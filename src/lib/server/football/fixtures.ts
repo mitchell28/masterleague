@@ -5,25 +5,16 @@ import { eq, inArray as drizzleInArray } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { FOOTBALL_DATA_API_KEY } from '$env/static/private';
 
-/**
- * Get the current Premier League match week
- * For the 2023-24 season that runs from August 11, 2023 to May 19, 2024
- */
 export function getCurrentWeek(): number {
 	// Define the 2023-24 Premier League season
 	const season = {
-		startDate: new Date('2023-08-11'),
-		endDate: new Date('2024-05-19'),
+		startDate: new Date('2024-08-17'),
+		endDate: new Date('2025-05-25'),
 		totalWeeks: 38
 	};
 
 	// Get current date and adjust if needed for system clock issues
 	let now = new Date();
-	if (now.getFullYear() === 2025) {
-		// If system date incorrectly shows 2025, adjust to 2024
-		now = new Date(now);
-		now.setFullYear(2024);
-	}
 
 	// Handle pre-season and post-season dates
 	if (now < season.startDate) return 1;
@@ -36,12 +27,6 @@ export function getCurrentWeek(): number {
 
 	// Calculate match week based on percentage of season completed
 	let matchWeek = Math.floor((elapsedDays / totalDays) * season.totalWeeks) + 1;
-
-	// Specific adjustments for known periods
-	// For March 2024, the week should be around 29
-	if (now.getMonth() === 2 && now.getFullYear() === 2024) {
-		matchWeek = 29;
-	}
 
 	// Ensure result is within valid range
 	return Math.min(Math.max(matchWeek, 1), season.totalWeeks);
