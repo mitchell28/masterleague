@@ -30,7 +30,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			.then((results) => results[0]?.count || 0);
 
 		// Current week
-		const currentWeek = getCurrentWeek();
+		const currentWeek = await getCurrentWeek();
 
 		return {
 			stats: {
@@ -97,7 +97,8 @@ export const actions: Actions = {
 		}
 
 		try {
-			await updateCurrentWeekMultipliers();
+			const currentWeek = await getCurrentWeek();
+			await updateCurrentWeekMultipliers(currentWeek);
 			return { success: true, message: 'Multipliers updated successfully' };
 		} catch (err) {
 			console.error('Error updating multipliers:', err);

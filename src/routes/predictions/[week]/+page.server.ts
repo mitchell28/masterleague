@@ -1,12 +1,12 @@
 import { error, fail } from '@sveltejs/kit';
-import { getFixturesByWeek, updateFixtureStatuses } from '$lib/server/football/fixtures';
+import { getFixturesByWeek, updateFixtureStatuses } from '$lib/server/football/fixtures/index';
 import { getUserPredictionsByWeek, submitPrediction } from '$lib/server/football/predictions';
 import type { PageServerLoad, Actions } from './$types';
 import { db } from '$lib/server/db';
-import { teams, predictions } from '$lib/server/db/schema';
+import { teams } from '$lib/server/db/schema';
 import { inArray } from 'drizzle-orm';
 
-// Function to check if a fixture can be predicted (more than 1 hour before kickoff)
+// Function to check if a fixture can be predicted (more than 30 minutes before kickoff)
 function canPredictFixture(fixture: any): boolean {
 	// Don't allow prediction if fixture is already in progress or completed
 	const inProgressOrCompleted = [
@@ -20,12 +20,12 @@ function canPredictFixture(fixture: any): boolean {
 	].includes(fixture.status);
 	if (inProgressOrCompleted) return false;
 
-	// Check if it's more than 1 hour before kickoff
+	// Check if it's more than 30 minutes before kickoff
 	const matchDate = new Date(fixture.matchDate);
 	const now = new Date();
-	const oneHourBeforeMatch = new Date(matchDate.getTime() - 60 * 60 * 1000);
+	const cutoffTime = new Date(matchDate.getTime() - 30 * 60 * 1000); // 30 minutes before
 
-	return now < oneHourBeforeMatch;
+	return now < cutoffTime;
 }
 
 // Function to check if a fixture is live
@@ -76,15 +76,16 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 		throw error(400, 'Invalid week parameter');
 	}
 
-	// Get parent data from layout
+	// Get parent data from layout and await the Promise values
 	const parentData = await parent();
-	const { currentWeek, weeks } = parentData;
+	const currentWeek = await parentData.currentWeek;
+	const weeks = parentData.weeks;
 
 	// Get fixtures for the selected week
 	let fixtures = await getFixturesByWeek(week);
 
 	// Check if we should update fixture statuses (only for fixtures that are today or live)
-	if (fixtures.length > 0 && week === currentWeek && needsFixtureUpdates(fixtures)) {
+	if (fixtures.length > 0 && week === Number(currentWeek) && needsFixtureUpdates(fixtures)) {
 		try {
 			console.log(`Updating status for ${fixtures.length} fixtures in week ${week}`);
 

@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { fixtures as fixturesSchema } from '$lib/server/db/schema';
 import { redirect } from '@sveltejs/kit';
-import { getCurrentWeek } from '$lib/server/football/fixtures';
+import { getCurrentWeek } from '$lib/server/football/fixtures/index';
 import { checkAndUpdateRecentFixtures } from '$lib/server/football/predictions';
 import type { LayoutServerLoad } from './$types';
 
@@ -36,7 +36,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		console.error('Error checking fixtures that need updates:', err);
 	}
 
-	const currentWeek = getCurrentWeek();
+	const currentWeek = await getCurrentWeek();
 
 	// Get all available weeks - cached for better performance
 	const weeksQuery = await db

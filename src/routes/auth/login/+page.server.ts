@@ -7,10 +7,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const redirectPath = '/predictions';
 
 	if (session) {
-		redirect(302, redirectPath);
+		return redirect(302, redirectPath);
 	}
 
 	// Also used on client signin page as callbackURL
+	console.log('Session not found, redirecting to login page', redirectPath);
 	return {
 		redirectPath
 	};

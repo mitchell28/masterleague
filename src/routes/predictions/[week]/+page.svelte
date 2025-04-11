@@ -4,7 +4,6 @@
 	import { page } from '$app/state';
 	import type { Fixture as BaseFixture } from '$lib/server/db/schema';
 	import PredictionCard from '../components/PredictionCard.svelte';
-	import { onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
 
 	// Extended Fixture type with canPredict property

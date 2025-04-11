@@ -1,21 +1,22 @@
 <script lang="ts">
-	import { goto, invalidate } from '$app/navigation';
-	import { authClient, signIn } from '$lib/client/auth-client';
+	import { goto } from '$app/navigation';
+	import { signIn } from '$lib/client/auth-client';
 	import { authLoginSchema } from '$lib/validation/auth-schemas';
+	import { Loader2 } from '@lucide/svelte';
 	import { z } from 'zod';
 
-	// Form state using $state
-	let email = $state('');
-	let password = $state('');
-	let errors = $state<Record<string, string>>({});
-	let errorMessage = $state('');
-	let isLoading = $state(false);
+	// Form state using runes
+	let email: string = $state('');
+	let password: string = $state('');
+	let errors: Record<string, string> = $state({});
+	let errorMessage: string = $state('');
+	let isLoading: boolean = $state(false);
+	let { redirectPath } = $props();
 
-	// Computed values
+	// Computed values with $derived
 	let isFormValid = $derived(
 		email.length > 0 && password.length > 0 && Object.keys(errors).length === 0
 	);
-	let submissionInProgress = $derived(isLoading);
 
 	// Handle input changes
 	function handleInput(e: Event) {
@@ -36,7 +37,7 @@
 	}
 
 	// Form submission handler
-	function onSubmit(e: Event) {
+	async function onSubmit(e: Event) {
 		e.preventDefault();
 		errorMessage = '';
 
@@ -52,19 +53,16 @@
 			// Proceed with submission
 			isLoading = true;
 
-			signIn(
+			await signIn(
 				{
 					email: validatedData.email,
 					password: validatedData.password
 				},
 				{
-					onRequest: () => {
-						// Already handled by isLoading state
-					},
 					onSuccess: () => {
-						goto('/predictions');
+						goto(redirectPath || '/predictions');
 					},
-					onError: (ctx: { error: { message: string } }) => {
+					onError: (ctx) => {
 						errorMessage = ctx.error.message;
 						isLoading = false;
 					}
@@ -77,15 +75,13 @@
 				error.errors.forEach((err) => {
 					const field = err.path[0] as string;
 					newErrors[field] = err.message;
-					console.log(`Validation error for ${field}: ${err.message}`);
 				});
 				errors = newErrors;
 				errorMessage = error.errors[0]?.message || 'Invalid form data';
-				console.log('Setting error message:', errorMessage);
 			} else {
 				errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-				console.log('Setting generic error message:', errorMessage);
 			}
+			isLoading = false;
 		}
 	}
 </script>
@@ -97,12 +93,13 @@
 		<div class="mb-4">
 			<label for="email" class="mb-2 block font-medium">Email</label>
 			<input
-				type="text"
+				type="email"
 				id="email"
 				name="email"
 				oninput={handleInput}
 				value={email}
 				class="w-full rounded-md border border-gray-300 px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+				autocomplete="email"
 			/>
 			{#if errors.email}
 				<p class="mt-1 text-sm text-red-500">{errors.email}</p>
@@ -118,6 +115,7 @@
 				oninput={handleInput}
 				value={password}
 				class="w-full rounded-md border border-gray-300 px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+				autocomplete="current-password"
 			/>
 			{#if errors.password}
 				<p class="mt-1 text-sm text-red-500">{errors.password}</p>
@@ -125,21 +123,30 @@
 		</div>
 
 		{#if errorMessage}
-			<p class="mb-4 text-sm text-red-500">{errorMessage}</p>
+			<div class="mb-4 rounded-md bg-red-50 p-3">
+				<p class="text-sm text-red-700">{errorMessage}</p>
+			</div>
 		{/if}
 
 		<button
 			type="submit"
-			disabled={submissionInProgress || !isFormValid}
-			class="mb-4 w-full rounded-md bg-indigo-600 px-3 py-3 font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-400"
+			disabled={isLoading || !isFormValid}
+			class="mb-4 w-full rounded-md bg-indigo-600 px-3 py-3 font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-400 disabled:hover:bg-gray-400"
 		>
-			{submissionInProgress ? 'Logging in...' : 'Login'}
+			{#if isLoading}
+				<div class="flex items-center justify-center">
+					<Loader2 class="mr-2 h-5 w-5 animate-spin text-white" />Logging in...
+				</div>
+			{:else}
+				Login
+			{/if}
 		</button>
 	</form>
 
 	<p class="mt-6 text-center">
-		Don't have an account? <a href="/auth/signup" class="text-indigo-600 hover:text-indigo-800"
-			>Sign up</a
+		Don't have an account? <a
+			href="/auth/signup"
+			class="text-indigo-600 hover:text-indigo-800 hover:underline">Sign up</a
 		>
 	</p>
 </div>

@@ -1,18 +1,19 @@
 <script lang="ts">
-	import { goto, invalidate } from '$app/navigation';
-	import { authClient, signUp } from '$lib/client/auth-client';
+	import { goto } from '$app/navigation';
 	import { authRegisterSchema } from '$lib/validation/auth-schemas';
+	import { signUp } from '$lib/client/auth-client';
 	import { z } from 'zod';
+	import { Loader2 } from '@lucide/svelte';
 
-	// Form state using $state
-	let email = $state('');
-	let password = $state('');
-	let confirmPassword = $state('');
-	let errors = $state<Record<string, string>>({});
-	let errorMessage = $state('');
-	let isLoading = $state(false);
+	// Form state using runes
+	let email: string = $state('');
+	let password: string = $state('');
+	let confirmPassword: string = $state('');
+	let errors: Record<string, string> = $state({});
+	let errorMessage: string = $state('');
+	let isLoading: boolean = $state(false);
 
-	// Computed values
+	// Computed values with $derived
 	let passwordsMatch = $derived(password === confirmPassword);
 	let isFormValid = $derived(
 		email.length > 0 &&
@@ -21,7 +22,6 @@
 			passwordsMatch &&
 			Object.keys(errors).length === 0
 	);
-	let submissionInProgress = $derived(isLoading);
 
 	// Handle input changes
 	function handleInput(e: Event) {
@@ -63,7 +63,7 @@
 	}
 
 	// Form submission handler
-	function onSubmit(e: Event) {
+	async function onSubmit(e: Event) {
 		e.preventDefault();
 		errorMessage = '';
 
@@ -77,7 +77,7 @@
 			// Validate with Zod schema
 			const result = authRegisterSchema.parse(formData);
 
-			// Also check password match (could use a refined schema instead)
+			// Also check password match
 			if (result.password !== result.confirmPassword) {
 				errorMessage = "Passwords don't match";
 				return;
@@ -86,21 +86,24 @@
 			// If validation passes, proceed with submission
 			isLoading = true;
 
-			signUp(
+			await signUp(
 				{
 					email: result.email,
 					password: result.password,
-					name: result.email, // Using email as name
-					callbackURL: '/predictions' // Redirect after email verification (if required)
+					name: result.email,
+					callbackURL: '/predictions'
 				},
 				{
-					onRequest: () => {
-						// Already handled by isLoading state
-					},
 					onSuccess: () => {
-						goto('/predictions'); // Redirect to dashboard if autoSignIn is true
+						try {
+							goto('/predictions');
+						} catch (navError) {
+							console.error('Navigation error:', navError);
+							// Make sure we reset loading state if navigation fails
+							isLoading = false;
+						}
 					},
-					onError: (ctx: { error: { message: string } }) => {
+					onError: (ctx) => {
 						errorMessage = ctx.error.message;
 						isLoading = false;
 					}
@@ -118,6 +121,7 @@
 				errorMessage = error.errors[0]?.message || 'Invalid form data';
 			} else {
 				errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+				isLoading = false;
 			}
 		}
 	}
@@ -130,12 +134,13 @@
 		<div class="mb-4">
 			<label for="email" class="mb-2 block font-medium">Email</label>
 			<input
-				type="text"
+				type="email"
 				id="email"
 				name="email"
 				oninput={handleInput}
 				value={email}
 				class="w-full rounded-md border border-gray-300 px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+				autocomplete="email"
 			/>
 			{#if errors.email}
 				<p class="mt-1 text-sm text-red-500">{errors.email}</p>
@@ -151,6 +156,7 @@
 				oninput={handleInput}
 				value={password}
 				class="w-full rounded-md border border-gray-300 px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+				autocomplete="new-password"
 			/>
 			{#if errors.password}
 				<p class="mt-1 text-sm text-red-500">{errors.password}</p>
@@ -166,6 +172,7 @@
 				oninput={handleInput}
 				value={confirmPassword}
 				class="w-full rounded-md border border-gray-300 px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+				autocomplete="new-password"
 			/>
 			{#if errors.confirmPassword}
 				<p class="mt-1 text-sm text-red-500">{errors.confirmPassword}</p>
@@ -173,21 +180,31 @@
 		</div>
 
 		{#if errorMessage}
-			<p class="mb-4 text-sm text-red-500">{errorMessage}</p>
+			<div class="mb-4 rounded-md bg-red-50 p-3">
+				<p class="text-sm text-red-700">{errorMessage}</p>
+			</div>
 		{/if}
 
 		<button
 			type="submit"
-			disabled={submissionInProgress || !isFormValid}
-			class="mb-4 w-full rounded-md bg-indigo-600 px-3 py-3 font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-400"
+			disabled={isLoading || !isFormValid}
+			class="mb-4 w-full rounded-md bg-indigo-600 px-3 py-3 font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-400 disabled:hover:bg-gray-400"
 		>
-			{submissionInProgress ? 'Creating Account...' : 'Sign Up'}
+			{#if isLoading}
+				<div class="flex items-center justify-center">
+					<Loader2 class="mr-2 h-5 w-5 animate-spin text-white" />
+					Creating Account...
+				</div>
+			{:else}
+				Sign Up
+			{/if}
 		</button>
 	</form>
 
 	<p class="mt-6 text-center">
-		Already have an account? <a href="/auth/login" class="text-indigo-600 hover:text-indigo-800"
-			>Login</a
+		Already have an account? <a
+			href="/auth/login"
+			class="text-indigo-600 hover:text-indigo-800 hover:underline">Login</a
 		>
 	</p>
 </div>
