@@ -1,4 +1,4 @@
-import { error, fail } from '@sveltejs/kit';
+import { error, fail, json } from '@sveltejs/kit';
 import { getFixturesByWeek, updateFixtureStatuses } from '$lib/server/football/fixtures/index';
 import { getUserPredictionsByWeek, submitPrediction } from '$lib/server/football/predictions';
 import type { PageServerLoad, Actions } from './$types';
@@ -54,6 +54,10 @@ function needsFixtureUpdates(fixtures: any[]): boolean {
 		return fixtureDate >= todayStart && fixtureDate <= todayEnd;
 	});
 }
+
+// Cache for fixtures to reduce repeated DB calls during polling
+const fixturesCache = new Map<string, { fixtures: any[]; timestamp: number }>();
+const FIXTURES_CACHE_TTL = 10 * 1000; // 10 seconds cache
 
 export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	// Check if user is authenticated - this is already done in the layout
@@ -160,6 +164,12 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 		};
 	});
 
+	// Cache the processed fixtures for quick access during polling
+	fixturesCache.set(`week-${week}`, {
+		fixtures: fixturesWithPrediction,
+		timestamp: Date.now()
+	});
+
 	// Convert predictions to a map for easier access in the frontend
 	// Pre-process the prediction data to match the expected client format
 	const predictionsMap = userPredictions.reduce(
@@ -227,7 +237,6 @@ export const actions = {
 			homeScore: number;
 			awayScore: number;
 		}> = [];
-
 		// Process all form fields
 		const predictionEntries = new Map();
 		for (const [key, value] of data.entries()) {
@@ -297,6 +306,105 @@ export const actions = {
 			return fail(400, {
 				success: false,
 				message: errorMessage
+			});
+		}
+	},
+
+	// New action for updating fixtures without using separate API endpoint
+	updateFixtures: async ({ params, request }) => {
+		try {
+			// Get week from route parameter
+			const week = parseInt(params.week);
+			if (isNaN(week)) {
+				return fail(400, { success: false, message: 'Invalid week parameter' });
+			}
+
+			// Check cache first for quick responses
+			const cacheKey = `week-${week}`;
+			const cachedData = fixturesCache.get(cacheKey);
+			const now = Date.now();
+
+			// If we have recent cached data, use that
+			if (cachedData && now - cachedData.timestamp < FIXTURES_CACHE_TTL) {
+				return {
+					success: true,
+					fixtures: cachedData.fixtures,
+					updated: 0,
+					live: cachedData.fixtures.filter((f) => f.isLive).length,
+					lastUpdated: new Date(cachedData.timestamp).toISOString()
+				};
+			}
+
+			// Get fixture IDs for this week
+			const fixtureData = await request.formData();
+			const fixtureIdsParam = fixtureData.get('fixtureIds');
+
+			// Use provided fixture IDs or get all for the week
+			let fixtureIds: string[] = [];
+			if (fixtureIdsParam) {
+				try {
+					fixtureIds = JSON.parse(fixtureIdsParam.toString());
+				} catch (e) {
+					console.error('Failed to parse fixture IDs:', e);
+				}
+			}
+
+			// Update fixture statuses (this calls the Football API with our rate limiting)
+			const updateResult = await updateFixtureStatuses(fixtureIds);
+
+			// Only fetch fresh data from DB if we actually had updates
+			let fixtures = [];
+			if (updateResult.updated > 0 || !cachedData) {
+				// Get updated fixtures from DB
+				const rawFixtures = await getFixturesByWeek(week);
+
+				// Sort and process fixtures
+				const sortedFixtures = [...rawFixtures].sort(
+					(a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
+				);
+
+				// Process fixtures with the same logic as in load function
+				fixtures = sortedFixtures.map((fixture) => {
+					const isPastWeek = false; // Not needed for updates
+					const matchDate = new Date(fixture.matchDate);
+					const isWeekend = matchDate.getDay() === 0 || matchDate.getDay() === 6;
+					const canPredict = canPredictFixture(fixture);
+
+					return {
+						...fixture,
+						canPredict,
+						isPastWeek,
+						isWeekend,
+						isLive: isFixtureLive(fixture.status),
+						predictionClosesAt: new Date(matchDate.getTime() - 60 * 60 * 1000)
+					};
+				});
+
+				// Update cache
+				fixturesCache.set(cacheKey, {
+					fixtures,
+					timestamp: now
+				});
+			} else if (cachedData) {
+				// Use cached data if no updates
+				fixtures = cachedData.fixtures;
+			}
+
+			// Return fixtures and update info
+			return {
+				success: true,
+				fixtures,
+				updated: updateResult.updated,
+				live: fixtures.filter((f) => f.isLive).length,
+				rateLimited: updateResult.rateLimited || false,
+				lastUpdated: new Date().toISOString()
+			};
+		} catch (error) {
+			console.error('Error updating fixtures:', error);
+			return fail(500, {
+				success: false,
+				message: 'Failed to update fixtures',
+				fixtures: []
 			});
 		}
 	}

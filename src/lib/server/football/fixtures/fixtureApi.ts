@@ -136,7 +136,7 @@ class ApiRequestQueue {
 		// Check if we're rate limited
 		if (API_RATE_LIMIT.checkRateLimit()) {
 			const waitTime = API_RATE_LIMIT.getEstimatedWaitTime();
-			console.log(`App-wide rate limit reached. Queue will resume in ${waitTime}ms`);
+			// console.log(`App-wide rate limit reached. Queue will resume in ${waitTime}ms`);
 
 			// Wait for the rate limit to expire, but check every second
 			await new Promise((resolve) => setTimeout(resolve, Math.min(waitTime, 1000)));
@@ -176,9 +176,9 @@ class ApiRequestQueue {
 					// Retry up to 3 times
 					request.retries += 1;
 					this.queue.push(request);
-					console.error(
-						`API request failed with status ${response.status}, retry ${request.retries}/3`
-					);
+					// console.error(
+					// 	`API request failed with status ${response.status}, retry ${request.retries}/3`
+					// );
 				} else {
 					// Give up after 3 retries
 					request.reject(
@@ -195,7 +195,7 @@ class ApiRequestQueue {
 			if (request.retries < 1) {
 				request.retries += 1;
 				this.queue.push(request);
-				console.error('Network error making API request, will retry once');
+				// console.error('Network error making API request, will retry once');
 			} else {
 				request.reject(error instanceof Error ? error : new Error(String(error)));
 			}
@@ -216,7 +216,7 @@ async function queuedApiCall(url: string, apiKey: string): Promise<any> {
 	const now = Date.now();
 
 	if (apiCache[cacheKey] && now - apiCache[cacheKey].timestamp < CACHE_TTL) {
-		console.log(`Using cached data for: ${url}`);
+		// console.log(`Using cached data for: ${url}`);
 		return apiCache[cacheKey].data;
 	}
 
@@ -306,7 +306,7 @@ export async function seedFixturesWithMatchId(season: string = '2024'): Promise<
 		} else {
 			// If team doesn't exist, we'd need to create it
 			// This shouldn't happen if you've already seeded teams
-			console.warn(`Team not found in DB: ${apiTeam.name} (${tla})`);
+			// console.warn(`Team not found in DB: ${apiTeam.name} (${tla})`);
 		}
 	}
 
@@ -343,7 +343,7 @@ export async function seedFixturesWithMatchId(season: string = '2024'): Promise<
 
 				// Skip if we don't have a mapping for either team
 				if (!homeTeamId || !awayTeamId) {
-					console.warn(`Skipping match ${match.id}: Could not find team mapping`);
+					// console.warn(`Skipping match ${match.id}: Could not find team mapping`);
 					return null;
 				}
 
@@ -444,7 +444,6 @@ export async function updateFixtureStatuses(
 
 	// If rate limited, return early but don't block the user
 	if (isRateLimited) {
-		console.log('API rate limit reached. Returning cached data only.');
 		return { updated: 0, live: 0, rateLimited: true };
 	}
 
@@ -458,7 +457,6 @@ export async function updateFixtureStatuses(
 	for (let i = 0; i < matchIds.length; i += batchSize) {
 		// Check again if we became rate limited during processing
 		if (API_RATE_LIMIT.checkRateLimit()) {
-			console.log('API rate limit reached during batch processing. Stopping early.');
 			return { updated: updatedCount, live: liveCount, rateLimited: true };
 		}
 

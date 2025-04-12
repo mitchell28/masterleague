@@ -7,6 +7,7 @@
 		canPredict?: boolean;
 		isWeekend?: boolean;
 		predictionClosesAt?: Date;
+		isLive?: boolean;
 	};
 
 	// Use runes for props instead of exports
@@ -30,22 +31,40 @@
 		isPastWeek?: boolean;
 	}>();
 
-	// Initialize state with runes
+	// Initialize state with runes - but only once
 	let homeScore = $state(prediction?.home ?? 0);
 	let awayScore = $state(prediction?.away ?? 0);
 
-	// Update state when prediction changes using effect
+	// Track if we've been initialized to avoid multiple updates
+	let initialized = $state(false);
+
+	// Initialize once when the component mounts or prediction changes
 	$effect(() => {
-		if (prediction) {
+		if (!initialized && prediction) {
+			homeScore = prediction.home;
+			awayScore = prediction.away;
+			initialized = true;
+		} else if (
+			prediction &&
+			(homeScore !== prediction.home || awayScore !== prediction.away) &&
+			!readOnly
+		) {
+			// Only update from props if really needed - prevents loops
 			homeScore = prediction.home;
 			awayScore = prediction.away;
 		}
 	});
 
-	// Direct handler for score changes
+	// Direct handler for score changes - debounce to prevent too many updates
+	let updateTimeout: ReturnType<typeof setTimeout> | null = null;
 	function handleScoreChange() {
 		if (!readOnly && prediction !== null) {
-			onUpdate(homeScore, awayScore);
+			if (updateTimeout) {
+				clearTimeout(updateTimeout);
+			}
+			updateTimeout = setTimeout(() => {
+				onUpdate(homeScore, awayScore);
+			}, 200); // 200ms debounce
 		}
 	}
 
@@ -122,7 +141,7 @@
 
 	// Helper function to determine if a fixture is live
 	function isLive(fixture: Fixture): boolean {
-		return fixture.status === 'IN_PLAY' || fixture.status === 'PAUSED';
+		return fixture.isLive || fixture.status === 'IN_PLAY' || fixture.status === 'PAUSED';
 	}
 
 	// Helper function to determine if a fixture is completed
