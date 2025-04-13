@@ -31,6 +31,17 @@
 		isPastWeek?: boolean;
 	}>();
 
+	// Memoize some commonly used derived values to avoid recalculations
+	let isFixtureCompleted = $derived(fixture.status === 'FINISHED');
+	let isFixtureLive = $derived(
+		fixture.isLive || fixture.status === 'IN_PLAY' || fixture.status === 'PAUSED'
+	);
+	let showActualScore = $derived(
+		(isFixtureCompleted || isFixtureLive) &&
+			fixture.homeScore !== null &&
+			fixture.awayScore !== null
+	);
+
 	// Initialize state with runes - but only once
 	let homeScore = $state(prediction?.home ?? 0);
 	let awayScore = $state(prediction?.away ?? 0);
@@ -64,9 +75,12 @@
 			}
 			updateTimeout = setTimeout(() => {
 				onUpdate(homeScore, awayScore);
-			}, 200); // 200ms debounce
+			}, 300); // Increased debounce to 300ms
 		}
 	}
+
+	// Memoize formatted date to avoid recalculation
+	let formattedMatchDate = $derived(formatDate(fixture.matchDate));
 
 	// Helper functions
 	function formatDate(timestamp: number | Date): string {
@@ -80,6 +94,8 @@
 		});
 	}
 
+	// Get status display info - memoized to avoid recalculation
+	let statusDisplay = $derived(getStatusDisplay(fixture.status));
 	function getStatusDisplay(status: string): { text: string; classes: string } {
 		switch (status) {
 			case 'FINISHED':
@@ -105,6 +121,8 @@
 		}
 	}
 
+	// Get special badge info - memoized
+	let specialBadge = $derived(getSpecialBadge(fixture));
 	function getSpecialBadge(fixture: Fixture): { text: string; color: string } | null {
 		if (fixture.pointsMultiplier > 1) {
 			if (fixture.pointsMultiplier === 3) {
@@ -118,7 +136,7 @@
 		return null;
 	}
 
-	// Increment/decrement functions
+	// Increment/decrement functions with update batching logic
 	function incrementHome(): void {
 		homeScore = Math.min(20, homeScore + 1);
 		handleScoreChange();
@@ -139,14 +157,44 @@
 		handleScoreChange();
 	}
 
-	// Helper function to determine if a fixture is live
-	function isLive(fixture: Fixture): boolean {
-		return fixture.isLive || fixture.status === 'IN_PLAY' || fixture.status === 'PAUSED';
-	}
+	// Calculate prediction outcome - memoized to avoid recalculation
+	let predictionOutcome = $derived(
+		prediction && isFixtureCompleted
+			? getPredictionOutcome(prediction.home, prediction.away, fixture.homeScore, fixture.awayScore)
+			: null
+	);
 
-	// Helper function to determine if a fixture is completed
-	function isCompleted(fixture: Fixture): boolean {
-		return fixture.status === 'FINISHED';
+	function getPredictionOutcome(
+		predHome: number,
+		predAway: number,
+		actualHome: number | null,
+		actualAway: number | null
+	) {
+		if (actualHome === null || actualAway === null) return null;
+
+		if (predHome === actualHome && predAway === actualAway) {
+			return {
+				type: 'perfect',
+				text: `Perfect: ${3 * fixture.pointsMultiplier} pts`,
+				class: 'bg-green-500 text-white'
+			};
+		} else if (
+			(predHome > predAway && actualHome > actualAway) ||
+			(predHome < predAway && actualHome < actualAway) ||
+			(predHome === predAway && actualHome === actualAway)
+		) {
+			return {
+				type: 'correct',
+				text: `Correct Outcome: ${1 * fixture.pointsMultiplier} pts`,
+				class: 'bg-yellow-500 text-black'
+			};
+		} else {
+			return {
+				type: 'incorrect',
+				text: 'Incorrect: 0 pts',
+				class: 'bg-red-500 text-white'
+			};
+		}
 	}
 </script>
 
@@ -155,19 +203,18 @@
 >
 	<div class="flex items-center justify-between border-b border-slate-700 bg-slate-900 p-3">
 		<div>
-			<span
-				class={`rounded-full px-2 py-1 text-xs font-medium ${getStatusDisplay(fixture.status).classes}`}
-			>
-				{getStatusDisplay(fixture.status).text}
+			<span class={`rounded-full px-2 py-1 text-xs font-medium ${statusDisplay.classes}`}>
+				{statusDisplay.text}
 			</span>
-			{#if getSpecialBadge(fixture)}
-				{@const badge = getSpecialBadge(fixture)}
-				<span class={`ml-2 rounded-full px-2 py-1 text-xs font-medium ${badge?.color} text-white`}>
-					{badge?.text}
+			{#if specialBadge}
+				<span
+					class={`ml-2 rounded-full px-2 py-1 text-xs font-medium ${specialBadge.color} text-white`}
+				>
+					{specialBadge.text}
 				</span>
 			{/if}
 		</div>
-		<span class="text-sm text-slate-400">{formatDate(fixture.matchDate)}</span>
+		<span class="text-sm text-slate-400">{formattedMatchDate}</span>
 	</div>
 
 	<div class="flex flex-col gap-3 p-4">
@@ -190,11 +237,11 @@
 		</div>
 
 		<div class="flex items-center justify-center">
-			{#if (isCompleted(fixture) || isLive(fixture)) && fixture.homeScore !== null && fixture.awayScore !== null}
+			{#if showActualScore}
 				<!-- For completed fixtures or live matches, show the actual result -->
 				<div class="flex flex-col items-center gap-2">
 					<div class="flex items-center gap-2">
-						{#if isLive(fixture)}
+						{#if isFixtureLive}
 							<div class="flex items-center gap-2">
 								<div class="h-2 w-2 animate-pulse rounded-full bg-red-500"></div>
 								<span class="animate-pulse text-xs font-bold text-red-400">LIVE</span>
@@ -210,28 +257,9 @@
 							<span class="text-sm text-slate-400">Your prediction:</span>
 							<span class="text-sm text-slate-300">{prediction.home} - {prediction.away}</span>
 
-							{#if isCompleted(fixture)}
-								<span
-									class={`rounded-full px-2 py-0.5 text-xs ${
-										prediction.home === fixture.homeScore && prediction.away === fixture.awayScore
-											? 'bg-green-500 text-white'
-											: (prediction.home > prediction.away &&
-														fixture.homeScore > fixture.awayScore) ||
-												  (prediction.home < prediction.away &&
-														fixture.homeScore < fixture.awayScore) ||
-												  (prediction.home === prediction.away &&
-														fixture.homeScore === fixture.awayScore)
-												? 'bg-yellow-500 text-black'
-												: 'bg-red-500 text-white'
-									}`}
-								>
-									{#if prediction.home === fixture.homeScore && prediction.away === fixture.awayScore}
-										Perfect: {3 * fixture.pointsMultiplier} pts
-									{:else if (prediction.home > prediction.away && fixture.homeScore > fixture.awayScore) || (prediction.home < prediction.away && fixture.homeScore < fixture.awayScore) || (prediction.home === prediction.away && fixture.homeScore === fixture.awayScore)}
-										Correct Outcome: {1 * fixture.pointsMultiplier} pts
-									{:else}
-										Incorrect: 0 pts
-									{/if}
+							{#if predictionOutcome && isFixtureCompleted}
+								<span class={`rounded-full px-2 py-0.5 text-xs ${predictionOutcome.class}`}>
+									{predictionOutcome.text}
 								</span>
 							{/if}
 						</div>

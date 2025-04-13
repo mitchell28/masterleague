@@ -1,4 +1,4 @@
-import { pgTable, varchar, integer, timestamp, unique } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, integer, timestamp } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { user as authUser } from './auth/auth-schema';
 

@@ -22,6 +22,8 @@
 		predictions: Record<string, Prediction & { home: number; away: number }>;
 		isPastWeek: boolean;
 		lastUpdated: string;
+		currentWeek: number;
+		week: number;
 	}
 
 	// Using runes for page data
@@ -37,94 +39,95 @@
 		};
 	}>();
 
-	// Get week from page params
-	let week = $derived(page.params.week);
-	let isCurrentWeek = $derived(data.currentWeek === parseInt(week));
+	// Get week from page params and data
+	let weekParam = $derived(parseInt(page.params.week) || 1);
+	let isCurrentWeek = $derived(data.currentWeek === weekParam);
 
-	// Access data safely with fallbacks
-	let fixtures = $derived(data?.fixtures || []);
+	// Form handling and UI state using $state with memoization
+	let submitting = $state(false);
+	let showSuccess = $state(false);
+	let showError = $state(false);
+	let errorMessage = $state('');
+	let invalidPredictions = $state<string[]>([]);
+
+	// Live fixture polling state
+	let isPolling = $state(false);
+	let pollingTimer: ReturnType<typeof setTimeout> | null = $state(null);
+	let lastPollTime = $state(new Date());
+	let isUpdating = $state(false);
+	let updateFailed = $state(false);
+
+	// Local state for fixtures and predictions
+	let localFixtures = $state<Fixture[]>([]);
+	let predictionValues = $state<Record<string, { home: number; away: number } | null>>({});
+
+	// Track the current displayed week
+	let currentDisplayedWeek = $state(0);
+
+	// Memoize derived values to prevent recalculation
+	let hasLiveFixtures = $derived(localFixtures.some((f) => f.isLive));
+	let isPastWeek = $derived(data?.isPastWeek || false);
 	let teams = $derived(data?.teams || {});
 	let predictions = $derived(data?.predictions || {});
-	let isPastWeek = $derived(data?.isPastWeek || false);
 
-	// Form handling and UI state using $state
-	let submitting: boolean = $state(false);
-	let showSuccess: boolean = $state(false);
-	let showError: boolean = $state(false);
-	let errorMessage: string = $state('');
-	let invalidPredictions: string[] = $state([]);
-
-	// Live fixture polling state using $state
-	let isPolling: boolean = $state(false);
-	let pollingTimer: ReturnType<typeof setTimeout> | null = $state(null);
-	let lastPollTime: Date = $state(new Date());
-	let hasLiveFixtures: boolean = $state(false);
-	let isUpdating: boolean = $state(false);
-	let updateFailed: boolean = $state(false);
-
-	// State for local fixture updates - initialize once during mount
-	let localFixtures: Fixture[] = $state([]);
-
-	// Initialize prediction form data
-	let predictionValues: Record<string, { home: number; away: number } | null> = $state({});
-
-	// Initialize everything on mount to avoid update loops
-	onMount(() => {
-		// Initialize local fixtures (do this just once to avoid loops)
-		localFixtures = [...fixtures];
-
-		// Check for live fixtures
-		hasLiveFixtures = fixtures.some((f: Fixture) => f.isLive);
-
-		// Initialize prediction values
-		initializePredictions();
-
-		// Start polling if needed
-		if (hasLiveFixtures && isCurrentWeek) {
-			startPolling();
+	// Initialize fixtures and predictions when component mounts or data changes
+	$effect(() => {
+		// This effect runs when the component mounts or when data.week changes
+		if (data && data.week !== currentDisplayedWeek) {
+			updateComponentData();
 		}
 	});
 
-	// Watch for form data changes (fixture updates)
+	// Handle form fixture updates separately
 	$effect(() => {
 		if (form?.fixtures && form.fixtures.length > 0) {
-			// Update local fixtures with form data
+			// Replace fixtures with form data
 			localFixtures = [...form.fixtures];
-
-			// Check if we still have live fixtures
-			const stillHasLiveFixtures = form.fixtures.some((f: Fixture) =>
-				['IN_PLAY', 'PAUSED'].includes(f.status)
-			);
-
-			// Only update if changed to prevent loops
-			if (hasLiveFixtures !== stillHasLiveFixtures) {
-				hasLiveFixtures = stillHasLiveFixtures;
-			}
 
 			// Update last poll time
 			lastPollTime = new Date();
 		}
 	});
 
-	// Initialize predictions function
+	// Function to update component data when week changes
+	function updateComponentData() {
+		// Update fixtures from data
+		if (data?.fixtures) {
+			localFixtures = [...data.fixtures];
+			currentDisplayedWeek = data.week;
+
+			// Update predictions
+			initializePredictions();
+
+			// Update polling state
+			updatePollingState();
+		}
+	}
+
+	// Optimized prediction initialization - only runs when needed
 	function initializePredictions() {
+		// Skip if no fixtures
+		if (!localFixtures.length) return;
+
 		const newPredictions: Record<string, { home: number; away: number } | null> = {};
 
 		// Initialize values from existing predictions
 		for (const fixtureId in predictions) {
 			const prediction = predictions[fixtureId];
-			newPredictions[fixtureId] = {
-				home: prediction.home,
-				away: prediction.away
-			};
+			if (prediction) {
+				newPredictions[fixtureId] = {
+					home: prediction.home,
+					away: prediction.away
+				};
+			}
 		}
 
-		// Initialize new predictions for fixtures that can be predicted
-		for (const fixture of fixtures) {
+		// Initialize new predictions only for fixtures that can be predicted
+		for (const fixture of localFixtures) {
 			// Skip if we already have a prediction
 			if (newPredictions[fixture.id]) continue;
 
-			// For past weeks or fixtures that can't be predicted, set null (no prediction)
+			// For past weeks or fixtures that can't be predicted, set null
 			if (isPastWeek || !fixture.canPredict) {
 				newPredictions[fixture.id] = null;
 			}
@@ -138,39 +141,29 @@
 		predictionValues = newPredictions;
 	}
 
-	// Watch data changes carefully - we need to re-init only when necessary
-	$effect(() => {
-		if (data?.fixtures) {
-			// If we weren't polling and didn't have local data, initialize
-			if (localFixtures.length === 0) {
-				localFixtures = [...data.fixtures];
-				hasLiveFixtures = localFixtures.some((f) => f.isLive);
-
-				// Initialize predictions
-				initializePredictions();
-
-				// Start polling if needed
-				if (hasLiveFixtures && isCurrentWeek && !isPolling) {
-					startPolling();
-				}
-			}
+	// Update polling based on current state
+	function updatePollingState() {
+		if (hasLiveFixtures && isCurrentWeek && !isPolling) {
+			// Use setTimeout to delay start to reduce initial load impact
+			setTimeout(startPolling, 1000);
+		} else if ((!hasLiveFixtures || !isCurrentWeek) && isPolling) {
+			stopPolling();
 		}
-	});
+	}
 
-	// Validate form before submission
+	// Validate form before submission - optimized
 	function validateForm(): boolean {
 		const invalid: string[] = [];
+		const predictableFixtures = localFixtures.filter((f) => f.canPredict);
 
-		for (const fixtureId in predictionValues) {
-			const prediction = predictionValues[fixtureId];
+		// Only validate fixtures that can be predicted
+		for (const fixture of predictableFixtures) {
+			const prediction = predictionValues[fixture.id];
 			if (!prediction) continue;
-
-			const fixture = localFixtures.find((f: { id: string }) => f.id === fixtureId);
-			if (!fixture?.canPredict) continue;
 
 			const { home, away } = prediction;
 			if (home < 0 || away < 0 || isNaN(home) || isNaN(away)) {
-				invalid.push(fixtureId);
+				invalid.push(fixture.id);
 			}
 		}
 
@@ -178,7 +171,7 @@
 		return invalid.length === 0;
 	}
 
-	// Form submission handler using enhance
+	// Form submission handler
 	function handleSubmit() {
 		submitting = true;
 
@@ -212,25 +205,39 @@
 		};
 	}
 
-	// Update prediction handler
+	// Optimized prediction update handler with less reactivity
 	function updatePrediction(fixtureId: string, home: number, away: number): void {
-		predictionValues[fixtureId] = { home, away };
+		// Direct object property update to minimize renders
+		if (predictionValues[fixtureId]) {
+			predictionValues[fixtureId] = { home, away };
+		}
 	}
 
-	// Polling function for live fixture updates using form action
+	// Optimize polling with better debounce and rate limiting
+	let lastPollRequest = 0;
+	const POLL_MINIMUM_INTERVAL = 5000; // 5 seconds minimum between polls
+
+	// Optimized polling function
 	async function pollFixtureUpdates() {
+		// Skip if already updating or no live fixtures
 		if (isUpdating || !hasLiveFixtures || !isCurrentWeek) return;
+
+		// Rate limit polling
+		const now = Date.now();
+		if (now - lastPollRequest < POLL_MINIMUM_INTERVAL) {
+			return;
+		}
+		lastPollRequest = now;
 
 		isUpdating = true;
 		updateFailed = false;
 
 		try {
-			// Create form data with fixture IDs
+			// Create form data with fixture IDs - only include live fixtures
 			const formData = new FormData();
+			const liveFixtureIds = localFixtures.filter((f) => f.isLive).map((f) => f.id);
 
-			// Include IDs of current fixtures
-			const fixtureIds = localFixtures.map((f) => f.id);
-			formData.append('fixtureIds', JSON.stringify(fixtureIds));
+			formData.append('fixtureIds', JSON.stringify(liveFixtureIds));
 
 			// Call the form action and invalidate the data
 			const response = await fetch(`?/updateFixtures`, {
@@ -239,14 +246,11 @@
 			});
 
 			// Invalidate the page data to get latest from server
-			invalidate(`/predictions/${week}`);
+			invalidate(`fixtures:${weekParam}`);
 
 			if (!response.ok) {
 				throw new Error(`Failed to update fixtures: ${response.status}`);
 			}
-
-			// Response will be processed automatically by SvelteKit
-			// and available in the form prop
 		} catch (error) {
 			console.error('Error polling for fixture updates:', error);
 			updateFailed = true;
@@ -255,7 +259,7 @@
 		}
 	}
 
-	// Start polling for updates - single method to manage state
+	// Start polling for updates - better implementation
 	function startPolling() {
 		if (isPolling) return;
 
@@ -277,15 +281,6 @@
 			pollingTimer = null;
 		}
 	}
-
-	// Watch for changes to hasLiveFixtures and isCurrentWeek to manage polling
-	$effect(() => {
-		if (hasLiveFixtures && isCurrentWeek && !isPolling) {
-			startPolling();
-		} else if ((!hasLiveFixtures || !isCurrentWeek) && isPolling) {
-			stopPolling();
-		}
-	});
 
 	// Force refresh the fixture data
 	function manualRefresh() {
@@ -333,7 +328,7 @@
 	<div class="mb-4 animate-pulse rounded-lg bg-green-500/20 p-4 text-green-100 shadow-lg">
 		<div class="flex items-center justify-between">
 			<div class="flex items-center gap-2">
-				<Check class="size-5" />
+				<Check size={20} />
 				<span class="font-medium">Predictions saved successfully!</span>
 			</div>
 		</div>
@@ -344,7 +339,7 @@
 	<div class="mb-4 animate-pulse rounded-lg bg-red-500/20 p-4 text-red-100 shadow-lg">
 		<div class="flex items-center justify-between">
 			<div class="flex items-center gap-2">
-				<AlertTriangle class="size-5" />
+				<AlertTriangle size={20} />
 				<span class="font-medium">{errorMessage}</span>
 			</div>
 		</div>
@@ -354,7 +349,7 @@
 {#if updateFailed}
 	<div class="mb-4 rounded-lg bg-yellow-500/20 p-3 text-yellow-100 shadow">
 		<div class="flex items-center gap-2">
-			<AlertTriangle class="size-4" />
+			<AlertTriangle size={16} />
 			<span class="text-sm"
 				>Unable to get the latest scores. <button class="underline" onclick={manualRefresh}
 					>Try again</button
@@ -368,7 +363,7 @@
 {#if form?.rateLimited}
 	<div class="mb-4 rounded-lg bg-amber-600/20 p-3 text-amber-100 shadow">
 		<div class="flex items-center gap-2">
-			<AlertTriangle class="size-4" />
+			<AlertTriangle size={16} />
 			<span class="text-sm">Football API rate limit reached. Using cached data.</span>
 		</div>
 	</div>
@@ -376,15 +371,15 @@
 
 {#if !localFixtures?.length}
 	<div class="rounded-xl border border-slate-700 bg-slate-800/50 p-6 text-center shadow-lg">
-		<p class="text-lg">No fixtures found for Week {week}.</p>
+		<p class="text-lg">No fixtures found for Week {weekParam}.</p>
 	</div>
 {:else}
 	<!-- Main predictions form -->
 	<div class="w-full">
 		<form method="POST" action="?/submitPredictions" use:enhance={handleSubmit} class="space-y-6">
-			<input type="hidden" name="week" value={week} />
+			<input type="hidden" name="week" value={weekParam} />
 
-			<!-- Grid to display match predictions -->
+			<!-- Grid to display match predictions - with optimized keyed each -->
 			<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 				{#each localFixtures as fixture (fixture.id)}
 					<PredictionCard
@@ -433,6 +428,3 @@
 		</form>
 	</div>
 {/if}
-
-<!-- Hidden form for fixture updates -->
-<form method="POST" action="?/updateFixtures" hidden></form>

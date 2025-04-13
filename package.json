@@ -38,6 +38,7 @@
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
 		"@tailwindcss/typography": "^0.5.15",
 		"@tailwindcss/vite": "^4.0.0",
+		"@trigger.dev/build": "3.3.17",
 		"@types/node": "^22.13.6",
 		"@types/pg": "^8.11.11",
 		"dotenv": "^16.4.7",
@@ -61,6 +62,7 @@
 	"dependencies": {
 		"@lucide/svelte": "^0.479.0",
 		"@neondatabase/serverless": "^0.10.4",
+		"@trigger.dev/sdk": "^3.3.17",
 		"better-auth": "^1.2.3",
 		"drizzle-orm": "^0.40.0",
 		"pg": "^8.11.3",
@@ -68,5 +70,6 @@
 		"tailwindcss-animate": "^1.0.7",
 		"vite-node": "^3.0.8",
 		"zod": "^3.24.2"
-	}
+	},
+	"packageManager": "pnpm@10.8.0+sha512.0e82714d1b5b43c74610193cb20734897c1d00de89d0e18420aebc5977fa13d780a9cb05734624e81ebd81cc876cd464794850641c48b9544326b5622ca29971"
 }

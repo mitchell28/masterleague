@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { teams, fixtures } from '../lib/server/db/schema';
+import { teams, fixtures } from '$lib/server/db/index';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 

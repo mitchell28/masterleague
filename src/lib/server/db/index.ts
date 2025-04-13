@@ -1,13 +1,13 @@
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { env } from '$env/dynamic/private';
+import { DATABASE_URL } from '$env/static/private';
 import * as appSchema from './schema';
 import * as authSchema from './auth/auth-schema';
 
-if (!env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
+if (!DATABASE_URL) throw new Error('DATABASE_URL is not set');
 
 // Create the Neon PostgreSQL client
-const sql = neon(env.DATABASE_URL);
+const sql = neon(DATABASE_URL);
 
 // Export the database connection with both schemas
 export const db = drizzle(sql, {
