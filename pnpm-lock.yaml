@@ -32,9 +32,6 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@4.0.9)
-      triggerkit:
-        specifier: ^1.5.4
-        version: 1.5.4(@trigger.dev/build@3.3.17(typescript@5.7.3))(@trigger.dev/sdk@3.3.17(zod@3.24.2))(esbuild@0.19.12)
       vite-node:
         specifier: ^3.0.8
         version: 3.0.8(@types/node@22.13.6)(jiti@2.4.2)(lightningcss@1.29.1)(tsx@4.19.3)
@@ -2516,14 +2513,6 @@ packages:
     resolution: {integrity: sha512-sf4i37nQ2LBx4m3wB74y+ubopq6W/dIzXg0FDGjsYnZHVa1Da8FH853wlL2gtUhg+xJXjfk3kUZS3BRoQeoQBQ==}
     engines: {node: '>=6'}
 
-  triggerkit@1.5.4:
-    resolution: {integrity: sha512-tHmxfLX3G2zX4xqcdadg9KFQ6X4NRJGPReQ5tsHASGFcXEjBLg1IhfyuD6wrpXq/rHlNr/1KmBpvuBt44s/rVA==}
-    engines: {node: '>=18.0.0'}
-    peerDependencies:
-      '@trigger.dev/build': ^3.0.0
-      '@trigger.dev/sdk': ^3.0.0
-      esbuild: '>=0.19.0'
-
   ts-api-utils@2.0.1:
     resolution: {integrity: sha512-dnlgjFSVetynI8nzgJ+qF62efpglpWRk8isUEWZGWlJYySCTD6aKvbUDu+zbPeDakk3bg5H4XpitHukgfL1m9w==}
     engines: {node: '>=18.12'}
@@ -4959,12 +4948,6 @@ snapshots:
       is-number: 7.0.0
 
   totalist@3.0.1: {}
-
-  triggerkit@1.5.4(@trigger.dev/build@3.3.17(typescript@5.7.3))(@trigger.dev/sdk@3.3.17(zod@3.24.2))(esbuild@0.19.12):
-    dependencies:
-      '@trigger.dev/build': 3.3.17(typescript@5.7.3)
-      '@trigger.dev/sdk': 3.3.17(zod@3.24.2)
-      esbuild: 0.19.12
 
   ts-api-utils@2.0.1(typescript@5.7.3):
     dependencies:
