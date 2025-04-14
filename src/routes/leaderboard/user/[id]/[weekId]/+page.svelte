@@ -180,7 +180,7 @@
 
 	// Compute if there are any predictions being processed - exclude fixtures with no prediction
 	const hasProcessingPredictions = data.weekData.predictions.some(
-		(p) =>
+		(p: { fixture: { status: string }; prediction?: { totalPoints: number | null } }) =>
 			p.fixture.status === 'FINISHED' &&
 			p.prediction && // Only count fixtures that have a prediction
 			(p.prediction.totalPoints === null || p.prediction.totalPoints === undefined)
