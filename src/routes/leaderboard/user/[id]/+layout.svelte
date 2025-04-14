@@ -101,6 +101,6 @@
 		</div>
 	{/if}
 
-	<!-- Render children -->
-	{@render children()}
+	<!-- Render children with optional chaining to handle null/undefined -->
+	{@render children?.()}
 </div>

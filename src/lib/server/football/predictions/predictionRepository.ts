@@ -1,343 +1,211 @@
 import { db } from '../../db';
-import * as schema from '../../db/schema';
+import { fixtures, predictions, leagueTable, teams } from '../../db/schema';
+import { eq, and, desc, isNull, sql } from 'drizzle-orm';
 import { user } from '../../db/auth/auth-schema';
-import type { Prediction } from '../../db/schema';
-import { eq, and, desc, inArray } from 'drizzle-orm';
+import type { Prediction, LeagueTable } from '../../db/schema';
 import { randomUUID } from 'crypto';
-import { calculatePredictionPoints, updateUserLeagueTable } from './index';
 
 /**
- * Get all predictions for a specific user and week
+ * Result interface for prediction processing
  */
-export async function getUserPredictionsByWeek(
-	userId: string,
-	weekId: number
-): Promise<Prediction[]> {
-	try {
-		// Get fixtures for the week
-		const fixtures = await db
-			.select()
-			.from(schema.fixtures)
-			.where(eq(schema.fixtures.weekId, weekId));
-
-		// Get predictions for these fixtures
-		if (fixtures.length === 0) {
-			return [];
-		}
-
-		const fixtureIds = fixtures.map((f) => f.id);
-
-		const predictions = await db
-			.select()
-			.from(schema.predictions)
-			.where(
-				and(
-					eq(schema.predictions.userId, userId),
-					inArray(schema.predictions.fixtureId, fixtureIds)
-				)
-			);
-
-		return predictions;
-	} catch (error) {
-		console.error('Failed to get user predictions:', error);
-		throw error;
-	}
+interface PredictionProcessResult {
+	processed: number;
+	pointsAllocated: number;
+	usersUpdated: number;
 }
 
 /**
- * Get all predictions for a specific fixture
+ * User stats tracking for batch updates
  */
-export async function getPredictionsForFixture(fixtureId: string): Promise<Prediction[]> {
-	try {
-		const predictions = await db
-			.select()
-			.from(schema.predictions)
-			.where(eq(schema.predictions.fixtureId, fixtureId));
-
-		return predictions;
-	} catch (error) {
-		console.error('Failed to get fixture predictions:', error);
-		throw error;
-	}
+interface UserPointsUpdate {
+	correctScore: number;
+	correctOutcome: number;
+	points: number;
 }
 
 /**
- * Submit multiple predictions for a user
+ * Calculates points for a prediction
  */
-export async function submitPrediction(
-	userId: string,
-	predictionsData: Array<{
-		fixtureId: string;
-		homeScore: number;
-		awayScore: number;
-	}>
-): Promise<Prediction[]> {
-	try {
-		// Validate user exists
-		const userExists = await db.select().from(user).where(eq(user.id, userId));
-
-		if (userExists.length === 0) {
-			throw new Error('User not found');
-		}
-
-		const results: Prediction[] = [];
-		let newPredictionsCount = 0;
-
-		// Process each prediction
-		for (const predictionData of predictionsData) {
-			const { fixtureId, homeScore, awayScore } = predictionData;
-
-			// Validate fixture exists and is upcoming
-			const fixture = await db
-				.select()
-				.from(schema.fixtures)
-				.where(eq(schema.fixtures.id, fixtureId));
-
-			if (fixture.length === 0) {
-				console.warn(`Fixture ${fixtureId} not found, skipping prediction`);
-				continue;
-			}
-
-			// Only allow predictions for fixtures that are SCHEDULED or TIMED
-			const isUpcoming = ['SCHEDULED', 'TIMED'].includes(fixture[0].status);
-			if (!isUpcoming) {
-				console.warn(
-					`Fixture ${fixtureId} is not upcoming (status: ${fixture[0].status}), skipping prediction`
-				);
-				continue;
-			}
-
-			// Check if prediction is being made too late (< 30 minutes before kickoff)
-			const matchDate = new Date(fixture[0].matchDate);
-			const now = new Date();
-			const cutoffTime = new Date(matchDate.getTime() - 30 * 60 * 1000);
-
-			if (now >= cutoffTime) {
-				console.warn(`Prediction for fixture ${fixtureId} rejected - cutoff time has passed`);
-				throw new Error(`The cutoff time has passed for match ${fixture[0].id}`);
-			}
-
-			// Check if user already has a prediction for this fixture
-			const existingPrediction = await db
-				.select()
-				.from(schema.predictions)
-				.where(
-					and(eq(schema.predictions.userId, userId), eq(schema.predictions.fixtureId, fixtureId))
-				);
-
-			let result: Prediction;
-
-			// If prediction exists, update it
-			if (existingPrediction.length > 0) {
-				const updatedPrediction = await db
-					.update(schema.predictions)
-					.set({
-						predictedHomeScore: homeScore,
-						predictedAwayScore: awayScore,
-						createdAt: new Date()
-					})
-					.where(eq(schema.predictions.id, existingPrediction[0].id))
-					.returning();
-
-				result = updatedPrediction[0];
-			} else {
-				// Otherwise, create a new prediction
-				const newPrediction = await db
-					.insert(schema.predictions)
-					.values({
-						id: randomUUID(),
-						userId,
-						fixtureId,
-						predictedHomeScore: homeScore,
-						predictedAwayScore: awayScore,
-						createdAt: new Date()
-					})
-					.returning();
-
-				result = newPrediction[0];
-				newPredictionsCount++;
-			}
-
-			results.push(result);
-		}
-
-		// Update the user's predictedFixtures count if there are new predictions
-		if (newPredictionsCount > 0) {
-			// Get the user's current league table entry
-			const userLeagueEntry = await db
-				.select()
-				.from(schema.leagueTable)
-				.where(eq(schema.leagueTable.userId, userId));
-
-			if (userLeagueEntry.length > 0) {
-				// Increment the predictedFixtures count
-				await db
-					.update(schema.leagueTable)
-					.set({
-						predictedFixtures: (userLeagueEntry[0].predictedFixtures || 0) + newPredictionsCount
-					})
-					.where(eq(schema.leagueTable.id, userLeagueEntry[0].id));
-			} else {
-				// Create a new entry if one doesn't exist
-				await db.insert(schema.leagueTable).values({
-					id: randomUUID(),
-					userId,
-					totalPoints: 0,
-					correctScorelines: 0,
-					correctOutcomes: 0,
-					predictedFixtures: newPredictionsCount,
-					completedFixtures: 0,
-					lastUpdated: new Date()
-				});
-			}
-		}
-
-		return results;
-	} catch (error) {
-		console.error('Failed to submit predictions:', error);
-		throw error;
+function calculatePredictionPoints(
+	predictedHomeScore: number,
+	predictedAwayScore: number,
+	actualHomeScore: number,
+	actualAwayScore: number,
+	pointsMultiplier = 1
+): number {
+	// Perfect score: 3 points × multiplier
+	if (predictedHomeScore === actualHomeScore && predictedAwayScore === actualAwayScore) {
+		return 3 * pointsMultiplier;
 	}
+
+	// Correct outcome: 1 point × multiplier
+	const predictedOutcome =
+		predictedHomeScore > predictedAwayScore
+			? 'home'
+			: predictedHomeScore < predictedAwayScore
+				? 'away'
+				: 'draw';
+
+	const actualOutcome =
+		actualHomeScore > actualAwayScore
+			? 'home'
+			: actualHomeScore < actualAwayScore
+				? 'away'
+				: 'draw';
+
+	if (predictedOutcome === actualOutcome) {
+		return 1 * pointsMultiplier;
+	}
+
+	// Incorrect: 0 points
+	return 0;
 }
 
 /**
- * Process predictions for a completed fixture
+ * Process all predictions for a specific fixture once it's finished
+ * and calculate points based on the final score
  */
 export async function processPredictionsForFixture(
 	fixtureId: string,
 	homeScore: number,
 	awayScore: number
-): Promise<void> {
-	try {
-		// Get the fixture to check status and get the points multiplier
-		const fixture = await db
+): Promise<PredictionProcessResult> {
+	// Get fixture to check multiplier
+	const fixture = await db
+		.select({
+			pointsMultiplier: fixtures.pointsMultiplier,
+			status: fixtures.status
+		})
+		.from(fixtures)
+		.where(eq(fixtures.id, fixtureId))
+		.then((rows) => rows[0]);
+
+	// Only process if fixture is finished
+	if (!fixture || fixture.status !== 'FINISHED') {
+		return { processed: 0, pointsAllocated: 0, usersUpdated: 0 };
+	}
+
+	// Get all predictions for this fixture
+	const fixturePredictions: Prediction[] = await db
+		.select()
+		.from(predictions)
+		.where(eq(predictions.fixtureId, fixtureId));
+
+	if (fixturePredictions.length === 0) {
+		return { processed: 0, pointsAllocated: 0, usersUpdated: 0 };
+	}
+
+	let totalPointsAllocated = 0;
+	const userUpdateMap = new Map<string, UserPointsUpdate>();
+
+	// Process each prediction
+	for (const prediction of fixturePredictions) {
+		// Calculate points for this prediction
+		const points = calculatePredictionPoints(
+			prediction.predictedHomeScore,
+			prediction.predictedAwayScore,
+			homeScore,
+			awayScore,
+			fixture.pointsMultiplier
+		);
+
+		// Update the prediction with points
+		await db.update(predictions).set({ points }).where(eq(predictions.id, prediction.id));
+
+		// Track points for user update
+		if (!userUpdateMap.has(prediction.userId)) {
+			userUpdateMap.set(prediction.userId, { correctScore: 0, correctOutcome: 0, points: 0 });
+		}
+
+		const userData = userUpdateMap.get(prediction.userId)!;
+		userData.points += points;
+
+		// Determine type of correct prediction
+		if (points > 0) {
+			const basePoints = points / fixture.pointsMultiplier;
+			if (basePoints === 3) {
+				userData.correctScore += 1;
+			} else if (basePoints === 1) {
+				userData.correctOutcome += 1;
+			}
+		}
+
+		totalPointsAllocated += points;
+	}
+
+	// Update league table entries for affected users
+	const affectedUsers = Array.from(userUpdateMap.keys());
+	for (const userId of affectedUsers) {
+		const userData = userUpdateMap.get(userId)!;
+
+		// Get existing league table entry
+		const existingEntry: LeagueTable | undefined = await db
 			.select()
-			.from(schema.fixtures)
-			.where(eq(schema.fixtures.id, fixtureId));
+			.from(leagueTable)
+			.where(eq(leagueTable.userId, userId))
+			.then((rows) => rows[0]);
 
-		if (fixture.length === 0) {
-			throw new Error('Fixture not found');
-		}
-
-		// Only process if fixture is marked as FINISHED
-		if (fixture[0].status !== 'FINISHED') {
-			throw new Error('Cannot process predictions for non-completed fixture');
-		}
-
-		const pointsMultiplier = fixture[0].pointsMultiplier || 1;
-
-		// Get all predictions for this fixture
-		const predictions = await db
-			.select()
-			.from(schema.predictions)
-			.where(eq(schema.predictions.fixtureId, fixtureId));
-
-		// Process each prediction
-		for (const prediction of predictions) {
-			// Calculate points
-			const points = calculatePredictionPoints(prediction, homeScore, awayScore, pointsMultiplier);
-
-			// Update the prediction with points
+		if (existingEntry) {
+			// Update existing entry
 			await db
-				.update(schema.predictions)
+				.update(leagueTable)
 				.set({
-					points
-				})
-				.where(eq(schema.predictions.id, prediction.id));
-
-			// Update user's league table
-			await updateUserLeagueTable(
-				prediction.userId,
-				points > 0,
-				points === 3 * pointsMultiplier,
-				points
-			);
-		}
-
-		// Check if the fixture's home and away scores need to be updated
-		if (fixture[0].homeScore !== homeScore || fixture[0].awayScore !== awayScore) {
-			// Update the fixture with the final score
-			await db
-				.update(schema.fixtures)
-				.set({
-					homeScore,
-					awayScore,
-					status: 'FINISHED',
+					totalPoints: existingEntry.totalPoints + userData.points,
+					correctScorelines: existingEntry.correctScorelines + userData.correctScore,
+					correctOutcomes: existingEntry.correctOutcomes + userData.correctOutcome,
+					completedFixtures: (existingEntry.completedFixtures ?? 0) + 1,
 					lastUpdated: new Date()
 				})
-				.where(eq(schema.fixtures.id, fixtureId));
+				.where(eq(leagueTable.id, existingEntry.id));
+		} else {
+			// Create new entry if it doesn't exist
+			await db.insert(leagueTable).values({
+				id: randomUUID(),
+				userId: userId,
+				totalPoints: userData.points,
+				correctScorelines: userData.correctScore,
+				correctOutcomes: userData.correctOutcome,
+				predictedFixtures: 1,
+				completedFixtures: 1,
+				lastUpdated: new Date()
+			});
 		}
-	} catch (error) {
-		console.error('Failed to process predictions for fixture:', error);
-		throw error;
 	}
+
+	return {
+		processed: fixturePredictions.length,
+		pointsAllocated: totalPointsAllocated,
+		usersUpdated: affectedUsers.length
+	};
 }
 
 /**
- * Get the league table (sorted by total points)
+ * Get the current league table rankings
  */
-export async function getLeagueTable(): Promise<
-	Array<{
-		userId: string;
-		userName: string;
-		points: number;
-		correctScorelines: number;
-		correctOutcomes: number;
-		predictedFixtures: number;
-		completedFixtures: number;
-		rank: number;
-	}>
-> {
-	// First get the base leaderboard data
-	const leaderboardData = await db
-		.select({
-			userId: schema.leagueTable.userId,
-			userName: user.name,
-			points: schema.leagueTable.totalPoints,
-			correctScorelines: schema.leagueTable.correctScorelines,
-			correctOutcomes: schema.leagueTable.correctOutcomes
-		})
-		.from(schema.leagueTable)
-		.innerJoin(user, eq(schema.leagueTable.userId, user.id))
-		.orderBy(desc(schema.leagueTable.totalPoints));
+export async function getLeagueTable() {
+	try {
+		// Import user schema from auth to avoid circular dependencies
 
-	// For each user, count their predictions and completed fixtures
-	const enrichedLeaderboard = await Promise.all(
-		leaderboardData.map(async (entry, index) => {
-			// Get all predictions for this user
-			const predictions = await db
-				.select()
-				.from(schema.predictions)
-				.where(eq(schema.predictions.userId, entry.userId));
+		const leaderboard = await db
+			.select({
+				id: leagueTable.id,
+				userId: leagueTable.userId,
+				userName: user.name,
+				userEmail: user.email,
+				totalPoints: leagueTable.totalPoints,
+				correctScorelines: leagueTable.correctScorelines,
+				correctOutcomes: leagueTable.correctOutcomes,
+				predictedFixtures: leagueTable.predictedFixtures,
+				completedFixtures: leagueTable.completedFixtures,
+				lastUpdated: leagueTable.lastUpdated
+			})
+			.from(leagueTable)
+			.innerJoin(user, eq(leagueTable.userId, user.id))
+			.orderBy(desc(leagueTable.totalPoints));
 
-			// Get all fixtures to check which ones are completed
-			const fixtureIds = predictions.map((p) => p.fixtureId);
-
-			// If no predictions, return 0 for both counts
-			if (fixtureIds.length === 0) {
-				return {
-					...entry,
-					predictedFixtures: 0,
-					completedFixtures: 0,
-					rank: index + 1 // Add rank based on position in the sorted array
-				};
-			}
-
-			// Count completed fixtures that this user predicted
-			const completedFixtures = await db
-				.select()
-				.from(schema.fixtures)
-				.where(
-					and(inArray(schema.fixtures.id, fixtureIds), eq(schema.fixtures.status, 'FINISHED'))
-				);
-
-			return {
-				...entry,
-				predictedFixtures: predictions.length,
-				completedFixtures: completedFixtures.length,
-				rank: index + 1 // Add rank based on position in the sorted array
-			};
-		})
-	);
-
-	return enrichedLeaderboard;
+		return leaderboard;
+	} catch (error) {
+		console.error('Error getting league table:', error);
+		return [];
+	}
 }

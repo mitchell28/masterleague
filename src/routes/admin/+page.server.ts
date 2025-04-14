@@ -119,5 +119,49 @@ export const actions: Actions = {
 			console.error('Error updating all multipliers:', err);
 			return { success: false, message: 'Failed to update all multipliers' };
 		}
+	},
+
+	recoverFixtures: async ({ locals }) => {
+		if (!locals.user?.role) {
+			throw error(403, 'Not authorized');
+		}
+
+		try {
+			const { recoverMissedFixtures } = await import('$lib/server/football/predictions');
+			const result = await recoverMissedFixtures();
+
+			return {
+				success: true,
+				message: `Recovery completed: ${result.scanned} fixtures scanned, ${result.updated} updated, ${result.reprocessedPredictions} predictions reprocessed`
+			};
+		} catch (error) {
+			console.error('Failed to recover fixtures:', error);
+			return { success: false, message: 'Failed to recover fixtures' };
+		}
+	},
+
+	recalculateAllPoints: async ({ locals }) => {
+		if (!locals.user?.role) {
+			throw error(403, 'Not authorized');
+		}
+
+		try {
+			// Import dynamically to avoid circular deps
+			const { recalculateAllPoints } = await import('$lib/scripts/recalculate-points-api');
+
+			// Start the recalculation in the background
+			recalculateAllPoints().catch((err) =>
+				console.error('Error in background recalculation:', err)
+			);
+
+			return {
+				success: true,
+				message:
+					'Point recalculation started in the background. This may take several minutes to complete.'
+			};
+		} catch (error) {
+			console.error('Failed to start points recalculation:', error);
+			return { success: false, message: 'Failed to start points recalculation' };
+		}
 	}
 };

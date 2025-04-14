@@ -1,433 +1,368 @@
 <script lang="ts">
+	import { type PageData } from './$types';
 	import { goto } from '$app/navigation';
-	import { fade, fly, scale, slide } from 'svelte/transition';
-	import { Trophy, Medal, Users, Search, Crown, Award } from '@lucide/svelte';
+	import { onMount } from 'svelte';
+	import { ChevronUp, RefreshCcw, Search, SearchIcon } from '@lucide/svelte';
 
+	// Props and state
+	let { data } = $props<{ data: PageData }>();
+	$inspect(data);
+	let leaderboard = $state(data.leaderboard);
+
+	// Local state for searching and sorting
+	let searchQuery = $state('');
+	let sortKey = $state<string>('totalPoints');
+	let sortDirection = $state<'asc' | 'desc'>('desc');
+
+	// Auto-refresh state
+	let refreshing = $state(false);
+	let lastRefreshTime = $state(new Date().toLocaleString());
+	let autoRefreshEnabled = $state(false);
+	let autoRefreshTimer: NodeJS.Timeout | null = $state(null);
+
+	// Define type for leaderboard entry
 	type LeaderboardEntry = {
 		userId: string;
 		userName: string;
-		points: number;
+		totalPoints: number;
 		correctScorelines: number;
 		correctOutcomes: number;
 		predictedFixtures: number;
 		completedFixtures: number;
-		rank: number;
+		lastUpdated?: string;
+		[key: string]: any; // For flexible access with sortKey
 	};
 
-	// Use runes syntax
-	let { data } = $props<{ data: { leaderboard: LeaderboardEntry[] } }>();
+	// Filter and sort the leaderboard data
+	let leaderboardFiltered = $derived(
+		leaderboard
+			?.filter((entry: LeaderboardEntry) => {
+				if (!searchQuery.trim()) return true;
 
-	// Access leaderboard data with debug info
-	let leaderboard = $derived(data?.leaderboard || []);
+				const query = searchQuery.toLowerCase().trim();
+				const userName = (entry.userName || '').toLowerCase();
 
-	// Track hovered row for styling
-	let hoveredRow: number | null = $state(null);
+				return userName.includes(query);
+			})
+			.sort((a: LeaderboardEntry, b: LeaderboardEntry) => {
+				// Special case for totalPoints - include tiebreakers
+				if (sortKey === 'totalPoints') {
+					if (a.totalPoints !== b.totalPoints) {
+						return sortDirection === 'desc'
+							? b.totalPoints - a.totalPoints
+							: a.totalPoints - b.totalPoints;
+					}
+					// First tiebreaker: correct scorelines
+					if (a.correctScorelines !== b.correctScorelines) {
+						return sortDirection === 'desc'
+							? b.correctScorelines - a.correctScorelines
+							: a.correctScorelines - b.correctScorelines;
+					}
+					// Second tiebreaker: correct outcomes
+					return sortDirection === 'desc'
+						? b.correctOutcomes - a.correctOutcomes
+						: a.correctOutcomes - b.correctOutcomes;
+				}
 
-	// Add some additional derived values for display
-	let totalEntries = $derived(leaderboard.length);
+				// For other columns, do standard sorting
+				const valueA = a[sortKey as keyof typeof a];
+				const valueB = b[sortKey as keyof typeof b];
 
-	// Search functionality
-	let searchQuery = $state('');
-	let filteredLeaderboard = $derived(
-		searchQuery
-			? leaderboard.filter((entry: LeaderboardEntry) =>
-					entry.userName.toLowerCase().includes(searchQuery.toLowerCase())
-				)
-			: leaderboard
+				// Handle string values
+				if (typeof valueA === 'string' && typeof valueB === 'string') {
+					return sortDirection === 'desc'
+						? valueB.localeCompare(valueA)
+						: valueA.localeCompare(valueB);
+				}
+
+				// Handle numeric values
+				return sortDirection === 'desc'
+					? Number(valueB) - Number(valueA)
+					: Number(valueA) - Number(valueB);
+			})
 	);
 
-	// Get top 3 players for special display
-	let topPlayers = $derived(leaderboard.slice(0, 3));
+	// Handle column sort clicks
+	function toggleSort(key: string) {
+		if (sortKey === key) {
+			sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+		} else {
+			sortKey = key;
+			sortDirection = 'desc';
+		}
+	}
+
+	// Calculate success rate
+	function calculateSuccessRate(entry: any) {
+		const completed = entry.completedFixtures || 0;
+		if (!completed) return 0;
+
+		const successful = (entry.correctScorelines || 0) + (entry.correctOutcomes || 0);
+		return Math.round((successful / completed) * 100);
+	}
+
+	// View user's predictions
+	function viewUserPredictions(userId: string) {
+		goto(`/leaderboard/user/${userId}/${data.currentWeek}`);
+	}
+
+	// Manual refresh function
+	async function refreshLeaderboard() {
+		if (refreshing) return;
+
+		refreshing = true;
+		try {
+			const response = await fetch('/leaderboard', {
+				method: 'GET',
+				headers: {
+					'Cache-Control': 'no-cache',
+					Pragma: 'no-cache'
+				}
+			});
+
+			if (response.ok) {
+				const refreshedData = await response.json();
+				if (refreshedData.leaderboard) {
+					leaderboard = refreshedData.leaderboard;
+					lastRefreshTime = new Date().toLocaleString();
+				}
+			}
+		} catch (error) {
+			console.error('Failed to refresh leaderboard:', error);
+		} finally {
+			refreshing = false;
+		}
+	}
+
+	// Toggle auto-refresh
+	function toggleAutoRefresh() {
+		autoRefreshEnabled = !autoRefreshEnabled;
+
+		if (autoRefreshEnabled && !autoRefreshTimer) {
+			// Set up timer to refresh every 60 seconds
+			autoRefreshTimer = setInterval(refreshLeaderboard, 60000);
+		} else if (!autoRefreshEnabled && autoRefreshTimer) {
+			clearInterval(autoRefreshTimer);
+			autoRefreshTimer = null;
+		}
+	}
+
+	// Cleanup on component unmount
+	onMount(() => {
+		return () => {
+			if (autoRefreshTimer) {
+				clearInterval(autoRefreshTimer);
+			}
+		};
+	});
 </script>
 
-<div class="container mx-auto px-4 py-6 sm:py-10">
-	<div class="mb-8 text-center sm:mb-20" in:fade={{ duration: 800, delay: 200 }}>
-		<h1 class="mb-4 text-3xl font-bold text-white sm:text-5xl">
-			<span
-				class="bg-gradient-to-r from-indigo-300 via-white to-amber-300 bg-clip-text text-transparent"
-			>
+<div class="container mx-auto max-w-6xl px-4 py-8">
+	<!-- Header -->
+	<div class="mb-6">
+		<h1 class="text-3xl font-bold text-white">
+			<span class="bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
 				Leaderboard
 			</span>
 		</h1>
-		<p class="mx-auto max-w-2xl text-sm text-slate-300 sm:text-base">
-			Track your position and see how you compare to other players. Click on any user to view their
-			detailed prediction history.
-		</p>
+		<p class="text-slate-400">See who's leading the Premier League prediction competition</p>
 	</div>
 
-	<!-- Top 3 Players Showcase (visible on medium screens and up) -->
-	{#if topPlayers.length > 0}
-		<div class="mb-16 hidden md:block" in:slide={{ duration: 600, delay: 300 }}>
-			<div class="flex justify-center gap-6">
-				<!-- Second Place -->
-				{#if topPlayers[1]}
-					<div
-						class="w-1/4 transform transition-all duration-300 hover:scale-105"
-						in:fly={{ y: 20, duration: 600, delay: 450 }}
-					>
-						<a href={`/leaderboard/user/${topPlayers[1].userId}`} class="block">
-							<div class="flex flex-col items-center">
-								<div class="relative mb-4">
-									<div
-										class="absolute -top-2 -right-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-lg font-bold shadow-lg"
-									>
-										2
-									</div>
-									<div
-										class="relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-slate-300 to-slate-400 shadow-[0_0_15px_rgba(203,213,225,0.4)]"
-									>
-										<Medal size={48} class="text-slate-800" />
-									</div>
-								</div>
-								<div
-									class="w-full rounded-xl border border-slate-700 bg-slate-800/90 p-4 text-center shadow-lg backdrop-blur-sm"
-								>
-									<p class="mb-1 truncate text-lg font-bold text-white">
-										{topPlayers[1].userName}
-									</p>
-									<p class="mb-3 text-xl font-bold text-slate-300">
-										{topPlayers[1].points} pts
-									</p>
-									<div class="grid grid-cols-2 gap-2 text-xs">
-										<div class="rounded-lg bg-slate-700/50 p-2">
-											<span class="block text-sm font-semibold text-green-400"
-												>{topPlayers[1].correctScorelines}</span
-											>
-											<span class="text-slate-300">Exact</span>
-										</div>
-										<div class="rounded-lg bg-slate-700/50 p-2">
-											<span class="block text-sm font-semibold text-blue-400"
-												>{topPlayers[1].correctOutcomes}</span
-											>
-											<span class="text-slate-300">Outcomes</span>
-										</div>
-									</div>
-								</div>
-							</div>
-						</a>
-					</div>
-				{/if}
-
-				<!-- First Place -->
-				{#if topPlayers[0]}
-					<div
-						class="-mt-8 w-1/3 transform transition-all duration-300 hover:scale-105"
-						in:fly={{ y: -20, duration: 600, delay: 300 }}
-					>
-						<a href={`/leaderboard/user/${topPlayers[0].userId}`} class="block">
-							<div class="flex flex-col items-center">
-								<div class="relative mb-4">
-									<div class="absolute -top-5 left-1/2 z-20 -translate-x-1/2">
-										<Crown
-											size={40}
-											class="text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,0.8)]"
-										/>
-									</div>
-									<div
-										class="relative flex h-36 w-36 items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-yellow-400 to-amber-600 shadow-[0_0_30px_rgba(255,215,0,0.6)]"
-									>
-										<Trophy size={64} class="text-slate-900" />
-									</div>
-								</div>
-								<div
-									class="w-full rounded-xl border border-yellow-600/50 bg-gradient-to-b from-slate-800/90 to-slate-800/80 p-5 text-center shadow-xl backdrop-blur-sm"
-								>
-									<p class="mb-2 truncate text-2xl font-bold text-white">
-										{topPlayers[0].userName}
-									</p>
-									<p class="mb-4 text-3xl font-bold text-yellow-400">
-										{topPlayers[0].points} pts
-									</p>
-									<div class="grid grid-cols-2 gap-3 text-xs">
-										<div class="rounded-lg bg-slate-700/50 p-3">
-											<span class="block text-lg font-semibold text-green-400"
-												>{topPlayers[0].correctScorelines}</span
-											>
-											<span class="text-slate-300">Exact Scores</span>
-										</div>
-										<div class="rounded-lg bg-slate-700/50 p-3">
-											<span class="block text-lg font-semibold text-blue-400"
-												>{topPlayers[0].correctOutcomes}</span
-											>
-											<span class="text-slate-300">Outcomes</span>
-										</div>
-									</div>
-								</div>
-							</div>
-						</a>
-					</div>
-				{/if}
-
-				<!-- Third Place -->
-				{#if topPlayers[2]}
-					<div
-						class="w-1/4 transform transition-all duration-300 hover:scale-105"
-						in:fly={{ y: 20, duration: 600, delay: 600 }}
-					>
-						<a href={`/leaderboard/user/${topPlayers[2].userId}`} class="block">
-							<div class="flex flex-col items-center">
-								<div class="relative mb-4">
-									<div
-										class="absolute -top-2 -right-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-lg font-bold shadow-lg"
-									>
-										3
-									</div>
-									<div
-										class="relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-amber-700 to-amber-800 shadow-[0_0_15px_rgba(180,83,9,0.4)]"
-									>
-										<Award size={48} class="text-amber-200" />
-									</div>
-								</div>
-								<div
-									class="w-full rounded-xl border border-slate-700 bg-slate-800/90 p-4 text-center shadow-lg backdrop-blur-sm"
-								>
-									<p class="mb-1 truncate text-lg font-bold text-white">
-										{topPlayers[2].userName}
-									</p>
-									<p class="mb-3 text-xl font-bold text-amber-600">
-										{topPlayers[2].points} pts
-									</p>
-									<div class="grid grid-cols-2 gap-2 text-xs">
-										<div class="rounded-lg bg-slate-700/50 p-2">
-											<span class="block text-sm font-semibold text-green-400"
-												>{topPlayers[2].correctScorelines}</span
-											>
-											<span class="text-slate-300">Exact</span>
-										</div>
-										<div class="rounded-lg bg-slate-700/50 p-2">
-											<span class="block text-sm font-semibold text-blue-400"
-												>{topPlayers[2].correctOutcomes}</span
-											>
-											<span class="text-slate-300">Outcomes</span>
-										</div>
-									</div>
-								</div>
-							</div>
-						</a>
-					</div>
-				{/if}
+	<!-- Controls and filters -->
+	<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+		<div class="flex items-center gap-3">
+			<!-- Search input -->
+			<div class="relative">
+				<input
+					type="text"
+					bind:value={searchQuery}
+					placeholder="Search players..."
+					class="w-64 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+				/>
+				<SearchIcon class="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400" size={16} />
 			</div>
 		</div>
-	{/if}
 
-	<!-- Search bar -->
-	<div class="relative mb-6" in:slide={{ duration: 400, delay: 600 }}>
-		<div
-			class="flex items-center rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 shadow-md focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500"
-		>
-			<Search size={20} class="mr-3 text-slate-400" />
-			<input
-				type="text"
-				placeholder="Search players..."
-				bind:value={searchQuery}
-				class="w-full bg-transparent text-white placeholder-slate-400 focus:outline-none"
-			/>
+		<div class="flex items-center gap-3">
+			<!-- Last refresh timestamp -->
+			<span class="text-xs text-slate-400">
+				Last updated: {lastRefreshTime}
+			</span>
+
+			<!-- Auto refresh toggle -->
+			<div class="flex items-center">
+				<label class="relative inline-flex cursor-pointer items-center">
+					<input
+						type="checkbox"
+						class="peer sr-only"
+						checked={autoRefreshEnabled}
+						onchange={toggleAutoRefresh}
+					/>
+					<div
+						class="peer h-5 w-9 rounded-full bg-slate-700 peer-checked:bg-indigo-600 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-slate-600 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full"
+					></div>
+					<span class="ml-2 text-xs font-medium text-slate-300">Auto refresh</span>
+				</label>
+			</div>
+
+			<!-- Refresh button -->
+			<button
+				class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-700 disabled:opacity-50"
+				onclick={refreshLeaderboard}
+				disabled={refreshing}
+			>
+				<RefreshCcw size={16} class="mr-2 text-white" />
+				{refreshing ? 'Refreshing...' : 'Refresh'}
+			</button>
 		</div>
 	</div>
 
-	<div
-		class="overflow-hidden rounded-xl border border-slate-700/50 bg-slate-800/70 shadow-xl backdrop-blur-md"
-		in:slide={{ duration: 600, delay: 800 }}
-	>
+	<!-- Leaderboard table -->
+	<div class="rounded-lg border border-slate-700 bg-slate-800/50 shadow-lg">
 		<div class="overflow-x-auto">
-			<table class="min-w-full divide-y divide-slate-700/50">
+			<table class="min-w-full divide-y divide-slate-700">
 				<thead>
-					<tr class="bg-slate-800/90">
+					<tr>
 						<th
-							class="px-3 py-3 text-left text-xs font-medium tracking-wider text-white uppercase sm:px-6 sm:py-4"
+							class="cursor-pointer px-4 py-3 text-left text-xs font-medium tracking-wider whitespace-nowrap text-slate-400 uppercase hover:text-white"
 						>
-							Rank
-						</th>
-						<th
-							class="px-3 py-3 text-left text-xs font-medium tracking-wider text-white uppercase sm:px-6 sm:py-4"
-						>
-							Name
-						</th>
-						<th
-							class="px-3 py-3 text-center text-xs font-medium tracking-wider text-white uppercase sm:px-6 sm:py-4"
-						>
-							Points
-						</th>
-						<th
-							class="hidden px-3 py-3 text-center text-xs font-medium tracking-wider text-white uppercase sm:table-cell sm:px-6 sm:py-4"
-						>
-							Correct <span class="hidden md:inline">Scores</span>
-						</th>
-						<th
-							class="hidden px-3 py-3 text-center text-xs font-medium tracking-wider text-white uppercase sm:table-cell sm:px-6 sm:py-4"
-						>
-							Correct <span class="hidden md:inline">Outcomes</span>
-						</th>
-						<th
-							class="group relative hidden px-3 py-3 text-center text-xs font-medium tracking-wider text-white uppercase sm:px-6 sm:py-4 md:table-cell"
-						>
-							<span>Pred/Comp</span>
-							<div
-								transition:fade
-								class="absolute bottom-full left-1/2 z-10 mb-1 hidden w-48 -translate-x-1/2 transform rounded bg-slate-900 p-2 text-xs text-white shadow-lg transition-opacity duration-200 group-hover:block"
-							>
-								Predictions made / Completed fixtures
+							<div class="flex items-center">
+								<span>Player</span>
 							</div>
 						</th>
 						<th
-							class="hidden px-3 py-3 text-center text-xs font-medium tracking-wider text-white uppercase sm:px-6 sm:py-4 lg:table-cell"
+							class="cursor-pointer px-4 py-3 text-center text-xs font-medium tracking-wider whitespace-nowrap text-slate-400 uppercase hover:text-white"
+							onclick={() => toggleSort('totalPoints')}
+						>
+							<div class="flex items-center justify-center">
+								<span>Points</span>
+								<ChevronUp
+									size={16}
+									class={`ml-1 text-slate-400 ${sortKey === 'totalPoints' ? (sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+								/>
+							</div>
+						</th>
+						<th
+							class="cursor-pointer px-4 py-3 text-center text-xs font-medium tracking-wider whitespace-nowrap text-slate-400 uppercase hover:text-white"
+						>
+							<div class="flex items-center justify-center">
+								<span>Perfect</span>
+							</div>
+						</th>
+						<th
+							class="cursor-pointer px-4 py-3 text-center text-xs font-medium tracking-wider whitespace-nowrap text-slate-400 uppercase hover:text-white"
+						>
+							<div class="flex items-center justify-center">
+								<span>Outcome</span>
+							</div>
+						</th>
+						<th
+							class="cursor-pointer px-4 py-3 text-center text-xs font-medium tracking-wider whitespace-nowrap text-slate-400 uppercase hover:text-white"
+						>
+							<div class="flex items-center justify-center">
+								<span>Predictions</span>
+							</div>
+						</th>
+						<th
+							class="cursor-pointer px-4 py-3 text-center text-xs font-medium tracking-wider whitespace-nowrap text-slate-400 uppercase hover:text-white"
+						>
+							<div class="flex items-center justify-center">
+								<span>Completed</span>
+							</div>
+						</th>
+						<th
+							class="px-4 py-3 text-center text-xs font-medium tracking-wider whitespace-nowrap text-slate-400 uppercase"
 						>
 							Success Rate
 						</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-slate-700/50">
-					{#if !filteredLeaderboard || filteredLeaderboard.length === 0}
-						<tr>
-							<td
-								colspan="7"
-								class="px-3 py-6 text-center text-base font-medium text-white sm:px-6 sm:py-8 sm:text-lg"
-							>
-								{searchQuery ? 'No players found matching your search' : 'No entries yet'}
-							</td>
-						</tr>
-					{:else}
-						{#each filteredLeaderboard as entry, index}
+				<tbody class="divide-y divide-slate-700">
+					{#if leaderboardFiltered && leaderboardFiltered.length > 0}
+						{#each leaderboardFiltered as entry, index}
 							<tr
-								class="cursor-pointer transition-all duration-200 {entry.rank === 1
-									? 'bg-yellow-900/20'
-									: entry.rank <= 3
-										? 'bg-slate-800/50'
-										: 'bg-slate-800/20'} {hoveredRow === index
-									? 'bg-slate-700'
-									: 'hover:bg-slate-700/70'}"
-								in:slide={{ duration: 300, delay: 900 + index * 50, axis: 'x' }}
+								class="cursor-pointer transition-colors hover:bg-slate-700/50"
+								onclick={() => viewUserPredictions(entry.id)}
 							>
-								<td
-									class="px-3 py-3 text-sm font-medium whitespace-nowrap text-white sm:px-6 sm:py-4"
-									colspan="1"
-								>
-									<a
-										href={`/leaderboard/user/${entry.userId}`}
-										class="inline-block h-full w-full"
-										onfocus={() => (hoveredRow = index)}
-										onblur={() => (hoveredRow = null)}
-									>
-										<span
-											class="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold sm:h-8 sm:w-8 sm:text-sm {entry.rank ===
-											1
-												? 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-black shadow-[0_0_10px_rgba(255,215,0,0.5)]'
-												: entry.rank === 2
-													? 'bg-gradient-to-r from-slate-300 to-slate-400 text-black'
-													: entry.rank === 3
-														? 'bg-gradient-to-r from-amber-700 to-amber-800 text-white'
-														: 'bg-slate-700 text-white'}"
+								<!-- Player name and rank -->
+								<td class="px-4 py-3 whitespace-nowrap">
+									<div class="flex items-center">
+										<div
+											class="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-sm font-bold text-slate-300"
 										>
-											{entry.rank || index + 1}
-										</span>
-									</a>
+											{index + 1}
+										</div>
+										<div>
+											<div class="font-medium text-white">{entry?.username || 'Anonymous'}</div>
+										</div>
+									</div>
 								</td>
-								<td
-									class="px-3 py-3 text-xs font-semibold whitespace-nowrap text-white sm:px-6 sm:py-4 sm:text-sm"
-								>
-									<a href={`/leaderboard/user/${entry.userId}`} class="inline-block h-full w-full">
-										{entry.userName || 'Unknown User'}
-									</a>
+								<!-- Total points -->
+								<td class="px-4 py-3 text-center font-bold whitespace-nowrap text-white">
+									{entry.totalPoints || 0}
 								</td>
-								<td
-									class="px-3 py-3 text-center text-sm font-bold text-white sm:px-6 sm:py-4 sm:text-base"
-								>
-									<a href={`/leaderboard/user/${entry.userId}`} class="inline-block h-full w-full">
-										{entry.points || 0}
-									</a>
+								<!-- Perfect score predictions -->
+								<td class="px-4 py-3 text-center font-medium whitespace-nowrap text-green-400">
+									{entry.correctScorelines || 0}
 								</td>
-								<td
-									class="hidden px-3 py-3 text-center text-xs font-medium text-green-400 sm:table-cell sm:px-6 sm:py-4 sm:text-sm"
-								>
-									<a href={`/leaderboard/user/${entry.userId}`} class="inline-block h-full w-full">
-										{entry.correctScorelines || 0}
-									</a>
+								<!-- Correct outcome predictions -->
+								<td class="px-4 py-3 text-center font-medium whitespace-nowrap text-blue-400">
+									{entry.correctOutcomes || 0}
 								</td>
-								<td
-									class="hidden px-3 py-3 text-center text-xs font-medium text-blue-400 sm:table-cell sm:px-6 sm:py-4 sm:text-sm"
-								>
-									<a href={`/leaderboard/user/${entry.userId}`} class="inline-block h-full w-full">
-										{entry.correctOutcomes || 0}
-									</a>
+								<!-- Total predictions -->
+								<td class="px-4 py-3 text-center font-medium whitespace-nowrap text-purple-400">
+									{entry.predictedFixtures || 0}
 								</td>
-								<td
-									class="hidden px-3 py-3 text-center text-xs font-medium text-white sm:px-6 sm:py-4 sm:text-sm md:table-cell"
-								>
-									<a href={`/leaderboard/user/${entry.userId}`} class="inline-block h-full w-full">
-										{entry.predictedFixtures || 0}/{entry.completedFixtures || 0}
-									</a>
+								<!-- Completed fixtures -->
+								<td class="px-4 py-3 text-center font-medium whitespace-nowrap text-slate-300">
+									{entry.completedFixtures || 0}
 								</td>
-								<td
-									class="hidden px-3 py-3 text-center text-xs font-medium text-yellow-400 sm:px-6 sm:py-4 sm:text-sm lg:table-cell"
-								>
-									<a href={`/leaderboard/user/${entry.userId}`} class="inline-block h-full w-full">
-										{entry.completedFixtures
-											? Math.round(
-													((entry.correctScorelines + entry.correctOutcomes) /
-														entry.completedFixtures) *
-														100
-												)
-											: 0}%
-									</a>
+								<!-- Success rate -->
+								<td class="px-4 py-3 text-center whitespace-nowrap">
+									<div class="flex items-center justify-center">
+										<div class="h-2 w-16 overflow-hidden rounded-full bg-slate-700">
+											<div
+												class="h-full bg-yellow-500"
+												style={`width: ${calculateSuccessRate(entry)}%`}
+											></div>
+										</div>
+										<span class="ml-2 text-xs font-medium text-yellow-400"
+											>{calculateSuccessRate(entry)}%</span
+										>
+									</div>
 								</td>
 							</tr>
 						{/each}
+					{:else}
+						<tr>
+							<td colspan="7" class="py-6 text-center text-slate-400">
+								{searchQuery
+									? 'No players match your search'
+									: 'No players found in the leaderboard'}
+							</td>
+						</tr>
 					{/if}
 				</tbody>
 			</table>
 		</div>
 	</div>
 
-	{#if totalEntries > 0}
-		<div
-			class="mt-4 flex items-center justify-between text-xs font-medium text-slate-300 sm:mt-5 sm:text-sm"
-			in:fade={{ duration: 400, delay: 1200 }}
-		>
+	<!-- Legend -->
+	<div class="mt-6 rounded-lg border border-slate-700 bg-slate-800/50 p-4 shadow">
+		<h3 class="mb-2 font-medium text-white">Scoring Legend</h3>
+		<div class="grid gap-2 text-sm sm:grid-cols-3">
 			<div class="flex items-center">
-				<Users size={16} class="mr-2" />
-				<span>Total players: {totalEntries}</span>
+				<span class="mr-2 inline-block h-3 w-3 rounded-full bg-green-500"></span>
+				<span class="text-slate-300">Perfect Score: 3 points</span>
 			</div>
-			{#if searchQuery && filteredLeaderboard.length < totalEntries}
-				<div>Showing {filteredLeaderboard.length} of {totalEntries} players</div>
-			{/if}
-		</div>
-	{/if}
-
-	<!-- Only show explanation if we have data -->
-	{#if totalEntries > 0}
-		<div class="mt-6 rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-sm text-slate-300">
-			<h2 class="mb-2 text-lg font-bold text-white">Scoring System</h2>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<div>
-					<h3 class="mb-1 font-semibold text-white">Base Points</h3>
-					<ul class="list-inside list-disc space-y-1">
-						<li>Exact score: <span class="font-bold text-green-400">3 points</span></li>
-						<li>Correct outcome only: <span class="font-bold text-blue-400">1 point</span></li>
-					</ul>
-				</div>
-				<div>
-					<h3 class="mb-1 font-semibold text-white">Match Multipliers</h3>
-					<ul class="list-inside list-disc space-y-1">
-						<li>Regular matches: <span class="font-bold text-slate-400">1×</span></li>
-						<li>Exciting matches: <span class="font-bold text-yellow-400">2×</span></li>
-						<li>Derby matches: <span class="font-bold text-yellow-400">3×</span></li>
-					</ul>
-				</div>
-				<div>
-					<h3 class="mb-1 font-semibold text-white">Examples</h3>
-					<ul class="list-inside list-disc space-y-1">
-						<li>
-							Perfect prediction on 3× match: <span class="font-bold text-green-400">9 points</span>
-						</li>
-						<li>
-							Correct outcome on 3× match: <span class="font-bold text-blue-400">3 points</span>
-						</li>
-						<li>
-							Perfect prediction on 2× match: <span class="font-bold text-green-400">6 points</span>
-						</li>
-					</ul>
-				</div>
+			<div class="flex items-center">
+				<span class="mr-2 inline-block h-3 w-3 rounded-full bg-blue-500"></span>
+				<span class="text-slate-300">Correct Outcome: 1 point</span>
+			</div>
+			<div class="flex items-center">
+				<span class="mr-2 inline-block h-3 w-3 rounded-full bg-yellow-500"></span>
+				<span class="text-slate-300">Some fixtures have multipliers (2× or 3×)</span>
 			</div>
 		</div>
-	{/if}
+	</div>
 </div>

@@ -1,53 +1,14 @@
-import { error, fail, json } from '@sveltejs/kit';
-import { getFixturesByWeek, updateFixtureStatuses } from '$lib/server/football/fixtures/index';
-import { getUserPredictionsByWeek, submitPrediction } from '$lib/server/football/predictions';
+import { error, fail } from '@sveltejs/kit';
+import { updateFixtureStatuses } from '$lib/server/football/fixtures/index';
+import { submitPrediction } from '$lib/server/football/predictions/';
+import {
+	getFixturesWithPredictions,
+	isFixtureLive,
+	clearFixtureCache
+} from '$lib/server/football/predictions/userPredictions';
 import type { PageServerLoad, Actions } from './$types';
-import { db } from '$lib/server/db';
-import { teams, type Fixture } from '$lib/server/db/schema';
-import { inArray } from 'drizzle-orm';
-
-// More aggressive caching for fixtures
-const fixturesCache = new Map<
-	string,
-	{
-		fixtures: any[];
-		predictions?: Record<string, any>;
-		teams?: Record<string, any>;
-		timestamp: number;
-	}
->();
-const FIXTURES_CACHE_TTL = 20 * 1000; // 20 seconds cache
-
-// Cache for teams data
-const teamsCache = new Map<string, { teams: Record<string, any>; timestamp: number }>();
-const TEAMS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
-
-// Function to check if a fixture can be predicted (more than 30 minutes before kickoff)
-function canPredictFixture(fixture: any): boolean {
-	// Don't allow prediction if fixture is already in progress or completed
-	const inProgressOrCompleted = [
-		'IN_PLAY',
-		'PAUSED',
-		'FINISHED',
-		'SUSPENDED',
-		'POSTPONED',
-		'CANCELLED',
-		'AWARDED'
-	].includes(fixture.status);
-	if (inProgressOrCompleted) return false;
-
-	// Check if it's more than 30 minutes before kickoff
-	const matchDate = new Date(fixture.matchDate);
-	const now = new Date();
-	const cutoffTime = new Date(matchDate.getTime() - 30 * 60 * 1000); // 30 minutes before
-
-	return now < cutoffTime;
-}
-
-// Function to check if a fixture is live
-function isFixtureLive(status: string): boolean {
-	return ['IN_PLAY', 'PAUSED'].includes(status);
-}
+import type { Fixture } from '$lib/server/db/schema';
+import { processRecentFixtures } from '$lib/scripts/recalculate-points-api';
 
 export const load: PageServerLoad = async ({ params, locals, parent, depends }) => {
 	// Add dependency for invalidation
@@ -73,135 +34,26 @@ export const load: PageServerLoad = async ({ params, locals, parent, depends }) 
 		throw error(400, 'Invalid week parameter');
 	}
 
+	// Process recent fixtures to ensure points are calculated before displaying the page
+	try {
+		const result = await processRecentFixtures();
+		if (result.processedPredictions > 0) {
+			console.log(
+				`Processed ${result.processedFixtures} fixtures and ${result.processedPredictions} predictions`
+			);
+		}
+	} catch (err) {
+		console.error('Points calculation error:', err);
+	}
+
 	// Get parent data from layout
 	const parentData = await parent();
 	const currentWeek = parentData.currentWeek;
 	const weeks = parentData.weeks;
 
-	// Check if we have cached fixtures first
-	const cacheKey = `week-${week}-${userId}`;
-	const now = Date.now();
-	const cachedData = fixturesCache.get(cacheKey);
-	let fixturesWithPrediction = [];
-	let predictionsMap = {};
-	let teamsMap = {};
-
-	// Check if we have a valid cache entry
-	if (cachedData && now - cachedData.timestamp < FIXTURES_CACHE_TTL) {
-		fixturesWithPrediction = cachedData.fixtures;
-
-		// Only update live fixtures more frequently
-		const hasLiveFixtures = fixturesWithPrediction.some((f: any) => f.isLive);
-		if (!hasLiveFixtures) {
-			// If no live fixtures, we can use cached data
-			return {
-				week,
-				weeks,
-				currentWeek,
-				fixtures: fixturesWithPrediction,
-				predictions: cachedData.predictions || {},
-				teams: cachedData.teams || {},
-				isPastWeek: week < currentWeek,
-				lastUpdated: new Date(cachedData.timestamp).toISOString()
-			};
-		}
-	}
-
-	// Get fixtures for the selected week - try to avoid DB calls when possible
-	const fixtures = await getFixturesByWeek(week);
-
-	// Skip processing if no fixtures
-	if (!fixtures.length) {
-		return {
-			week,
-			weeks,
-			currentWeek,
-			fixtures: [],
-			predictions: {},
-			teams: {},
-			isPastWeek: week < currentWeek,
-			lastUpdated: new Date().toISOString()
-		};
-	}
-
-	// Sort fixtures by date server-side
-	const sortedFixtures = [...fixtures].sort(
-		(a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
-	);
-
-	// Get user's predictions for this week
-	const userPredictions = await getUserPredictionsByWeek(userId, week);
-
-	// Extract team IDs for the fixtures
-	const teamIds = [...new Set(sortedFixtures.flatMap((f) => [f.homeTeamId, f.awayTeamId]))];
-	const teamCacheKey = teamIds.sort().join('-');
-
-	// Try to get teams from cache first
-	const cachedTeams = teamsCache.get(teamCacheKey);
-	if (cachedTeams && now - cachedTeams.timestamp < TEAMS_CACHE_TTL) {
-		teamsMap = cachedTeams.teams;
-	} else {
-		// Fetch teams only if needed
-		const allTeams = await db.select().from(teams).where(inArray(teams.id, teamIds));
-		teamsMap = allTeams.reduce(
-			(acc, team) => {
-				acc[team.id] = team;
-				return acc;
-			},
-			{} as Record<string, typeof teams.$inferSelect>
-		);
-
-		// Cache teams data
-		teamsCache.set(teamCacheKey, {
-			teams: teamsMap,
-			timestamp: now
-		});
-	}
-
-	// Prepare fixtures with prediction info - reuse existing logic
-	const isPastWeek = week < currentWeek;
-	fixturesWithPrediction = sortedFixtures.map((fixture) => {
-		const matchDate = new Date(fixture.matchDate);
-		const isWeekend = matchDate.getDay() === 0 || matchDate.getDay() === 6;
-		const canPredict = !isPastWeek && canPredictFixture(fixture);
-
-		return {
-			...fixture,
-			canPredict,
-			isPastWeek,
-			isWeekend,
-			isLive: isFixtureLive(fixture.status),
-			predictionClosesAt: new Date(matchDate.getTime() - 60 * 60 * 1000)
-		};
-	});
-
-	// Convert predictions to a map
-	predictionsMap = userPredictions.reduce(
-		(acc, prediction) => {
-			if (
-				prediction.predictedHomeScore !== null &&
-				prediction.predictedAwayScore !== null &&
-				prediction.predictedHomeScore !== undefined &&
-				prediction.predictedAwayScore !== undefined
-			) {
-				acc[prediction.fixtureId] = {
-					...prediction,
-					home: prediction.predictedHomeScore,
-					away: prediction.predictedAwayScore
-				};
-			}
-			return acc;
-		},
-		{} as Record<string, any>
-	);
-
-	// Cache the processed data
-	fixturesCache.set(cacheKey, {
-		fixtures: fixturesWithPrediction,
-		predictions: predictionsMap,
-		teams: teamsMap,
-		timestamp: now
-	});
+	// Get fixtures with predictions using the extracted function
+	const { fixturesWithPrediction, predictionsMap, teamsMap, lastUpdated, fromCache } =
+		await getFixturesWithPredictions(userId, week, currentWeek);
 
 	// Return processed data
 	return {
@@ -211,12 +63,12 @@ export const load: PageServerLoad = async ({ params, locals, parent, depends }) 
 		fixtures: fixturesWithPrediction,
 		predictions: predictionsMap,
 		teams: teamsMap,
-		isPastWeek,
-		lastUpdated: new Date().toISOString()
+		isPastWeek: week < currentWeek,
+		lastUpdated
 	};
 };
 
-// Action handlers (keeping them mostly the same)
+// Action handlers
 export const actions = {
 	submitPredictions: async ({ request, locals, params }) => {
 		// Check if user is authenticated
@@ -231,19 +83,14 @@ export const actions = {
 			throw error(400, 'Invalid week parameter');
 		}
 
-		// Get the valid fixtures for this week
-		const validFixtures = await getFixturesByWeek(week);
-
-		// Filter to only include fixtures that can be predicted
-		const predictableFixtures = validFixtures.filter(canPredictFixture);
-		const validFixtureIds = new Set(predictableFixtures.map((fixture) => fixture.id));
-
+		// Process form data
 		const data = await request.formData();
 		const predictionsData: Array<{
 			fixtureId: string;
 			homeScore: number;
 			awayScore: number;
 		}> = [];
+
 		// Process all form fields
 		const predictionEntries = new Map();
 		for (const [key, value] of data.entries()) {
@@ -254,18 +101,15 @@ export const actions = {
 				parts.shift();
 				const fixtureId = parts.join('-');
 
-				// Skip if fixture doesn't exist or team is invalid
-				if (!validFixtureIds.has(fixtureId) || (team !== 'home' && team !== 'away')) {
-					continue;
-				}
-
 				// Store the value in our map to collect home/away pairs
 				if (!predictionEntries.has(fixtureId)) {
 					predictionEntries.set(fixtureId, {});
 				}
 
 				const score = parseInt(value.toString()) || 0;
-				predictionEntries.get(fixtureId)[team] = score;
+				if (team && (team === 'home' || team === 'away')) {
+					predictionEntries.get(fixtureId)[team] = score;
+				}
 			}
 		}
 
@@ -291,8 +135,7 @@ export const actions = {
 			const results = await submitPrediction(userId, predictionsData);
 
 			// Clear cache to ensure fresh data on next load
-			const cacheKey = `week-${week}-${userId}`;
-			fixturesCache.delete(cacheKey);
+			clearFixtureCache(week, userId);
 
 			return {
 				success: true,
@@ -353,36 +196,11 @@ export const actions = {
 
 			if (updateResult.updated > 0) {
 				// Get updated fixtures from DB
-				const rawFixtures = await getFixturesByWeek(week);
-
-				// Sort and process fixtures
-				const sortedFixtures = [...rawFixtures].sort(
-					(a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
-				);
-
-				// Process fixtures with the same logic as in load function
-				fixtures = sortedFixtures.map((fixture) => {
-					const isPastWeek = false; // Not needed for updates
-					const matchDate = new Date(fixture.matchDate);
-					const isWeekend = matchDate.getDay() === 0 || matchDate.getDay() === 6;
-					const canPredict = canPredictFixture(fixture);
-
-					return {
-						...fixture,
-						canPredict,
-						isPastWeek,
-						isWeekend,
-						isLive: isFixtureLive(fixture.status),
-						predictionClosesAt: new Date(matchDate.getTime() - 60 * 60 * 1000)
-					};
-				});
+				const { fixturesWithPrediction } = await getFixturesWithPredictions('system', week, 0);
+				fixtures = fixturesWithPrediction;
 
 				// Invalidate all fixture caches for this week
-				for (const key of [...fixturesCache.keys()]) {
-					if (key.startsWith(`week-${week}`)) {
-						fixturesCache.delete(key);
-					}
-				}
+				clearFixtureCache(week);
 			} else {
 				// If no updates, return empty array to let client handle it
 				fixtures = [];

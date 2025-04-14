@@ -1,41 +1,46 @@
-import { error } from '@sveltejs/kit';
-import { getLeagueTable, checkAndUpdateRecentFixtures } from '$lib/server/football/predictions';
+import { db } from '$lib/server/db';
+import { leagueTable } from '$lib/server/db/schema';
+import { user } from '$lib/server/db/auth/auth-schema';
+import { desc, eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
+import { processRecentFixtures } from '$lib/scripts/recalculate-points-api';
+import { getCurrentWeek } from '$lib/server/football/fixtures';
 
-export const load: PageServerLoad = async ({ locals }) => {
-	// Check if user is authenticated
-	if (!locals.user?.id) {
-		throw error(401, 'You must be logged in to view the leaderboard');
-	}
-
+export const load = (async ({ locals }) => {
+	// Process recent fixtures and await the result to ensure points are calculated
+	// This ensures points are calculated for new completed matches before displaying the page
 	try {
-		// Check for fixtures that need updates - leaderboard is where users
-		// will look for updated standings after matches complete
-		// Force the update on leaderboard views to ensure latest scores
-		checkAndUpdateRecentFixtures(true)
-			.then((result) => {
-				if (result.potentiallyMissed > 0) {
-					console.log(
-						`Leaderboard: Found ${result.potentiallyMissed} fixtures that might have been missed, updating their scores and points.`
-					);
-				}
-				if (result.updated > 0) {
-					console.log(
-						`Leaderboard: Updated ${result.updated} fixtures, including ${result.live} live ones and ${result.recentlyCompleted} recently completed.`
-					);
-				}
-			})
-			.catch((err) => {
-				console.error('Error updating fixture statuses:', err);
-			});
-
-		const leaderboard = await getLeagueTable();
-
-		return {
-			leaderboard
-		};
+		const result = await processRecentFixtures();
+		if (result.processedPredictions > 0) {
+			console.log(
+				`Processed ${result.processedFixtures} fixtures and ${result.processedPredictions} predictions`
+			);
+		}
 	} catch (err) {
-		console.error('Error loading leaderboard data:', err);
-		throw error(500, { message: 'Failed to load leaderboard data' });
+		console.error('Points calculation error:', err);
 	}
-};
+
+	// Get the leaderboard data sorted by totalPoints in descending order
+	const leaderboard = await db
+		.select({
+			id: leagueTable.userId,
+			username: user.name,
+			totalPoints: leagueTable.totalPoints,
+			correctScorelines: leagueTable.correctScorelines,
+			correctOutcomes: leagueTable.correctOutcomes,
+			predictedFixtures: leagueTable.predictedFixtures,
+			completedFixtures: leagueTable.completedFixtures,
+			lastUpdated: leagueTable.lastUpdated
+		})
+		.from(leagueTable)
+		.innerJoin(user, eq(leagueTable.userId, user.id))
+		.orderBy(desc(leagueTable.totalPoints));
+
+	const currentWeek = await getCurrentWeek();
+
+	return {
+		currentWeek,
+		leaderboard,
+		session: locals.session
+	};
+}) satisfies PageServerLoad;
