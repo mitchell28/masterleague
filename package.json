@@ -28,6 +28,7 @@
 		"db:user-prediction-report": "vite-node src/lib/scripts/user-prediction-report.ts",
 		"db:recalculate-points": "vite-node src/lib/scripts/recalculate-points.ts",
 		"db:process-fixture": "vite-node src/lib/scripts/process-fixture.ts",
+		"db:fix-missing-scores": "vite-node src/lib/scripts/fix-missing-scores.ts",
 		"db:update-league-table": "vite-node src/lib/scripts/update-league-table.ts"
 	},
 	"devDependencies": {

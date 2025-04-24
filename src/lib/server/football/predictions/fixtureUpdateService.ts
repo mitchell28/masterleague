@@ -1,6 +1,6 @@
 import { db } from '../../db';
 import * as schema from '../../db/schema';
-import { eq, inArray, lt, gt, and, isNull, or, sql, between } from 'drizzle-orm';
+import { eq, inArray, lt, gt, and, isNull, or, sql, between, isNotNull } from 'drizzle-orm';
 import type { Fixture } from '../../db/schema';
 
 // More conservative cooldowns to reduce API calls
@@ -280,19 +280,29 @@ export async function checkAndUpdateRecentFixtures(
 export async function recoverMissedFixtures(): Promise<RecoveryResult> {
 	try {
 		const now = new Date();
-		const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+		const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
 		const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+		const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
-		console.log('Starting deep scan for missed fixtures...');
+		// 1. First priority: Find FINISHED fixtures with missing scores
+		const fixturesWithMissingScores: Fixture[] = await db
+			.select()
+			.from(schema.fixtures)
+			.where(
+				and(
+					eq(schema.fixtures.status, 'FINISHED'),
+					or(isNull(schema.fixtures.homeScore), isNull(schema.fixtures.awayScore)),
+					gt(schema.fixtures.matchDate, fourteenDaysAgo) // Look back up to 14 days
+				)
+			);
 
-		// Find fixtures that should be completed but might have wrong statuses or missing scores
-		// But be more conservative in what we check - focus on recent fixtures first
+		// 2. Second priority: Find fixtures with suspicious statuses (should be finished but aren't)
 		const suspiciousFixtures: Fixture[] = await db
 			.select()
 			.from(schema.fixtures)
 			.where(
 				and(
-					lt(schema.fixtures.matchDate, twoDaysAgo),
+					lt(schema.fixtures.matchDate, threeDaysAgo),
 					gt(schema.fixtures.matchDate, sevenDaysAgo),
 					or(
 						inArray(schema.fixtures.status, ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED']),
@@ -300,20 +310,82 @@ export async function recoverMissedFixtures(): Promise<RecoveryResult> {
 						isNull(schema.fixtures.awayScore)
 					)
 				)
-			)
-			.limit(30); // Process in smaller batches
+			);
 
-		if (suspiciousFixtures.length === 0) {
-			console.log('No suspicious fixtures found that need recovery');
+		// 3. Third priority: Find old "live" fixtures that may be stuck
+		const stuckLiveFixtures: Fixture[] = await db
+			.select()
+			.from(schema.fixtures)
+			.where(
+				and(
+					inArray(schema.fixtures.status, ['IN_PLAY', 'PAUSED']),
+					lt(schema.fixtures.matchDate, threeDaysAgo),
+					gt(schema.fixtures.matchDate, fourteenDaysAgo)
+				)
+			);
+
+		if (
+			fixturesWithMissingScores.length === 0 &&
+			suspiciousFixtures.length === 0 &&
+			stuckLiveFixtures.length === 0
+		) {
 			return { scanned: 0, updated: 0, reprocessedPredictions: 0 };
 		}
 
-		console.log(`Found ${suspiciousFixtures.length} suspicious fixtures that may need recovery`);
+		// Log what we found
+		if (fixturesWithMissingScores.length > 0) {
+			console.log(
+				`Found ${fixturesWithMissingScores.length} FINISHED fixtures with missing scores`
+			);
+			fixturesWithMissingScores.forEach((fixture) => {
+				console.log(
+					`- Fixture ${fixture.id}: Match date ${fixture.matchDate}, Status: ${fixture.status}, Scores: ${fixture.homeScore}-${fixture.awayScore}, Match ID: ${fixture.matchId || 'MISSING'}`
+				);
+			});
+		}
+
+		if (suspiciousFixtures.length > 0) {
+			console.log(
+				`Found ${suspiciousFixtures.length} suspicious fixtures that should be completed by now`
+			);
+			suspiciousFixtures.forEach((fixture) => {
+				console.log(
+					`- Fixture ${fixture.id}: Match date ${fixture.matchDate}, Status: ${fixture.status}, Match ID: ${fixture.matchId || 'MISSING'}`
+				);
+			});
+		}
+
+		if (stuckLiveFixtures.length > 0) {
+			console.log(
+				`Found ${stuckLiveFixtures.length} fixtures that appear to be stuck in live status`
+			);
+			stuckLiveFixtures.forEach((fixture) => {
+				console.log(
+					`- Fixture ${fixture.id}: Match date ${fixture.matchDate}, Status: ${fixture.status}, Match ID: ${fixture.matchId || 'MISSING'}`
+				);
+			});
+		}
+
+		// Combine all fixtures that need updates - filter out any fixtures without matchId as they can't be updated
+		const allFixtures = [
+			...fixturesWithMissingScores,
+			...suspiciousFixtures,
+			...stuckLiveFixtures
+		].filter((fixture) => !!fixture.matchId);
+
+		// Get unique fixture IDs
+		const uniqueFixtureIds = [...new Set(allFixtures.map((fixture) => fixture.id))];
+
+		if (uniqueFixtureIds.length === 0) {
+			console.log('No fixtures with valid matchId found to update');
+			return { scanned: allFixtures.length, updated: 0, reprocessedPredictions: 0 };
+		}
+
+		console.log(`Updating ${uniqueFixtureIds.length} fixtures with valid matchId...`);
 
 		// Update these fixtures, forcing a deeper check
 		const { updateFixtureStatuses } = await import('../fixtures');
-		const fixtureIds = suspiciousFixtures.map((fixture) => fixture.id);
-		const result = await updateFixtureStatuses(fixtureIds);
+		const result = await updateFixtureStatuses(uniqueFixtureIds);
 
 		// Find predictions associated with updated fixtures that have null points
 		const updatedPredictions = await db
@@ -322,7 +394,10 @@ export async function recoverMissedFixtures(): Promise<RecoveryResult> {
 			})
 			.from(schema.predictions)
 			.where(
-				and(inArray(schema.predictions.fixtureId, fixtureIds), isNull(schema.predictions.points))
+				and(
+					inArray(schema.predictions.fixtureId, uniqueFixtureIds),
+					isNull(schema.predictions.points)
+				)
 			);
 
 		const count = Number(updatedPredictions[0]?.count || 0);
@@ -331,15 +406,31 @@ export async function recoverMissedFixtures(): Promise<RecoveryResult> {
 		if (count > 0) {
 			console.log(`Reprocessing ${count} predictions with null points`);
 
-			for (const fixture of suspiciousFixtures) {
-				if (
-					fixture.homeScore !== null &&
-					fixture.awayScore !== null &&
-					fixture.status === 'FINISHED'
-				) {
+			// Process updated fixtures that are now FINISHED and have scores
+			const updatedFixtures = await db
+				.select()
+				.from(schema.fixtures)
+				.where(
+					and(
+						inArray(schema.fixtures.id, uniqueFixtureIds),
+						eq(schema.fixtures.status, 'FINISHED'),
+						isNotNull(schema.fixtures.homeScore),
+						isNotNull(schema.fixtures.awayScore)
+					)
+				);
+
+			for (const fixture of updatedFixtures) {
+				if (fixture.homeScore !== null && fixture.awayScore !== null) {
 					try {
 						const { processPredictionsForFixture } = await import('./predictionRepository');
-						await processPredictionsForFixture(fixture.id, fixture.homeScore, fixture.awayScore);
+						const processResult = await processPredictionsForFixture(
+							fixture.id,
+							fixture.homeScore,
+							fixture.awayScore
+						);
+						console.log(
+							`Processed fixture ${fixture.id}: ${processResult.processed} predictions, ${processResult.pointsAllocated} points allocated`
+						);
 					} catch (error) {
 						console.error(`Error reprocessing predictions for fixture ${fixture.id}:`, error);
 					}
@@ -348,7 +439,7 @@ export async function recoverMissedFixtures(): Promise<RecoveryResult> {
 		}
 
 		return {
-			scanned: suspiciousFixtures.length,
+			scanned: allFixtures.length,
 			updated: result.updated,
 			reprocessedPredictions: count
 		};

@@ -220,18 +220,19 @@
 		</div>
 	</div>
 
-	<!-- Featured Action - Calculate All Points -->
-	<div class="mb-8">
+	<!-- Featured Actions Section -->
+	<div class="mb-8 grid gap-6 md:grid-cols-2">
+		<!-- Calculate All Points Card -->
 		<div class="rounded-lg border border-purple-700 bg-purple-950/30 p-6 shadow-xl">
-			<div class="flex flex-col md:flex-row md:items-center md:justify-between">
-				<div class="mb-4 md:mb-0">
+			<div class="flex flex-col">
+				<div class="mb-4">
 					<div class="flex items-center">
 						<div class="mr-3 rounded-md bg-purple-900/50 p-3">
 							<Calculator class="h-8 w-8 text-purple-400" />
 						</div>
 						<h2 class="text-2xl font-bold text-white">Calculate All Points</h2>
 					</div>
-					<p class="mt-2 max-w-2xl text-slate-300">
+					<p class="mt-2 text-slate-300">
 						Recalculates all prediction points based on match results. Use this after fixing data
 						issues or if the leaderboard seems incorrect. This operation may take several minutes.
 					</p>
@@ -240,14 +241,46 @@
 				<button
 					disabled={loading}
 					onclick={() => handleAction('recalculateAllPoints')}
-					class="flex items-center justify-center rounded-md bg-purple-600 px-6 py-3 text-base font-medium text-white shadow-lg hover:bg-purple-700 disabled:opacity-50"
+					class="mt-2 flex items-center justify-center rounded-md bg-purple-600 px-6 py-3 text-base font-medium text-white shadow-lg hover:bg-purple-700 disabled:opacity-50"
 				>
-					{#if loading}
+					{#if loading && actionHistory[0]?.action.includes('Calculate')}
 						<Loader2 class="mr-2 h-5 w-5 animate-spin" />
 						Processing...
 					{:else}
 						<Award class="mr-2 h-5 w-5" />
 						Calculate Now
+					{/if}
+				</button>
+			</div>
+		</div>
+
+		<!-- Fix Missing Scores Card -->
+		<div class="rounded-lg border border-orange-700 bg-orange-950/30 p-6 shadow-xl">
+			<div class="flex flex-col">
+				<div class="mb-4">
+					<div class="flex items-center">
+						<div class="mr-3 rounded-md bg-orange-900/50 p-3">
+							<AlertTriangle class="h-8 w-8 text-orange-400" />
+						</div>
+						<h2 class="text-2xl font-bold text-white">Fix Missing Scores</h2>
+					</div>
+					<p class="mt-2 text-slate-300">
+						Checks for and fixes fixtures with missing scores or incorrect statuses. This helps
+						ensure all prediction points are calculated correctly for the leaderboard.
+					</p>
+				</div>
+
+				<button
+					disabled={loading}
+					onclick={() => handleAction('recoverFixtures')}
+					class="mt-2 flex items-center justify-center rounded-md bg-orange-600 px-6 py-3 text-base font-medium text-white shadow-lg hover:bg-orange-700 disabled:opacity-50"
+				>
+					{#if loading && actionHistory[0]?.action.includes('Recover')}
+						<Loader2 class="mr-2 h-5 w-5 animate-spin" />
+						Processing...
+					{:else}
+						<RefreshCw class="mr-2 h-5 w-5" />
+						Run Score Check
 					{/if}
 				</button>
 			</div>
@@ -287,15 +320,17 @@
 							<button
 								disabled={loading}
 								onclick={() => handleAction('recoverFixtures')}
-								class="flex w-full items-center justify-center rounded-md bg-indigo-600 px-4 py-3 text-sm font-medium text-white shadow hover:bg-indigo-700 disabled:opacity-50"
+								class="flex w-full items-center justify-center rounded-md bg-orange-600 px-4 py-3 text-sm font-medium text-white shadow hover:bg-orange-700 disabled:opacity-50"
 							>
-								{#if loading && actionHistory[0]?.action.includes('Missed Fixtures')}
+								{#if loading && actionHistory[0]?.action.includes('Recover')}
 									<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+								{:else}
+									<AlertTriangle class="mr-2 h-4 w-4" />
 								{/if}
-								Recover Missed Fixtures
+								Fix Missing Scores
 							</button>
 							<p class="mt-1 text-xs text-slate-400">
-								Recover any fixtures that might have been missed
+								Find and fix fixtures with missing scores or incorrect statuses
 							</p>
 						</div>
 					</div>

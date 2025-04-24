@@ -1,6 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import { updateFixtureStatuses } from '$lib/server/football/fixtures/index';
-import { submitPrediction } from '$lib/server/football/predictions/';
+import { recoverMissedFixtures, submitPrediction } from '$lib/server/football/predictions/';
 import {
 	getFixturesWithPredictions,
 	isFixtureLive,
@@ -9,6 +9,25 @@ import {
 import type { PageServerLoad, Actions } from './$types';
 import type { Fixture } from '$lib/server/db/schema';
 import { processRecentFixtures } from '$lib/scripts/recalculate-points-api';
+
+/**
+ * Update fixtures with missing scores
+ * This will fetch data from the football API
+ */
+async function updateMissingScores(): Promise<{ updated: number; processed: number }> {
+	try {
+		// Call recoverMissedFixtures which now returns an object with detailed results
+		const result = await recoverMissedFixtures();
+
+		return {
+			updated: result.updated,
+			processed: result.reprocessedPredictions
+		};
+	} catch (err) {
+		console.error('Error updating fixtures with missing scores:', err);
+		return { updated: 0, processed: 0 };
+	}
+}
 
 export const load: PageServerLoad = async ({ params, locals, parent, depends }) => {
 	// Add dependency for invalidation
@@ -41,6 +60,8 @@ export const load: PageServerLoad = async ({ params, locals, parent, depends }) 
 			console.log(
 				`Processed ${result.processedFixtures} fixtures and ${result.processedPredictions} predictions`
 			);
+			// Check for and update any fixtures with missing scores
+			await updateMissingScores();
 		}
 	} catch (err) {
 		console.error('Points calculation error:', err);
