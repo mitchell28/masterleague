@@ -1,8 +1,11 @@
+import { username } from 'better-auth/plugins';
 import { pgTable, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
 
 // Prefix auth tables with 'auth_' to avoid conflicts
 export const user = pgTable('auth_user', {
 	id: text('id').primaryKey(),
+	username: text('username').unique(),
+	displayUsername: text('display_name'),
 	name: text('name').notNull(),
 	email: text('email').notNull().unique(),
 	emailVerified: boolean('email_verified').notNull(),

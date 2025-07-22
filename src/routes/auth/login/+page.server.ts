@@ -1,18 +1,17 @@
 import { redirect } from '@sveltejs/kit';
+import { superValidate, message } from 'sveltekit-superforms';
+import { zod } from 'sveltekit-superforms/adapters';
+import { authLoginSchema } from '$lib/validation/auth-schemas';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const session = locals.session;
 
-	const redirectPath = '/predictions';
-
 	if (session) {
-		return redirect(302, redirectPath);
+		redirect(302, '/predictions');
 	}
 
-	// Also used on client signin page as callbackURL
-	console.log('Session not found, redirecting to login page', redirectPath);
 	return {
-		redirectPath
+		form: await superValidate(zod(authLoginSchema))
 	};
 };

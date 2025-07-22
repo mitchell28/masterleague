@@ -1,5 +1,6 @@
 // See https://kit.svelte.dev/docs/types#app
 // for information about these interfaces
+import type { Session, User } from '$lib/server/db/auth/auth';
 
 declare global {
 	namespace App {
@@ -8,7 +9,6 @@ declare global {
 			user: User | undefined;
 		}
 		// interface Error {}
-		// interface Locals {}
 		// interface PageData {}
 		// interface Platform {}
 	}

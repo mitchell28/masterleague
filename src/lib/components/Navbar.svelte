@@ -63,6 +63,7 @@
 
 				{#if !item.adminOnly || $session.data?.user?.role === 'admin'}
 					<a
+						data-sveltekit-preload-data="hover"
 						href={item.href}
 						class="relative flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-all duration-200
 							{isActive

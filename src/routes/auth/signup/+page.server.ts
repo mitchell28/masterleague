@@ -1,17 +1,17 @@
 import { redirect } from '@sveltejs/kit';
+import { superValidate } from 'sveltekit-superforms';
+import { zod } from 'sveltekit-superforms/adapters';
+import { authSignupSchema } from '$lib/validation/auth-schemas';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const session = locals.session;
 
-	const redirectPath = '/predictions';
-
 	if (session) {
-		redirect(302, redirectPath);
+		redirect(302, '/predictions');
 	}
 
-	// Also used on client signin page as callbackURL
 	return {
-		redirectPath
+		form: await superValidate(zod(authSignupSchema))
 	};
 };
