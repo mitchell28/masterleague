@@ -23,6 +23,11 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		throw redirect(302, '/auth/login');
 	}
 
+	// Check if email is verified
+	if (!locals.user.emailVerified) {
+		throw redirect(302, '/auth/verify-email');
+	}
+
 	// Start with cached values for faster initial load
 	let currentWeek = cachedCurrentWeek || 1;
 	let weeks = cachedWeeks || [1];
@@ -30,12 +35,10 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	// Get current week (cached)
 	if (!cachedCurrentWeek || Date.now() - currentWeekCacheTime > CURRENT_WEEK_CACHE_TTL) {
 		try {
-			// Use Promise.resolve to avoid blocking the main thread
-			Promise.resolve().then(async () => {
-				const fetchedWeek = await getCurrentWeek();
-				cachedCurrentWeek = fetchedWeek;
-				currentWeekCacheTime = Date.now();
-			});
+			const fetchedWeek = await getCurrentWeek();
+			cachedCurrentWeek = fetchedWeek;
+			currentWeekCacheTime = Date.now();
+			currentWeek = fetchedWeek;
 		} catch (err) {
 			console.error('Error getting current week:', err);
 			// Continue with cached value
@@ -45,17 +48,15 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	// Get available weeks (cached)
 	if (!cachedWeeks || Date.now() - weeksCacheTime > WEEKS_CACHE_TTL) {
 		try {
-			// Use Promise.resolve to avoid blocking the main thread
-			Promise.resolve().then(async () => {
-				const weeksQuery = await db
-					.select({ weekId: fixturesSchema.weekId })
-					.from(fixturesSchema)
-					.groupBy(fixturesSchema.weekId)
-					.orderBy(fixturesSchema.weekId);
+			const weeksQuery = await db
+				.select({ weekId: fixturesSchema.weekId })
+				.from(fixturesSchema)
+				.groupBy(fixturesSchema.weekId)
+				.orderBy(fixturesSchema.weekId);
 
-				cachedWeeks = weeksQuery.map((row) => row.weekId);
-				weeksCacheTime = Date.now();
-			});
+			cachedWeeks = weeksQuery.map((row) => row.weekId);
+			weeksCacheTime = Date.now();
+			weeks = cachedWeeks;
 		} catch (err) {
 			console.error('Error fetching available weeks:', err);
 			// Continue with cached value

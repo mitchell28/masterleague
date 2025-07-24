@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { Menu, X, Trophy, Home, Settings, LogOut, LogIn, UserPlus } from '@lucide/svelte';
+	import { Menu, X, Trophy, Home, Settings, LogOut, LogIn, UserPlus, Users } from '@lucide/svelte';
 	import { authClient } from '$lib/client/auth-client';
 	import { fly } from 'svelte/transition';
 	import logo from '$lib/assets/logo/master_league_logo.png';
@@ -12,6 +12,7 @@
 	const navItems = [
 		{ href: '/predictions', label: 'Predictions', icon: 'Home', adminOnly: false },
 		{ href: '/leaderboard', label: 'Leaderboard', icon: 'Trophy', adminOnly: false },
+		{ href: '/groups', label: 'Groups', icon: 'Users', adminOnly: false },
 		{ href: '/admin', label: 'Admin', icon: 'Settings', adminOnly: true }
 	];
 
@@ -74,6 +75,8 @@
 							<Home class="size-4" />
 						{:else if item.icon === 'Trophy'}
 							<Trophy class="size-4" />
+						{:else if item.icon === 'Users'}
+							<Users class="size-4" />
 						{:else if item.icon === 'Settings'}
 							<Settings class="size-4" />
 						{/if}
@@ -164,6 +167,8 @@
 								<Home class="size-5" />
 							{:else if item.icon === 'Trophy'}
 								<Trophy class="size-5" />
+							{:else if item.icon === 'Users'}
+								<Users class="size-5" />
 							{:else if item.icon === 'Settings'}
 								<Settings class="size-5" />
 							{/if}

@@ -8,24 +8,73 @@
 
 	// Using runes to access page data
 	let { weeks, currentWeek } = $derived(page.data);
-	let week = $derived(page.params.week ? parseInt(page.params.week) : currentWeek);
 
-	// Change week from dropdown
+	// Enhanced week parsing with better type safety - Svelte 5 syntax
+	let week = $derived(
+		page.params.week
+			? isNaN(parseInt(page.params.week, 10))
+				? currentWeek
+				: parseInt(page.params.week, 10)
+			: currentWeek
+	);
+
+	// State for managing week transitions and validation
+	let isValidWeek = $state(true);
+	let weekStatus = $state<'current' | 'past' | 'future'>('current');
+	let showFutureWeekMessage = $state(false);
+
+	// Effect to handle week validation and status updates
+	$effect(() => {
+		if (weeks && week !== undefined && currentWeek !== undefined) {
+			// Both week and currentWeek should be numbers at this point
+			const weekNum = Number(week);
+			const currentWeekNum = Number(currentWeek);
+
+			// Check if week is valid (exists in weeks array)
+			isValidWeek = weeks.includes(weekNum);
+
+			// Determine week status relative to current week
+			if (weekNum > currentWeekNum) {
+				weekStatus = 'future';
+				showFutureWeekMessage = true;
+			} else if (weekNum < currentWeekNum) {
+				weekStatus = 'past';
+				showFutureWeekMessage = false;
+			} else {
+				weekStatus = 'current';
+				showFutureWeekMessage = false;
+			}
+		}
+	});
+
+	// Effect to handle invalid week navigation
+	$effect(() => {
+		if (!isValidWeek && weeks && weeks.length > 0 && currentWeek !== undefined) {
+			// Redirect to current week if invalid week is accessed
+			console.warn(`Invalid week ${week}, redirecting to current week ${currentWeek}`);
+			goto(`/predictions/${currentWeek}`, { replaceState: true });
+		}
+	});
+
+	// Enhanced week change handler with validation
 	function changeWeek(event: Event) {
 		const target = event.target as HTMLSelectElement;
-		const newWeek = parseInt(target.value);
+		const newWeek = parseInt(target.value, 10);
 
-		// Only navigate if actually changing weeks
-		if (newWeek !== week) {
+		// Validate the new week
+		if (isNaN(newWeek)) {
+			console.error('Invalid week selected');
+			return;
+		}
+
+		// Only navigate if actually changing weeks and week is valid
+		if (newWeek !== week && weeks.includes(newWeek)) {
 			goto(`/predictions/${newWeek}`);
 		}
 	}
-
-	// Fix the condition to correctly check for future weeks
-	let showFutureWeekMessage = $derived(parseInt(week) > parseInt(currentWeek));
 </script>
 
-<div class="container mx-auto max-w-6xl p-4">
+<div class="container mx-auto mt-26 max-w-6xl p-4">
 	<div class="mb-6 flex items-center justify-between">
 		<h1 class="text-3xl font-bold">Week {week} Predictions</h1>
 	</div>
@@ -35,26 +84,30 @@
 			<div class="flex items-center gap-2">
 				<Info class="size-5" />
 				<span>
-					You're viewing a future week. You can make predictions for any match with "upcoming"
-					status.
+					You're viewing a future week (Week {week}). You can make predictions for any match with
+					"upcoming" status.
 				</span>
 			</div>
 		</div>
 	{/if}
 
-	<!-- Week navigation panel - optimized -->
+	<!-- Week navigation panel - enhanced with status indicators -->
 	<div class="mb-8 rounded-xl border border-slate-700 bg-slate-800/50 p-4 shadow-lg">
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-			<!-- Current week indicator -->
+			<!-- Enhanced current week indicator with status -->
 			<div>
 				<span class="text-sm font-medium text-slate-300">Current League Week: {currentWeek}</span>
-				{#if week !== currentWeek}
-					<span class="ml-2 rounded-full bg-yellow-500 px-2 py-0.5 text-xs font-bold text-black">
-						Week {week}
-					</span>
-				{:else}
+				{#if weekStatus === 'current'}
 					<span class="ml-2 rounded-full bg-green-500 px-2 py-0.5 text-xs font-bold text-black">
 						Current
+					</span>
+				{:else if weekStatus === 'future'}
+					<span class="ml-2 rounded-full bg-blue-500 px-2 py-0.5 text-xs font-bold text-white">
+						Future - Week {week}
+					</span>
+				{:else if weekStatus === 'past'}
+					<span class="ml-2 rounded-full bg-gray-500 px-2 py-0.5 text-xs font-bold text-white">
+						Past - Week {week}
 					</span>
 				{/if}
 			</div>

@@ -1,10 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { authClient } from '$lib/client/auth-client';
 	import { z } from 'zod';
 	import { Loader2 } from '@lucide/svelte';
 
 	const session = authClient.useSession();
+
+	// Get redirect URL from query params, default to predictions
+	let redirectTo = $derived($page.url.searchParams.get('redirectTo') || '/predictions');
 
 	// Form state using runes
 	let email: string = $state('');
@@ -80,7 +84,7 @@
 				},
 				{
 					onSuccess: () => {
-						goto('/predictions');
+						goto(redirectTo);
 					},
 					onError: (ctx) => {
 						errorMessage = ctx.error.message;
@@ -114,145 +118,170 @@
 	}
 </script>
 
-<div class="mx-auto max-w-md p-8">
+<div
+	class="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4"
+>
 	{#if $session.data}
-		<div class="text-center">
-			<h1 class="mb-4 text-2xl font-bold">Welcome back!</h1>
-			<p class="mb-4">
-				Hello, {$session?.data?.user.name}
-			</p>
+		<div
+			class="w-full max-w-md rounded-2xl border border-slate-700/50 bg-slate-800/50 p-8 text-center backdrop-blur-sm"
+		>
+			<div class="mb-6">
+				<div
+					class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600"
+				>
+					<span class="text-2xl font-bold text-white">ML</span>
+				</div>
+			</div>
+			<h1 class="mb-4 text-2xl font-bold text-white">Welcome back!</h1>
+			<p class="mb-6 text-slate-300">Hello, {$session?.data?.user.name}</p>
 			<button
 				onclick={async () => {
 					await authClient.signOut();
 				}}
-				class="rounded-md bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none"
+				class="w-full rounded-lg bg-red-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-slate-800 focus:outline-none"
 			>
 				Sign Out
 			</button>
 		</div>
 	{:else}
-		<h1 class="mb-8 text-center text-2xl font-bold">
-			{step === 'email' ? 'Sign In with Email Code' : 'Enter Verification Code'}
-		</h1>
-
-		{#if successMessage}
-			<div class="mb-4 rounded-md bg-green-50 p-3">
-				<p class="text-sm text-green-700">{successMessage}</p>
+		<div
+			class="w-full max-w-md rounded-2xl border border-slate-700/50 bg-slate-800/50 p-8 backdrop-blur-sm"
+		>
+			<div class="mb-8 text-center">
+				<div
+					class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600"
+				>
+					<span class="text-2xl font-bold text-white">ML</span>
+				</div>
+				<h1 class="mb-2 text-3xl font-bold text-white">
+					{step === 'email' ? 'Sign in with magic link' : 'Enter verification code'}
+				</h1>
+				<p class="text-slate-400">
+					{step === 'email' ? "We'll send you a secure code" : `Code sent to ${email}`}
+				</p>
 			</div>
-		{/if}
 
-		<form onsubmit={onSubmit}>
-			{#if step === 'email'}
-				<div class="mb-4">
-					<label for="email" class="mb-2 block font-medium">Email Address</label>
-					<input
-						type="email"
-						id="email"
-						name="email"
-						oninput={handleInput}
-						value={email}
-						class="w-full rounded-md border border-gray-300 px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-						placeholder="Enter your email address"
-						autocomplete="email"
-						required
-					/>
-					{#if errors.email}
-						<p class="mt-1 text-sm text-red-500">{errors.email}</p>
-					{/if}
-				</div>
-
-				<button
-					type="submit"
-					disabled={isLoading || !isEmailValid}
-					class="mb-4 w-full rounded-md bg-indigo-600 px-3 py-3 font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-400 disabled:hover:bg-gray-400"
-				>
-					{#if isLoading}
-						<div class="flex items-center justify-center">
-							<Loader2 class="mr-2 h-5 w-5 animate-spin text-white" />
-							Sending Code...
-						</div>
-					{:else}
-						Send Verification Code
-					{/if}
-				</button>
-			{:else}
-				<div class="mb-4">
-					<label for="otp" class="mb-2 block font-medium">Verification Code</label>
-					<input
-						type="text"
-						id="otp"
-						name="otp"
-						oninput={handleInput}
-						value={otp}
-						maxlength="6"
-						class="w-full rounded-md border border-gray-300 px-3 py-3 text-center font-mono text-2xl tracking-widest focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-						placeholder="000000"
-						autocomplete="one-time-code"
-						required
-					/>
-					{#if errors.otp}
-						<p class="mt-1 text-sm text-red-500">{errors.otp}</p>
-					{/if}
-					<p class="mt-2 text-sm text-gray-600">
-						Enter the 6-digit code sent to {email}
-					</p>
-				</div>
-
-				<button
-					type="submit"
-					disabled={isLoading || !isOtpValid}
-					class="mb-4 w-full rounded-md bg-indigo-600 px-3 py-3 font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-400 disabled:hover:bg-gray-400"
-				>
-					{#if isLoading}
-						<div class="flex items-center justify-center">
-							<Loader2 class="mr-2 h-5 w-5 animate-spin text-white" />
-							Verifying...
-						</div>
-					{:else}
-						Sign In
-					{/if}
-				</button>
-
-				<button
-					type="button"
-					onclick={goBack}
-					class="mb-4 w-full rounded-md border border-gray-300 px-3 py-3 font-medium text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none"
-				>
-					Back to Email
-				</button>
-
-				<div class="text-center">
-					<button
-						type="button"
-						onclick={sendOTP}
-						disabled={isLoading}
-						class="text-sm text-indigo-600 hover:text-indigo-800 hover:underline disabled:text-gray-400"
-					>
-						Resend Code
-					</button>
+			{#if successMessage}
+				<div class="mb-6 rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+					<p class="text-sm text-green-400">{successMessage}</p>
 				</div>
 			{/if}
 
 			{#if errorMessage}
-				<div class="mb-4 rounded-md bg-red-50 p-3">
-					<p class="text-sm text-red-700">{errorMessage}</p>
+				<div class="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4">
+					<p class="text-sm text-red-400">{errorMessage}</p>
 				</div>
 			{/if}
-		</form>
 
-		<div class="mt-6 text-center">
-			<p class="text-sm text-gray-600">
-				Prefer password? <a
-					href="/auth/login"
-					class="text-indigo-600 hover:text-indigo-800 hover:underline">Sign in with password</a
-				>
-			</p>
-			<p class="mt-2 text-sm text-gray-600">
-				Don't have an account? <a
-					href="/auth/signup"
-					class="text-indigo-600 hover:text-indigo-800 hover:underline">Sign up</a
-				>
-			</p>
+			<form onsubmit={onSubmit} class="space-y-6">
+				{#if step === 'email'}
+					<div>
+						<label for="email" class="mb-2 block text-sm font-medium text-slate-300">E-mail</label>
+						<input
+							type="email"
+							id="email"
+							name="email"
+							oninput={handleInput}
+							value={email}
+							class="w-full rounded-lg border border-slate-600 bg-slate-700/50 px-4 py-3 text-white placeholder-slate-400 transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+							placeholder="Enter your email address"
+							autocomplete="email"
+							required
+						/>
+						{#if errors.email}
+							<p class="mt-2 text-sm text-red-400">{errors.email}</p>
+						{/if}
+					</div>
+
+					<button
+						type="submit"
+						disabled={isLoading || !isEmailValid}
+						class="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 font-semibold text-white transition-all duration-200 hover:from-indigo-700 hover:to-purple-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+					>
+						{#if isLoading}
+							<div class="flex items-center justify-center">
+								<Loader2 class="mr-2 h-5 w-5 animate-spin" />
+								Sending code...
+							</div>
+						{:else}
+							Send verification code
+						{/if}
+					</button>
+				{:else}
+					<div>
+						<label for="otp" class="mb-2 block text-sm font-medium text-slate-300"
+							>Verification Code</label
+						>
+						<input
+							type="text"
+							id="otp"
+							name="otp"
+							oninput={handleInput}
+							value={otp}
+							maxlength="6"
+							class="w-full rounded-lg border border-slate-600 bg-slate-700/50 px-4 py-3 text-center font-mono text-2xl tracking-widest text-white placeholder-slate-400 transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+							placeholder="000000"
+							autocomplete="one-time-code"
+							required
+						/>
+						{#if errors.otp}
+							<p class="mt-2 text-sm text-red-400">{errors.otp}</p>
+						{/if}
+						<p class="mt-2 text-sm text-slate-400">
+							Enter the 6-digit code sent to {email}
+						</p>
+					</div>
+
+					<button
+						type="submit"
+						disabled={isLoading || !isOtpValid}
+						class="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 font-semibold text-white transition-all duration-200 hover:from-indigo-700 hover:to-purple-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+					>
+						{#if isLoading}
+							<div class="flex items-center justify-center">
+								<Loader2 class="mr-2 h-5 w-5 animate-spin" />
+								Verifying...
+							</div>
+						{:else}
+							Sign in
+						{/if}
+					</button>
+
+					<button
+						type="button"
+						onclick={goBack}
+						class="w-full rounded-lg border border-slate-600 bg-slate-700/50 px-4 py-3 font-medium text-slate-300 transition-colors hover:bg-slate-700 hover:text-white focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-800 focus:outline-none"
+					>
+						Back to email
+					</button>
+
+					<div class="text-center">
+						<button
+							type="button"
+							onclick={sendOTP}
+							disabled={isLoading}
+							class="text-sm text-indigo-400 transition-colors hover:text-indigo-300 hover:underline disabled:text-slate-500"
+						>
+							Resend code
+						</button>
+					</div>
+				{/if}
+			</form>
+
+			<div class="mt-6 text-center">
+				<p class="text-sm text-slate-400">
+					Prefer password?
+					<a href="/auth/login" class="text-indigo-400 hover:text-indigo-300 hover:underline">
+						Sign in with password
+					</a>
+				</p>
+				<p class="mt-2 text-sm text-slate-400">
+					Don't have an account?
+					<a href="/auth/signup" class="text-indigo-400 hover:text-indigo-300 hover:underline">
+						Sign up
+					</a>
+				</p>
+			</div>
 		</div>
 	{/if}
 </div>

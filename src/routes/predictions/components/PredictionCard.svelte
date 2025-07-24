@@ -42,25 +42,13 @@
 			fixture.awayScore !== null
 	);
 
-	// Initialize state with runes - but only once
+	// Initialize state with runes
 	let homeScore = $state(prediction?.home ?? 0);
 	let awayScore = $state(prediction?.away ?? 0);
 
-	// Track if we've been initialized to avoid multiple updates
-	let initialized = $state(false);
-
-	// Initialize once when the component mounts or prediction changes
+	// Sync with prediction changes
 	$effect(() => {
-		if (!initialized && prediction) {
-			homeScore = prediction.home;
-			awayScore = prediction.away;
-			initialized = true;
-		} else if (
-			prediction &&
-			(homeScore !== prediction.home || awayScore !== prediction.away) &&
-			!readOnly
-		) {
-			// Only update from props if really needed - prevents loops
+		if (prediction) {
 			homeScore = prediction.home;
 			awayScore = prediction.away;
 		}
@@ -69,7 +57,7 @@
 	// Direct handler for score changes - debounce to prevent too many updates
 	let updateTimeout: ReturnType<typeof setTimeout> | null = null;
 	function handleScoreChange() {
-		if (!readOnly && prediction !== null) {
+		if (!readOnly) {
 			if (updateTimeout) {
 				clearTimeout(updateTimeout);
 			}
@@ -99,8 +87,10 @@
 	function getStatusDisplay(status: string): { text: string; classes: string } {
 		switch (status) {
 			case 'FINISHED':
+			case 'completed':
 				return { text: 'Completed', classes: 'bg-green-900 text-green-200' };
 			case 'IN_PLAY':
+			case 'in_play':
 				return { text: 'Live', classes: 'animate-pulse bg-red-900 text-red-200' };
 			case 'PAUSED':
 				return { text: 'Paused', classes: 'animate-pulse bg-orange-900 text-orange-200' };
@@ -113,6 +103,7 @@
 			case 'AWARDED':
 				return { text: 'Awarded', classes: 'bg-blue-900 text-blue-200' };
 			case 'TIMED':
+			case 'upcoming':
 				return { text: 'Upcoming', classes: 'bg-blue-900 text-blue-200' };
 			case 'SCHEDULED':
 				return { text: 'Scheduled', classes: 'bg-indigo-900 text-indigo-200' };
@@ -126,9 +117,9 @@
 	function getSpecialBadge(fixture: Fixture): { text: string; color: string } | null {
 		if (fixture.pointsMultiplier > 1) {
 			if (fixture.pointsMultiplier === 3) {
-				return { text: '3x Points', color: 'bg-gradient-to-r from-amber-500 to-yellow-400' };
+				return { text: 'Triple Points', color: 'bg-gradient-to-r from-amber-500 to-yellow-400' };
 			} else if (fixture.pointsMultiplier === 2) {
-				return { text: '2x Points', color: 'bg-gradient-to-r from-blue-500 to-indigo-400' };
+				return { text: 'Double Points', color: 'bg-gradient-to-r from-blue-500 to-indigo-400' };
 			} else {
 				return { text: `${fixture.pointsMultiplier}x Points`, color: 'bg-amber-400' };
 			}
@@ -298,15 +289,14 @@
 								class="h-8 w-10 border-t border-b border-slate-600 bg-slate-800 text-center text-white"
 								value={team === 'home' ? homeScore : awayScore}
 								oninput={(e) => {
-									if (e && e.target && 'value' in e.target) {
-										const value = parseInt(e.target.value as string);
-										if (team === 'home') {
-											homeScore = isNaN(value) ? 0 : value;
-										} else {
-											awayScore = isNaN(value) ? 0 : value;
-										}
-										handleScoreChange();
+									const target = e.target as HTMLInputElement;
+									const value = Math.max(0, Math.min(20, parseInt(target.value) || 0));
+									if (team === 'home') {
+										homeScore = value;
+									} else {
+										awayScore = value;
 									}
+									handleScoreChange();
 								}}
 							/>
 							<button

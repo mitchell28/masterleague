@@ -84,7 +84,9 @@ export const load: PageServerLoad = async ({ params, locals, parent, depends }) 
 		fixtures: fixturesWithPrediction,
 		predictions: predictionsMap,
 		teams: teamsMap,
-		isPastWeek: week < currentWeek,
+		// During pre-season (before 2025 fixtures), don't mark weeks as past
+		// This prevents showing "past week" when we're just waiting for new season fixtures
+		isPastWeek: fixturesWithPrediction.length > 0 && week < currentWeek,
 		lastUpdated
 	};
 };

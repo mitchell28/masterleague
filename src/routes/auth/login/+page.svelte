@@ -30,112 +30,137 @@
 						goto('/predictions');
 					},
 					onError: (ctx) => {
+						// Handle rate limiting specifically
+						if (ctx.error.status === 429) {
+							const retryAfter = ctx.error.headers?.get('X-Retry-After');
+							$message = `Too many login attempts. Please wait ${retryAfter || 60} seconds before trying again.`;
+						} else {
+							// Use generic error message for security
+							// Don't reveal if email exists, is unverified, etc.
+							$message = 'Invalid email or password. Please check your credentials and try again.';
+						}
 						console.error('Sign in error:', ctx.error);
 					}
 				}
 			);
 		} catch (error) {
+			// Generic error message for any unexpected errors
+			$message = 'Login failed. Please try again.';
 			console.error('Sign in failed:', error);
 		}
 	}
 </script>
 
-<div class="mx-auto max-w-md p-8">
+<div
+	class="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4"
+>
 	{#if $session.data}
-		<div class="text-center">
-			<h1 class="mb-4 text-2xl font-bold">Welcome back!</h1>
-			<p class="mb-4">Hello, {$session?.data?.user.name}</p>
+		<div
+			class="w-full max-w-md rounded-2xl border border-slate-700/50 bg-slate-800/50 p-8 text-center backdrop-blur-sm"
+		>
+			<div class="mb-6">
+				<div
+					class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600"
+				>
+					<span class="text-2xl font-bold text-white">ML</span>
+				</div>
+			</div>
+			<h1 class="mb-4 text-2xl font-bold text-white">Welcome back!</h1>
+			<p class="mb-6 text-slate-300">Hello, {$session?.data?.user.name}</p>
 			<button
 				onclick={async () => {
 					await authClient.signOut();
 				}}
-				class="rounded-md bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:outline-none"
+				class="w-full rounded-lg bg-red-600 px-4 py-3 font-medium text-white transition-colors hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-slate-800 focus:outline-none"
 			>
 				Sign Out
 			</button>
 		</div>
 	{:else}
-		<h1 class="mb-8 text-center text-2xl font-bold">Sign In</h1>
-
-		{#if $message}
-			<div class="mb-4 rounded-md bg-red-50 p-3">
-				<p class="text-sm text-red-700">{$message}</p>
-			</div>
-		{/if}
-
-		<form onsubmit={handleSignIn}>
-			<div class="mb-4">
-				<label for="email" class="mb-2 block font-medium">Email</label>
-				<input
-					type="email"
-					id="email"
-					name="email"
-					bind:value={$form.email}
-					class="w-full rounded-md border border-gray-300 px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-					class:border-red-500={$errors.email}
-					autocomplete="email"
-					required
-				/>
-				{#if $errors.email}
-					<p class="mt-1 text-sm text-red-500">{$errors.email}</p>
-				{/if}
+		<div
+			class="w-full max-w-md rounded-2xl border border-slate-700/50 bg-slate-800/50 p-8 backdrop-blur-sm"
+		>
+			<div class="mb-8 text-center">
+				<div
+					class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600"
+				>
+					<span class="text-2xl font-bold text-white">ML</span>
+				</div>
+				<h1 class="mb-2 text-3xl font-bold text-white">Welcome back</h1>
+				<p class="text-slate-400">
+					First time here?
+					<a href="/auth/signup" class="text-indigo-400 hover:text-indigo-300 hover:underline"
+						>Sign up for free</a
+					>
+				</p>
 			</div>
 
-			<div class="mb-4">
-				<label for="password" class="mb-2 block font-medium">Password</label>
-				<input
-					type="password"
-					id="password"
-					name="password"
-					bind:value={$form.password}
-					class="w-full rounded-md border border-gray-300 px-3 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-					class:border-red-500={$errors.password}
-					autocomplete="current-password"
-					required
-				/>
-				{#if $errors.password}
-					<p class="mt-1 text-sm text-red-500">{$errors.password}</p>
-				{/if}
-			</div>
+			{#if $message}
+				<div class="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4">
+					<p class="text-sm text-red-400">{$message}</p>
+				</div>
+			{/if}
 
-			<div class="mb-4">
-				<label class="flex items-center">
+			<form onsubmit={handleSignIn} class="space-y-6">
+				<div>
+					<label for="email" class="mb-2 block text-sm font-medium text-slate-300">E-mail</label>
 					<input
-						type="checkbox"
-						class="mr-2 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+						type="email"
+						id="email"
+						name="email"
+						bind:value={$form.email}
+						class="w-full rounded-lg border border-slate-600 bg-slate-700/50 px-4 py-3 text-white placeholder-slate-400 transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+						class:border-red-500={$errors.email}
+						autocomplete="email"
+						required
 					/>
-					<span class="text-sm">Remember me</span>
-				</label>
+					{#if $errors.email}
+						<p class="mt-2 text-sm text-red-400">{$errors.email}</p>
+					{/if}
+				</div>
+
+				<div>
+					<label for="password" class="mb-2 block text-sm font-medium text-slate-300"
+						>Password</label
+					>
+					<input
+						type="password"
+						id="password"
+						name="password"
+						bind:value={$form.password}
+						class="w-full rounded-lg border border-slate-600 bg-slate-700/50 px-4 py-3 text-white placeholder-slate-400 transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+						class:border-red-500={$errors.password}
+						autocomplete="current-password"
+						required
+					/>
+					{#if $errors.password}
+						<p class="mt-2 text-sm text-red-400">{$errors.password}</p>
+					{/if}
+				</div>
+
+				<button
+					type="submit"
+					disabled={$submitting}
+					class="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 font-semibold text-white transition-all duration-200 hover:from-indigo-700 hover:to-purple-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					{#if $submitting}
+						<div class="flex items-center justify-center">
+							<Loader2 class="mr-2 h-5 w-5 animate-spin" />
+							Signing in...
+						</div>
+					{:else}
+						Sign in
+					{/if}
+				</button>
+			</form>
+
+			<div class="mt-6 text-center">
+				<p class="text-sm text-slate-400">
+					<a href="/auth/otp" class="text-indigo-400 hover:text-indigo-300 hover:underline">
+						Sign in using magic link
+					</a>
+				</p>
 			</div>
-
-			<button
-				type="submit"
-				disabled={$submitting}
-				class="mb-4 w-full rounded-md bg-indigo-600 px-3 py-3 font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-400 disabled:hover:bg-gray-400"
-			>
-				{#if $submitting}
-					<div class="flex items-center justify-center">
-						<Loader2 class="mr-2 h-5 w-5 animate-spin text-white" />
-						Signing In...
-					</div>
-				{:else}
-					Sign In
-				{/if}
-			</button>
-		</form>
-
-		<p class="mt-6 text-center">
-			<a
-				href="/auth/otp"
-				class="text-indigo-600 hover:text-indigo-800 hover:underline">Sign in with email code instead</a
-			>
-		</p>
-
-		<p class="mt-2 text-center">
-			Don't have an account? <a
-				href="/auth/signup"
-				class="text-indigo-600 hover:text-indigo-800 hover:underline">Sign up</a
-			>
-		</p>
+		</div>
 	{/if}
 </div>

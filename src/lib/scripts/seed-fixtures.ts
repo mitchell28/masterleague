@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { teams, fixtures } from '$lib/server/db/index';
+import { teams, fixtures } from '../../../drizzle/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -60,14 +60,67 @@ async function deleteFixturesByWeek(weekId: number): Promise<void> {
 }
 
 /**
+ * Set random multipliers for fixtures in a specific week (OLD LOGIC)
+ * Only 1 fixture gets 3x points, 1 fixture gets 2x points, rest get 1x points
+ */
+async function setRandomMultipliersForWeek(weekId: number): Promise<void> {
+	try {
+		// Get all fixtures for the week
+		const weekFixtures = await db.select().from(fixtures).where(eq(fixtures.weekId, weekId));
+
+		if (weekFixtures.length === 0) {
+			return;
+		}
+
+		// Check if there are already special multipliers set for this week
+		const specialMultipliers = weekFixtures.filter((fixture) => fixture.pointsMultiplier > 1);
+
+		// If special multipliers already exist, reset all to 1 first
+		if (specialMultipliers.length > 0) {
+			console.log(
+				`   Resetting multipliers for week ${weekId} - found ${specialMultipliers.length} special multipliers`
+			);
+			await db.update(fixtures).set({ pointsMultiplier: 1 }).where(eq(fixtures.weekId, weekId));
+		}
+
+		// Choose one fixture for triple points (3x)
+		const triplePointsIndex = Math.floor(Math.random() * weekFixtures.length);
+
+		// Choose one different fixture for double points (2x)
+		let doublePointsIndex;
+		do {
+			doublePointsIndex = Math.floor(Math.random() * weekFixtures.length);
+		} while (doublePointsIndex === triplePointsIndex);
+
+		// Update the chosen fixtures with their multipliers
+		await db
+			.update(fixtures)
+			.set({ pointsMultiplier: 3 })
+			.where(eq(fixtures.id, weekFixtures[triplePointsIndex].id));
+
+		await db
+			.update(fixtures)
+			.set({ pointsMultiplier: 2 })
+			.where(eq(fixtures.id, weekFixtures[doublePointsIndex].id));
+
+		console.log(
+			`   ✨ Set multipliers for week ${weekId}: 1 fixture with 3x points, 1 fixture with 2x points`
+		);
+	} catch (error) {
+		console.error(`   ❌ Error setting multipliers for week ${weekId}:`, error);
+	}
+}
+
+/**
  * Script to seed fixtures for a specific season
  */
 async function seedFixtures() {
 	console.log('🔄 Seeding fixtures...');
 
 	try {
-		// Default to current season
-		const season = process.argv[2] || '2024';
+		// Default to 2025 season, allow override with command line argument
+		const season = process.argv[2] || '2025';
+		console.log(`📅 Seeding fixtures for ${season} season...`);
 
 		// Check if API key exists
 		if (!FOOTBALL_DATA_API_KEY) {
@@ -97,21 +150,35 @@ async function seedFixtures() {
 		// Get existing teams from our database
 		const existingTeams = await db.select().from(teams);
 		const existingTeamsByShortName: Record<string, (typeof existingTeams)[0]> = {};
+		const existingTeamsByName: Record<string, (typeof existingTeams)[0]> = {};
 
 		existingTeams.forEach((team) => {
 			existingTeamsByShortName[team.shortName.toLowerCase()] = team;
+			existingTeamsByName[team.name.toLowerCase()] = team;
 		});
 
-		// Map API teams to our team IDs
+		console.log(`📊 Found ${existingTeams.length} teams in database:`);
+		existingTeams.forEach((team) => {
+			console.log(`   ${team.shortName} - ${team.name}`);
+		});
+
+		// Map API teams to our team IDs with better matching
 		for (const apiTeam of apiTeams) {
 			const tla = apiTeam.tla.toLowerCase();
+			const name = apiTeam.name.toLowerCase();
 
-			// If team exists in our DB, use that ID
+			// Try to match by TLA first, then by name
 			if (existingTeamsByShortName[tla]) {
 				teamMap[apiTeam.id] = existingTeamsByShortName[tla].id;
+				console.log(
+					`✅ Mapped ${apiTeam.name} (${apiTeam.tla}) -> ${existingTeamsByShortName[tla].id}`
+				);
+			} else if (existingTeamsByName[name]) {
+				teamMap[apiTeam.id] = existingTeamsByName[name].id;
+				console.log(`✅ Mapped ${apiTeam.name} (by name) -> ${existingTeamsByName[name].id}`);
 			} else {
-				// If team doesn't exist, we'd need to create it
-				console.warn(`Team not found in DB: ${apiTeam.name} (${tla})`);
+				console.error(`❌ Team not found in DB: ${apiTeam.name} (${tla})`);
+				console.log('   Available teams:', Object.keys(existingTeamsByShortName));
 			}
 		}
 
@@ -159,7 +226,13 @@ async function seedFixtures() {
 
 					// Skip if we don't have a mapping for either team
 					if (!homeTeamId || !awayTeamId) {
-						console.warn(`Skipping match ${match.id}: Could not find team mapping`);
+						console.warn(`⚠️  Skipping match ${match.id}: Missing team mapping`);
+						console.warn(
+							`     ${match.homeTeam.name} (${match.homeTeam.tla}) vs ${match.awayTeam.name} (${match.awayTeam.tla})`
+						);
+						console.warn(
+							`     Home team mapped: ${!!homeTeamId}, Away team mapped: ${!!awayTeamId}`
+						);
 						return null;
 					}
 
@@ -183,7 +256,8 @@ async function seedFixtures() {
 						awayTeamId,
 						homeScore,
 						awayScore,
-						matchDate: new Date(match.utcDate),
+						matchDate: match.utcDate, // Keep as string since schema expects string
+						pointsMultiplier: 1, // Default multiplier, will be updated after insertion
 						status
 					};
 				})
@@ -193,6 +267,9 @@ async function seedFixtures() {
 			if (fixtureValues.length > 0) {
 				await db.insert(fixtures).values(fixtureValues);
 				console.log(`Inserted ${fixtureValues.length} fixtures for week ${weekId}`);
+
+				// Set random multipliers for this week's fixtures
+				await setRandomMultipliersForWeek(parseInt(weekId));
 			}
 		}
 

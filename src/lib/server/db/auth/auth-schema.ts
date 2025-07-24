@@ -1,4 +1,3 @@
-import { username } from 'better-auth/plugins';
 import { pgTable, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
 
 // Prefix auth tables with 'auth_' to avoid conflicts
@@ -15,6 +14,8 @@ export const user = pgTable('auth_user', {
 	banned: boolean('banned').default(false), // Whether the user is banned
 	banReason: text('ban_reason'), // Reason for the ban
 	banExpires: integer('ban_expires'), // Unix timestamp when the ban expires
+	// Stripe plugin field
+	stripeCustomerId: text('stripe_customer_id'),
 	// Timestamps
 	createdAt: timestamp('created_at').notNull(),
 	updatedAt: timestamp('updated_at').notNull()

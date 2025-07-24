@@ -24,18 +24,24 @@ interface FixtureResult {
  * @returns The current week number (1-38)
  */
 export async function getCurrentWeek(): Promise<number> {
-	// Define the 2024-25 Premier League season
-	const season: SeasonConfig = {
-		startDate: new Date('2024-08-17'),
-		endDate: new Date('2025-05-25'),
-		totalWeeks: 38
-	};
+	// Force 2025-26 Premier League season (since we're updating for 2025)
+	const currentDate = new Date();
 
-	// Get current date
+	// Use 2025-26 season dates (official Premier League dates)
+	const season: SeasonConfig = {
+		startDate: new Date('2025-08-15'), // Friday, 15 Aug 2025
+		endDate: new Date('2026-05-24'), // Sunday, 24 May 2026
+		totalWeeks: 38
+	}; // Get current date
 	const now: Date = new Date();
 
-	// Handle pre-season and post-season dates
-	if (now < season.startDate) return 1;
+	// Handle pre-season: if we're before the season starts, return week 1
+	// This prevents showing high week numbers from the previous season
+	if (now < season.startDate) {
+		return 1;
+	}
+
+	// Handle post-season dates
 	if (now > season.endDate) return season.totalWeeks;
 
 	// First approach: Try to find the actual active week based on fixtures

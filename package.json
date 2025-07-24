@@ -20,6 +20,8 @@
 		"db:studio": "drizzle-kit studio",
 		"db:setup": "vite-node src/lib/scripts/db-setup.ts",
 		"db:run-migrations": "vite-node src/lib/scripts/db-migrate.ts",
+		"db:safe-migration": "vite-node src/lib/scripts/safe-migration.ts",
+		"db:verify-migration": "vite-node src/lib/scripts/verify-migration.ts",
 		"db:fetch-data": "vite-node src/lib/scripts/fetch-external-data.ts",
 		"db:init-teams": "vite-node src/lib/scripts/init-teams.ts",
 		"db:seed-fixtures": "vite-node src/lib/scripts/seed-fixtures.ts",
@@ -62,14 +64,16 @@
 		"vite": "^7.0.5"
 	},
 	"dependencies": {
+		"@better-auth/stripe": "^1.3.3",
 		"@lucide/svelte": "^0.479.0",
 		"@neondatabase/serverless": "^0.10.4",
 		"@trigger.dev/sdk": "^3.3.17",
-		"better-auth": "^1.3.2",
+		"better-auth": "^1.3.3",
 		"drizzle-orm": "^0.40.1",
 		"pg": "^8.16.3",
 		"postgres": "^3.4.7",
 		"resend": "^4.7.0",
+		"stripe": "^18.0.0",
 		"tailwindcss-animate": "^1.0.7",
 		"vite-node": "^3.2.4",
 		"zod": "^3.25.76"

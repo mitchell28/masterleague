@@ -1,86 +1,84 @@
 <script lang="ts">
 	import { type PageData } from './$types';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
-	import { ChevronUp, RefreshCcw, Search, SearchIcon } from '@lucide/svelte';
+	import { ChevronUp, RefreshCcw, SearchIcon } from '@lucide/svelte';
+	import { useAutoRefresh } from '$lib/hooks';
+	import { useLeaderboardMetrics } from './hooks';
 
 	// Props and state
 	let { data } = $props<{ data: PageData }>();
 	$inspect(data);
-	let leaderboard = $state(data.leaderboard);
 
-	// Local state for searching and sorting
+	// Update leaderboard when data changes (reactive to server load updates)
+	let leaderboard = $derived(data.leaderboard || []);
+
+	// Use custom hooks
+	const autoRefresh = useAutoRefresh({
+		invalidateKey: '/leaderboard',
+		interval: 60000
+	});
+
+	const metrics = useLeaderboardMetrics();
+
+	// Local reactive state for search and sorting
 	let searchQuery = $state('');
 	let sortKey = $state<string>('totalPoints');
 	let sortDirection = $state<'asc' | 'desc'>('desc');
 
-	// Auto-refresh state
-	let refreshing = $state(false);
-	let lastRefreshTime = $state(new Date().toLocaleString());
-	let autoRefreshEnabled = $state(false);
-	let autoRefreshTimer: NodeJS.Timeout | null = $state(null);
+	// Filtered and sorted data
+	let filteredData = $derived(() => {
+		if (!leaderboard) return [];
 
-	// Define type for leaderboard entry
-	type LeaderboardEntry = {
-		userId: string;
-		userName: string;
-		totalPoints: number;
-		correctScorelines: number;
-		correctOutcomes: number;
-		predictedFixtures: number;
-		completedFixtures: number;
-		lastUpdated?: string;
-		[key: string]: any; // For flexible access with sortKey
-	};
+		if (!searchQuery.trim()) return leaderboard;
 
-	// Filter and sort the leaderboard data
-	let leaderboardFiltered = $derived(
-		leaderboard
-			?.filter((entry: LeaderboardEntry) => {
-				if (!searchQuery.trim()) return true;
+		const query = searchQuery.toLowerCase().trim();
+		return leaderboard.filter((entry: any) => {
+			const username = (entry.username || '').toLowerCase();
+			return username.includes(query);
+		});
+	});
 
-				const query = searchQuery.toLowerCase().trim();
-				const userName = (entry.userName || '').toLowerCase();
+	let sortedData = $derived(() => {
+		const data = filteredData();
+		if (!data) return [];
 
-				return userName.includes(query);
-			})
-			.sort((a: LeaderboardEntry, b: LeaderboardEntry) => {
-				// Special case for totalPoints - include tiebreakers
-				if (sortKey === 'totalPoints') {
-					if (a.totalPoints !== b.totalPoints) {
-						return sortDirection === 'desc'
-							? b.totalPoints - a.totalPoints
-							: a.totalPoints - b.totalPoints;
-					}
-					// First tiebreaker: correct scorelines
-					if (a.correctScorelines !== b.correctScorelines) {
-						return sortDirection === 'desc'
-							? b.correctScorelines - a.correctScorelines
-							: a.correctScorelines - b.correctScorelines;
-					}
-					// Second tiebreaker: correct outcomes
+		return [...data].sort((a: any, b: any) => {
+			// Special case for totalPoints - include tiebreakers
+			if (sortKey === 'totalPoints') {
+				if (a.totalPoints !== b.totalPoints) {
 					return sortDirection === 'desc'
-						? b.correctOutcomes - a.correctOutcomes
-						: a.correctOutcomes - b.correctOutcomes;
+						? b.totalPoints - a.totalPoints
+						: a.totalPoints - b.totalPoints;
 				}
-
-				// For other columns, do standard sorting
-				const valueA = a[sortKey as keyof typeof a];
-				const valueB = b[sortKey as keyof typeof b];
-
-				// Handle string values
-				if (typeof valueA === 'string' && typeof valueB === 'string') {
+				// First tiebreaker: correct scorelines
+				if (a.correctScorelines !== b.correctScorelines) {
 					return sortDirection === 'desc'
-						? valueB.localeCompare(valueA)
-						: valueA.localeCompare(valueB);
+						? b.correctScorelines - a.correctScorelines
+						: a.correctScorelines - b.correctScorelines;
 				}
-
-				// Handle numeric values
+				// Second tiebreaker: correct outcomes
 				return sortDirection === 'desc'
-					? Number(valueB) - Number(valueA)
-					: Number(valueA) - Number(valueB);
-			})
-	);
+					? b.correctOutcomes - a.correctOutcomes
+					: a.correctOutcomes - b.correctOutcomes;
+			}
+
+			// For other columns, do standard sorting
+			const valueA = a[sortKey];
+			const valueB = b[sortKey];
+
+			// Handle string values
+			if (typeof valueA === 'string' && typeof valueB === 'string') {
+				return sortDirection === 'desc'
+					? valueB.localeCompare(valueA)
+					: valueA.localeCompare(valueB);
+			}
+
+			// Handle numeric values
+			return sortDirection === 'desc'
+				? Number(valueB) - Number(valueA)
+				: Number(valueA) - Number(valueB);
+		});
+	});
 
 	// Handle column sort clicks
 	function toggleSort(key: string) {
@@ -92,72 +90,13 @@
 		}
 	}
 
-	// Calculate success rate
-	function calculateSuccessRate(entry: any) {
-		const completed = entry.completedFixtures || 0;
-		if (!completed) return 0;
-
-		const successful = (entry.correctScorelines || 0) + (entry.correctOutcomes || 0);
-		return Math.round((successful / completed) * 100);
-	}
-
 	// View user's predictions
 	function viewUserPredictions(userId: string) {
 		goto(`/leaderboard/user/${userId}/${data.currentWeek}`);
 	}
-
-	// Manual refresh function
-	async function refreshLeaderboard() {
-		if (refreshing) return;
-
-		refreshing = true;
-		try {
-			const response = await fetch('/leaderboard', {
-				method: 'GET',
-				headers: {
-					'Cache-Control': 'no-cache',
-					Pragma: 'no-cache'
-				}
-			});
-
-			if (response.ok) {
-				const refreshedData = await response.json();
-				if (refreshedData.leaderboard) {
-					leaderboard = refreshedData.leaderboard;
-					lastRefreshTime = new Date().toLocaleString();
-				}
-			}
-		} catch (error) {
-			console.error('Failed to refresh leaderboard:', error);
-		} finally {
-			refreshing = false;
-		}
-	}
-
-	// Toggle auto-refresh
-	function toggleAutoRefresh() {
-		autoRefreshEnabled = !autoRefreshEnabled;
-
-		if (autoRefreshEnabled && !autoRefreshTimer) {
-			// Set up timer to refresh every 60 seconds
-			autoRefreshTimer = setInterval(refreshLeaderboard, 60000);
-		} else if (!autoRefreshEnabled && autoRefreshTimer) {
-			clearInterval(autoRefreshTimer);
-			autoRefreshTimer = null;
-		}
-	}
-
-	// Cleanup on component unmount
-	onMount(() => {
-		return () => {
-			if (autoRefreshTimer) {
-				clearInterval(autoRefreshTimer);
-			}
-		};
-	});
 </script>
 
-<div class="container mx-auto max-w-6xl px-4 py-8">
+<div class="container mx-auto max-w-6xl px-4 py-8 pt-24">
 	<!-- Header -->
 	<div class="mb-6">
 		<h1 class="text-3xl font-bold text-white">
@@ -167,6 +106,37 @@
 		</h1>
 		<p class="text-slate-400">See who's leading the Premier League prediction competition</p>
 	</div>
+
+	<!-- Group Selector -->
+	{#if data.userGroups && data.userGroups.length > 1}
+		<div class="mb-6">
+			<label for="group-selector" class="mb-2 block text-sm font-medium text-slate-300"
+				>Select Group:</label
+			>
+			<select
+				id="group-selector"
+				class="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+				value={data.selectedGroup?.id}
+				onchange={(e) => {
+					const groupId = (e.target as HTMLSelectElement).value;
+					goto(`/leaderboard?group=${groupId}`);
+				}}
+			>
+				{#each data.userGroups as group}
+					<option value={group.id}>{group.name}</option>
+				{/each}
+			</select>
+		</div>
+	{:else if data.selectedGroup}
+		<div class="mb-6">
+			<div class="rounded-lg border border-slate-700 bg-slate-800 px-4 py-3">
+				<h2 class="text-lg font-semibold text-white">{data.selectedGroup.name}</h2>
+				{#if data.selectedGroup.description}
+					<p class="text-sm text-slate-400">{data.selectedGroup.description}</p>
+				{/if}
+			</div>
+		</div>
+	{/if}
 
 	<!-- Controls and filters -->
 	<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -186,7 +156,10 @@
 		<div class="flex items-center gap-3">
 			<!-- Last refresh timestamp -->
 			<span class="text-xs text-slate-400">
-				Last updated: {lastRefreshTime}
+				Last updated: {autoRefresh.lastRefreshTime}
+				{#if autoRefresh.isAutoRefreshEnabled}
+					<span class="ml-1 text-green-400">• Auto</span>
+				{/if}
 			</span>
 
 			<!-- Auto refresh toggle -->
@@ -195,8 +168,8 @@
 					<input
 						type="checkbox"
 						class="peer sr-only"
-						checked={autoRefreshEnabled}
-						onchange={toggleAutoRefresh}
+						checked={autoRefresh.isAutoRefreshEnabled}
+						onchange={autoRefresh.toggleAutoRefresh}
 					/>
 					<div
 						class="peer h-5 w-9 rounded-full bg-slate-700 peer-checked:bg-indigo-600 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-slate-600 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full"
@@ -207,12 +180,15 @@
 
 			<!-- Refresh button -->
 			<button
-				class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-indigo-700 disabled:opacity-50"
-				onclick={refreshLeaderboard}
-				disabled={refreshing}
+				class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow transition-opacity hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+				onclick={autoRefresh.refresh}
+				disabled={autoRefresh.isRefreshing}
 			>
-				<RefreshCcw size={16} class="mr-2 text-white" />
-				{refreshing ? 'Refreshing...' : 'Refresh'}
+				<RefreshCcw
+					size={16}
+					class={`mr-2 text-white ${autoRefresh.isRefreshing ? 'animate-spin' : ''}`}
+				/>
+				{autoRefresh.isRefreshing ? 'Refreshing...' : 'Refresh'}
 			</button>
 		</div>
 	</div>
@@ -278,8 +254,8 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-slate-700">
-					{#if leaderboardFiltered && leaderboardFiltered.length > 0}
-						{#each leaderboardFiltered as entry, index}
+					{#if sortedData() && sortedData().length > 0}
+						{#each sortedData() as entry, index}
 							<tr
 								class="cursor-pointer transition-colors hover:bg-slate-700/50"
 								onclick={() => viewUserPredictions(entry.id)}
@@ -319,17 +295,21 @@
 								</td>
 								<!-- Success rate -->
 								<td class="px-4 py-3 text-center whitespace-nowrap">
-									<div class="flex items-center justify-center">
-										<div class="h-2 w-16 overflow-hidden rounded-full bg-slate-700">
-											<div
-												class="h-full bg-yellow-500"
-												style={`width: ${calculateSuccessRate(entry)}%`}
-											></div>
+									{#if (entry.predictedFixtures || 0) > 0}
+										<div class="flex items-center justify-center">
+											<div class="h-2 w-16 overflow-hidden rounded-full bg-slate-700">
+												<div
+													class="h-full bg-yellow-500"
+													style={`width: ${metrics.calculateSuccessRate(entry)}%`}
+												></div>
+											</div>
+											<span class="ml-2 text-xs font-medium text-yellow-400"
+												>{metrics.calculateSuccessRate(entry)}%</span
+											>
 										</div>
-										<span class="ml-2 text-xs font-medium text-yellow-400"
-											>{calculateSuccessRate(entry)}%</span
-										>
-									</div>
+									{:else}
+										<span class="text-xs text-slate-500">No predictions</span>
+									{/if}
 								</td>
 							</tr>
 						{/each}
@@ -361,8 +341,12 @@
 			</div>
 			<div class="flex items-center">
 				<span class="mr-2 inline-block h-3 w-3 rounded-full bg-yellow-500"></span>
-				<span class="text-slate-300">Some fixtures have multipliers (2× or 3×)</span>
+				<span class="text-slate-300">Success Rate: % of predictions that scored points</span>
 			</div>
 		</div>
+		<p class="mt-2 text-xs text-slate-400">
+			Some fixtures have multipliers (2× or 3×). Success rate shows the percentage of your
+			predictions that earned any points.
+		</p>
 	</div>
 </div>
