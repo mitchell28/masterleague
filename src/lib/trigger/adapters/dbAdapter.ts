@@ -10,7 +10,11 @@ import { DATABASE_URL, DATABASE_AUTH_TOKEN } from './env';
  */
 
 // Set up database connection using process.env variables
-const sql: NeonQueryFunction<any, any> = neon(DATABASE_URL || '', {
+if (!DATABASE_URL) {
+	throw new Error("DATABASE_URL is not set. Make sure it's available in process.env");
+}
+
+const sql: NeonQueryFunction<any, any> = neon(DATABASE_URL, {
 	authToken: DATABASE_AUTH_TOKEN
 });
 

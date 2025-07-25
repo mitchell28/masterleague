@@ -52,14 +52,27 @@
 			isLoading = true;
 			errorMessage = '';
 
+			console.log(`🔐 [Client] Requesting OTP for email: ${email}`);
+
 			await authClient.emailOtp.sendVerificationOtp({
 				email,
 				type: 'sign-in'
 			});
 
+			console.log(`✅ [Client] OTP request successful for: ${email}`);
 			step = 'otp';
 			successMessage = `We've sent a 6-digit code to ${email}`;
 		} catch (error) {
+			console.error(`❌ [Client] Failed to send OTP to ${email}:`, error);
+
+			// Log more details about the error
+			if (error instanceof Error) {
+				console.error(`❌ [Client] Error details:`, {
+					message: error.message,
+					stack: error.stack
+				});
+			}
+
 			errorMessage = error instanceof Error ? error.message : 'Failed to send OTP';
 		} finally {
 			isLoading = false;
@@ -77,6 +90,8 @@
 			isLoading = true;
 			errorMessage = '';
 
+			console.log(`🔐 [Client] Verifying OTP for email: ${email}, OTP: ${otp}`);
+
 			await authClient.signIn.emailOtp(
 				{
 					email,
@@ -84,14 +99,17 @@
 				},
 				{
 					onSuccess: () => {
+						console.log(`✅ [Client] OTP verification successful for: ${email}`);
 						goto(redirectTo);
 					},
 					onError: (ctx) => {
+						console.error(`❌ [Client] OTP verification failed for ${email}:`, ctx.error);
 						errorMessage = ctx.error.message;
 					}
 				}
 			);
 		} catch (error) {
+			console.error(`❌ [Client] OTP verification error for ${email}:`, error);
 			errorMessage = error instanceof Error ? error.message : 'Invalid verification code';
 		} finally {
 			isLoading = false;

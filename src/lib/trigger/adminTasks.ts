@@ -1,7 +1,6 @@
 import { task, schedules } from '@trigger.dev/sdk/v3';
 import { db } from './adapters/dbAdapter';
 import { predictions, fixtures, leagueTable } from '../server/db/schema';
-import { user as authUser } from '../server/db/auth/auth-schema';
 import { eq, count, and, inArray } from 'drizzle-orm';
 import {
 	getCurrentWeek,
@@ -170,38 +169,6 @@ export const recoverFixturesTask = task({
 			return {
 				success: false,
 				message: `Failed to recover fixtures: ${error instanceof Error ? error.message : 'Unknown error'}`
-			};
-		}
-	}
-});
-
-/**
- * Task to recalculate all prediction points
- * This is a heavy operation that recalculates all prediction points from scratch
- */
-export const recalculateAllPointsTask = task({
-	id: 'recalculate-all-points',
-	run: async (): Promise<TaskResult> => {
-		try {
-			console.log('🔄 Starting points recalculation...');
-
-			// Dynamic import to avoid circular dependencies
-			const { recalculateAllPoints } = await import('../scripts/recalculate-points-api');
-
-			const result = await recalculateAllPoints();
-
-			console.log('✅ Points recalculation completed successfully');
-
-			return {
-				success: true,
-				message: 'All prediction points recalculated successfully',
-				details: result
-			};
-		} catch (error) {
-			console.error('❌ Failed to recalculate points:', error);
-			return {
-				success: false,
-				message: `Failed to recalculate points: ${error instanceof Error ? error.message : 'Unknown error'}`
 			};
 		}
 	}

@@ -6,6 +6,10 @@
  * so we need to use this adapter for any environment variables needed by Trigger.dev tasks.
  */
 
+// Load environment variables from .env file
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 // Football data API key for fixture updates
 export const FOOTBALL_DATA_API_KEY: string | undefined = process.env.FOOTBALL_DATA_API_KEY;
 

@@ -1,18 +1,16 @@
 import { db } from '../../db';
 import { fixtures } from '../../db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { FOOTBALL_DATA_API_KEY as SVELTEKIT_API_KEY } from '$env/static/private';
+import { getFootballApiKey } from '../../utils/env';
 import { randomUUID } from 'crypto';
-import { mapApiStatusToDbStatus } from './index';
-import { deleteFixturesByWeek, setRandomMultipliersForWeek } from './index';
+import { mapApiStatusToDbStatus } from './fixtureUtils';
+import { deleteFixturesByWeek, setRandomMultipliersForWeek } from './fixtureRepository';
 
-// Try to get API key from environment, allows running from scripts and SvelteKit
-let FOOTBALL_DATA_API_KEY: string | undefined;
-try {
-	FOOTBALL_DATA_API_KEY = SVELTEKIT_API_KEY;
-} catch (error) {
-	// If running from script, get from process.env
-	FOOTBALL_DATA_API_KEY = process.env.FOOTBALL_DATA_API_KEY;
+// Get API key - works in both SvelteKit and Trigger.dev contexts
+const FOOTBALL_DATA_API_KEY = getFootballApiKey();
+
+if (!FOOTBALL_DATA_API_KEY) {
+	console.warn('FOOTBALL_DATA_API_KEY is not set. API calls will fail.');
 }
 
 // Global API cache and rate limiter

@@ -2,16 +2,10 @@ import type { Team } from '../db/schema';
 import { teams } from '../db/schema';
 import { db } from '../db';
 import { eq } from 'drizzle-orm';
-import { FOOTBALL_DATA_API_KEY as SVELTEKIT_API_KEY } from '$env/static/private';
+import { getFootballApiKey } from '../utils/env.js';
 
-// Try to get API key from environment, allows running from scripts and SvelteKit
-let FOOTBALL_DATA_API_KEY: string | undefined;
-try {
-	FOOTBALL_DATA_API_KEY = SVELTEKIT_API_KEY;
-} catch (error) {
-	// If running from script, get from process.env
-	FOOTBALL_DATA_API_KEY = process.env.FOOTBALL_DATA_API_KEY;
-}
+// Get API key using cross-context utility
+const FOOTBALL_DATA_API_KEY = getFootballApiKey();
 
 interface ApiTeam {
 	id: number;
