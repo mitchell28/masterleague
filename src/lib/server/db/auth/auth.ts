@@ -1,6 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { admin, username, emailOTP } from 'better-auth/plugins';
+import { admin, username, emailOTP, organization } from 'better-auth/plugins';
 import { stripe } from '@better-auth/stripe';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { db } from '../index';
@@ -73,6 +73,7 @@ export const auth = betterAuth({
 		window: 60, // 1 minute window
 		max: 100, // 100 requests per minute (general)
 		storage: 'database', // Store in database for persistence
+		modelName: 'rateLimit', // Use our existing rate limit table
 		// Custom IP detection to help with the "No IP address found" issue
 		getIP: (request: any) => {
 			// Try multiple headers for IP detection
@@ -127,6 +128,44 @@ export const auth = betterAuth({
 		sveltekitCookies(async () => getRequestEvent()),
 		admin({
 			adminRoles: ['admin'] // Roles that have admin access
+		}),
+		organization({
+			allowUserToCreateOrganization: true,
+			membershipLimit: 100,
+			organizationLimit: 5,
+			invitationExpiresIn: 172800, // 48 hours
+			async sendInvitationEmail(data) {
+				try {
+					const inviteLink = `${getEnvVar('PUBLIC_BETTER_AUTH_URL')}/accept-invitation/${data.id}`;
+
+					await resend.emails.send({
+						from: 'Master League <onboarding@resend.dev>',
+						to: data.email,
+						subject: `You've been invited to join ${data.organization.name}`,
+						html: `
+							<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+								<h2 style="color: #4338ca;">Master League</h2>
+								<p>You've been invited to join <strong>${data.organization.name}</strong> by ${data.inviter.user.name}.</p>
+								<p>Click the link below to accept the invitation:</p>
+								<div style="margin: 20px 0;">
+									<a href="${inviteLink}" style="background: #4338ca; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+										Accept Invitation
+									</a>
+								</div>
+								<p style="color: #6b7280; font-size: 12px;">This invitation will expire in 48 hours.</p>
+							</div>
+						`,
+						text: `You've been invited to join ${data.organization.name} by ${data.inviter.user.name}. Accept the invitation: ${inviteLink}`
+					});
+
+					console.log(
+						`✅ [Organization] Invitation email sent to ${data.email} for organization ${data.organization.name}`
+					);
+				} catch (error) {
+					console.error(`❌ [Organization] Failed to send invitation email:`, error);
+					throw error;
+				}
+			}
 		}),
 		emailOTP({
 			overrideDefaultEmailVerification: true, // Use OTP instead of email links
@@ -243,8 +282,8 @@ export const auth = betterAuth({
 				plans: subscriptionPlans,
 				requireEmailVerification: false,
 				authorizeReference: async ({ user, referenceId, action }) => {
-					// Check if user has permission to manage subscriptions for this group
-					// This will be called for group-based subscriptions
+					// Check if user has permission to manage subscriptions for this organization
+					// This will be called for organization-based subscriptions
 					if (
 						action === 'upgrade-subscription' ||
 						action === 'cancel-subscription' ||
@@ -252,19 +291,13 @@ export const auth = betterAuth({
 					) {
 						// Import the database query here to avoid circular imports
 						const { db } = await import('../index');
-						const { groupMemberships } = await import('../schema');
+						const { member } = await import('../schema');
 						const { eq, and } = await import('drizzle-orm');
 
 						const membership = await db
 							.select()
-							.from(groupMemberships)
-							.where(
-								and(
-									eq(groupMemberships.groupId, referenceId),
-									eq(groupMemberships.userId, user.id),
-									eq(groupMemberships.isActive, true)
-								)
-							)
+							.from(member)
+							.where(and(eq(member.organizationId, referenceId), eq(member.userId, user.id)))
 							.limit(1);
 
 						return (

@@ -51,81 +51,69 @@ export const authUser = pgTable(
 	]
 );
 
-export const groups = pgTable(
-	'groups',
+// Better Auth Organization Plugin Tables
+export const organization = pgTable(
+	'organization',
 	{
-		id: varchar().primaryKey().notNull(),
-		name: varchar().notNull(),
-		description: text(),
-		ownerId: varchar('owner_id').notNull(),
-		maxMembers: integer('max_members').default(10).notNull(),
-		isActive: boolean('is_active').default(true).notNull(),
+		id: text().primaryKey().notNull(),
+		name: text().notNull(),
+		slug: text().notNull(),
+		logo: text(),
+		metadata: text(), // JSON string for additional metadata
+		createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+		updatedAt: timestamp('updated_at', { mode: 'string' }).notNull()
+	},
+	(table) => [unique('organization_slug_unique').on(table.slug)]
+);
+
+export const member = pgTable(
+	'member',
+	{
+		id: text().primaryKey().notNull(),
+		userId: text('user_id').notNull(),
+		organizationId: text('organization_id').notNull(),
+		role: text().default('member').notNull(), // owner, admin, member
+		createdAt: timestamp('created_at', { mode: 'string' }).notNull()
+	},
+	(table) => [
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [authUser.id],
+			name: 'member_user_id_auth_user_id_fk'
+		}).onDelete('cascade'),
+		foreignKey({
+			columns: [table.organizationId],
+			foreignColumns: [organization.id],
+			name: 'member_organization_id_organization_id_fk'
+		}).onDelete('cascade'),
+		unique('member_user_organization_unique').on(table.userId, table.organizationId)
+	]
+);
+
+export const invitation = pgTable(
+	'invitation',
+	{
+		id: text().primaryKey().notNull(),
+		email: text().notNull(),
+		inviterId: text('inviter_id').notNull(),
+		organizationId: text('organization_id').notNull(),
+		role: text().default('member').notNull(),
+		status: text().default('pending').notNull(), // pending, accepted, rejected, cancelled
+		expiresAt: timestamp('expires_at', { mode: 'string' }).notNull(),
 		createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
 		updatedAt: timestamp('updated_at', { mode: 'string' }).notNull()
 	},
 	(table) => [
 		foreignKey({
-			columns: [table.ownerId],
+			columns: [table.inviterId],
 			foreignColumns: [authUser.id],
-			name: 'groups_owner_id_auth_user_id_fk'
-		})
-	]
-);
-
-export const groupMemberships = pgTable(
-	'group_memberships',
-	{
-		id: varchar().primaryKey().notNull(),
-		groupId: varchar('group_id').notNull(),
-		userId: varchar('user_id').notNull(),
-		role: varchar().default('member').notNull(),
-		joinedAt: timestamp('joined_at', { mode: 'string' }).notNull(),
-		isActive: boolean('is_active').default(true).notNull()
-	},
-	(table) => [
+			name: 'invitation_inviter_id_auth_user_id_fk'
+		}),
 		foreignKey({
-			columns: [table.groupId],
-			foreignColumns: [groups.id],
-			name: 'group_memberships_group_id_groups_id_fk'
-		}).onDelete('cascade'),
-		foreignKey({
-			columns: [table.userId],
-			foreignColumns: [authUser.id],
-			name: 'group_memberships_user_id_auth_user_id_fk'
+			columns: [table.organizationId],
+			foreignColumns: [organization.id],
+			name: 'invitation_organization_id_organization_id_fk'
 		}).onDelete('cascade')
-	]
-);
-
-export const groupInviteCodes = pgTable(
-	'group_invite_codes',
-	{
-		id: varchar().primaryKey().notNull(),
-		groupId: varchar('group_id').notNull(),
-		code: varchar().notNull(),
-		createdBy: varchar('created_by').notNull(),
-		usedBy: varchar('used_by'),
-		createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
-		usedAt: timestamp('used_at', { mode: 'string' }),
-		expiresAt: timestamp('expires_at', { mode: 'string' }),
-		isActive: boolean('is_active').default(true).notNull()
-	},
-	(table) => [
-		foreignKey({
-			columns: [table.groupId],
-			foreignColumns: [groups.id],
-			name: 'group_invite_codes_group_id_groups_id_fk'
-		}).onDelete('cascade'),
-		foreignKey({
-			columns: [table.createdBy],
-			foreignColumns: [authUser.id],
-			name: 'group_invite_codes_created_by_auth_user_id_fk'
-		}),
-		foreignKey({
-			columns: [table.usedBy],
-			foreignColumns: [authUser.id],
-			name: 'group_invite_codes_used_by_auth_user_id_fk'
-		}),
-		unique('group_invite_codes_code_unique').on(table.code)
 	]
 );
 
@@ -134,14 +122,14 @@ export const leagueTable = pgTable(
 	{
 		id: varchar().primaryKey().notNull(),
 		userId: varchar('user_id').notNull(),
+		organizationId: varchar('organization_id').notNull(),
+		season: varchar().notNull(), // Keep season separation in league tables too
 		totalPoints: integer('total_points').default(0).notNull(),
 		correctScorelines: integer('correct_scorelines').default(0).notNull(),
 		correctOutcomes: integer('correct_outcomes').default(0).notNull(),
-		lastUpdated: timestamp('last_updated', { mode: 'string' }).notNull(),
 		predictedFixtures: integer('predicted_fixtures').default(0),
 		completedFixtures: integer('completed_fixtures').default(0),
-		groupId: varchar('group_id').notNull(),
-		season: varchar().default('2025-26').notNull()
+		lastUpdated: timestamp('last_updated', { mode: 'string' }).notNull()
 	},
 	(table) => [
 		foreignKey({
@@ -150,9 +138,9 @@ export const leagueTable = pgTable(
 			name: 'league_table_user_id_auth_user_id_fk'
 		}),
 		foreignKey({
-			columns: [table.groupId],
-			foreignColumns: [groups.id],
-			name: 'league_table_group_id_groups_id_fk'
+			columns: [table.organizationId],
+			foreignColumns: [organization.id],
+			name: 'league_table_organization_id_organization_id_fk'
 		}),
 		unique('league_table_user_season_unique').on(table.userId, table.season)
 	]
@@ -202,7 +190,9 @@ export const authSession = pgTable(
 		ipAddress: text('ip_address'),
 		userAgent: text('user_agent'),
 		userId: text('user_id').notNull(),
-		impersonatedBy: text('impersonated_by')
+		impersonatedBy: text('impersonated_by'),
+		activeOrganizationId: text('active_organization_id'),
+		activeTeamId: text('active_team_id')
 	},
 	(table) => [
 		foreignKey({
@@ -210,6 +200,11 @@ export const authSession = pgTable(
 			foreignColumns: [authUser.id],
 			name: 'auth_session_user_id_auth_user_id_fk'
 		}).onDelete('cascade'),
+		foreignKey({
+			columns: [table.activeOrganizationId],
+			foreignColumns: [organization.id],
+			name: 'auth_session_active_organization_id_organization_id_fk'
+		}),
 		unique('auth_session_token_unique').on(table.token)
 	]
 );
@@ -220,6 +215,7 @@ export const fixtures = pgTable(
 		id: varchar().primaryKey().notNull(),
 		matchId: varchar('match_id').notNull(),
 		weekId: integer('week_id').notNull(),
+		season: varchar().notNull(), // Keep season separation (2024, 2025, etc.)
 		homeTeamId: varchar('home_team_id').notNull(),
 		awayTeamId: varchar('away_team_id').notNull(),
 		homeScore: integer('home_score'),
@@ -227,8 +223,7 @@ export const fixtures = pgTable(
 		matchDate: timestamp('match_date', { mode: 'string' }).notNull(),
 		pointsMultiplier: integer('points_multiplier').default(1).notNull(),
 		status: varchar().default('TIMED').notNull(),
-		lastUpdated: timestamp('last_updated', { mode: 'string' }),
-		season: varchar().default('2025-26').notNull()
+		lastUpdated: timestamp('last_updated', { mode: 'string' })
 	},
 	(table) => [
 		foreignKey({
@@ -254,7 +249,7 @@ export const predictions = pgTable(
 		predictedAwayScore: integer('predicted_away_score').notNull(),
 		points: integer().default(0),
 		createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
-		groupId: varchar('group_id').notNull(),
+		organizationId: varchar('organization_id').notNull(),
 		season: varchar().default('2025-26').notNull()
 	},
 	(table) => [
@@ -269,9 +264,9 @@ export const predictions = pgTable(
 			name: 'predictions_fixture_id_fixtures_id_fk'
 		}),
 		foreignKey({
-			columns: [table.groupId],
-			foreignColumns: [groups.id],
-			name: 'predictions_group_id_groups_id_fk'
+			columns: [table.organizationId],
+			foreignColumns: [organization.id],
+			name: 'predictions_organization_id_organization_id_fk'
 		})
 	]
 );
@@ -283,4 +278,13 @@ export const authVerification = pgTable('auth_verification', {
 	expiresAt: timestamp('expires_at', { mode: 'string' }).notNull(),
 	createdAt: timestamp('created_at', { mode: 'string' }),
 	updatedAt: timestamp('updated_at', { mode: 'string' })
+});
+
+export const rateLimit = pgTable('auth_rate_limit', {
+	id: text().primaryKey().notNull(),
+	key: text().notNull(),
+	count: integer().default(0).notNull(),
+	windowStart: timestamp('window_start', { mode: 'string' }).notNull(),
+	createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+	updatedAt: timestamp('updated_at', { mode: 'string' }).notNull()
 });

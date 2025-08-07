@@ -107,33 +107,31 @@
 		<p class="text-slate-400">See who's leading the Premier League prediction competition</p>
 	</div>
 
-	<!-- Group Selector -->
-	{#if data.userGroups && data.userGroups.length > 1}
+	<!-- Organization Selector -->
+	{#if data.userOrganizations && data.userOrganizations.length > 1}
 		<div class="mb-6">
-			<label for="group-selector" class="mb-2 block text-sm font-medium text-slate-300"
-				>Select Group:</label
+			<label for="organization-selector" class="mb-2 block text-sm font-medium text-slate-300"
+				>Select Organization:</label
 			>
 			<select
-				id="group-selector"
+				id="organization-selector"
 				class="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-				value={data.selectedGroup?.id}
+				value={data.selectedOrganization?.id}
 				onchange={(e) => {
-					const groupId = (e.target as HTMLSelectElement).value;
-					goto(`/leaderboard?group=${groupId}`);
+					const organizationId = (e.target as HTMLSelectElement).value;
+					goto(`/leaderboard?organization=${organizationId}`);
 				}}
 			>
-				{#each data.userGroups as group}
-					<option value={group.id}>{group.name}</option>
+				{#each data.userOrganizations as organization}
+					<option value={organization.id}>{organization.name}</option>
 				{/each}
 			</select>
 		</div>
-	{:else if data.selectedGroup}
+	{:else if data.selectedOrganization}
 		<div class="mb-6">
 			<div class="rounded-lg border border-slate-700 bg-slate-800 px-4 py-3">
-				<h2 class="text-lg font-semibold text-white">{data.selectedGroup.name}</h2>
-				{#if data.selectedGroup.description}
-					<p class="text-sm text-slate-400">{data.selectedGroup.description}</p>
-				{/if}
+				<h2 class="text-lg font-semibold text-white">{data.selectedOrganization.name}</h2>
+				<p class="text-sm text-slate-400">Organization Leaderboard</p>
 			</div>
 		</div>
 	{/if}

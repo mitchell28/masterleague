@@ -237,9 +237,9 @@ export const seed2025FixturesTask = task({
 			console.log('🔄 Starting 2025 season fixtures seeding...');
 
 			// Dynamic import to avoid circular dependencies
-			const { seedFixturesWithMatchId } = await import('../server/football/fixtures/fixtureApi');
+			const { seedFixturesWithSeasonYear } = await import('../server/football/fixtures/fixtureApi');
 
-			await seedFixturesWithMatchId('2025');
+			await seedFixturesWithSeasonYear('2025');
 
 			console.log('✅ 2025 season fixtures seeded successfully');
 

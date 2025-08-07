@@ -3,18 +3,18 @@ export { useAutoRefresh } from './useAutoRefresh.svelte';
 export { useSearch } from './useSearch.svelte';
 export { useSorting } from './useSorting.svelte';
 
-// Group management hooks
+// Organization management hooks
 export {
-	useGroups,
-	userGroups,
-	activeGroup,
-	isLoadingGroups,
-	ownedGroups,
-	memberGroups,
-	hasActiveSubscription as hasActiveGroupSubscription,
-	type GroupWithMembers,
-	type CreateGroupData,
-	type InviteUserData
+	useOrganizations,
+	userOrganizations,
+	activeOrganization,
+	isLoadingOrganizations,
+	ownedOrganizations,
+	memberOrganizations,
+	hasActiveSubscription,
+	type OrganizationWithMembers,
+	type CreateOrganizationData,
+	type InvitationWithUser
 } from './useGroups.svelte';
 
 // Subscription management hooks
@@ -23,7 +23,7 @@ export {
 	groupSubscription,
 	availablePlans,
 	isLoadingSubscription,
-	hasActiveSubscription,
+	hasActiveSubscription as hasActiveOrganizationSubscription,
 	isTrialing,
 	subscriptionExpiry,
 	daysUntilExpiry,

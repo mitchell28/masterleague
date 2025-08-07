@@ -9,49 +9,43 @@ export const teams = pgTable('teams', {
 	logo: varchar('logo')
 });
 
-// Groups for subscription management
-export const groups = pgTable('groups', {
-	id: varchar('id').primaryKey(),
-	name: varchar('name').notNull(),
-	description: text('description'),
-	ownerId: varchar('owner_id')
-		.notNull()
-		.references(() => authUser.id),
-	maxMembers: integer('max_members').default(10).notNull(),
-	isActive: boolean('is_active').default(true).notNull(),
+// Better Auth Organization Plugin Tables
+export const organization = pgTable('organization', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull(),
+	slug: text('slug').notNull().unique(),
+	logo: text('logo'),
+	metadata: text('metadata'), // JSON string for additional metadata
 	createdAt: timestamp('created_at').notNull(),
 	updatedAt: timestamp('updated_at').notNull()
 });
 
-// Group invite codes (multiple per group)
-export const groupInviteCodes = pgTable('group_invite_codes', {
-	id: varchar('id').primaryKey(),
-	groupId: varchar('group_id')
-		.notNull()
-		.references(() => groups.id, { onDelete: 'cascade' }),
-	code: varchar('code').unique().notNull(),
-	createdBy: varchar('created_by')
-		.notNull()
-		.references(() => authUser.id),
-	usedBy: varchar('used_by').references(() => authUser.id),
-	createdAt: timestamp('created_at').notNull(),
-	usedAt: timestamp('used_at'),
-	expiresAt: timestamp('expires_at'), // Optional expiration
-	isActive: boolean('is_active').default(true).notNull()
-});
-
-// Group memberships
-export const groupMemberships = pgTable('group_memberships', {
-	id: varchar('id').primaryKey(),
-	groupId: varchar('group_id')
-		.notNull()
-		.references(() => groups.id, { onDelete: 'cascade' }),
-	userId: varchar('user_id')
+export const member = pgTable('member', {
+	id: text('id').primaryKey(),
+	userId: text('user_id')
 		.notNull()
 		.references(() => authUser.id, { onDelete: 'cascade' }),
-	role: varchar('role').default('member').notNull(), // 'owner', 'admin', 'member'
-	joinedAt: timestamp('joined_at').notNull(),
-	isActive: boolean('is_active').default(true).notNull()
+	organizationId: text('organization_id')
+		.notNull()
+		.references(() => organization.id, { onDelete: 'cascade' }),
+	role: text('role').default('member').notNull(), // owner, admin, member
+	createdAt: timestamp('created_at').notNull()
+});
+
+export const invitation = pgTable('invitation', {
+	id: text('id').primaryKey(),
+	email: text('email').notNull(),
+	inviterId: text('inviter_id')
+		.notNull()
+		.references(() => authUser.id),
+	organizationId: text('organization_id')
+		.notNull()
+		.references(() => organization.id, { onDelete: 'cascade' }),
+	role: text('role').default('member').notNull(),
+	status: text('status').default('pending').notNull(), // pending, accepted, rejected, cancelled
+	expiresAt: timestamp('expires_at').notNull(),
+	createdAt: timestamp('created_at').notNull(),
+	updatedAt: timestamp('updated_at').notNull()
 });
 
 // Stripe subscriptions
@@ -76,6 +70,7 @@ export const fixtures = pgTable('fixtures', {
 	id: varchar('id').primaryKey(),
 	matchId: varchar('match_id').notNull(),
 	weekId: integer('week_id').notNull(),
+	season: varchar('season').notNull(), // Keep season separation (2024, 2025, etc.)
 	homeTeamId: varchar('home_team_id')
 		.notNull()
 		.references(() => teams.id),
@@ -95,9 +90,9 @@ export const predictions = pgTable('predictions', {
 	userId: varchar('user_id')
 		.notNull()
 		.references(() => authUser.id),
-	groupId: varchar('group_id')
+	organizationId: varchar('organization_id')
 		.notNull()
-		.references(() => groups.id), // All predictions now belong to a group
+		.references(() => organization.id), // All predictions now belong to an organization
 	fixtureId: varchar('fixture_id')
 		.notNull()
 		.references(() => fixtures.id),
@@ -112,9 +107,10 @@ export const leagueTable = pgTable('league_table', {
 	userId: varchar('user_id')
 		.notNull()
 		.references(() => authUser.id),
-	groupId: varchar('group_id')
+	organizationId: varchar('organization_id')
 		.notNull()
-		.references(() => groups.id), // League tables are now per group
+		.references(() => organization.id), // League tables are now per organization
+	season: varchar('season').notNull(), // Keep season separation in league tables too
 	totalPoints: integer('total_points').default(0).notNull(),
 	correctScorelines: integer('correct_scorelines').default(0).notNull(),
 	correctOutcomes: integer('correct_outcomes').default(0).notNull(),
@@ -124,51 +120,43 @@ export const leagueTable = pgTable('league_table', {
 });
 
 // Relations
-export const groupsRelations = relations(groups, ({ one, many }) => ({
-	owner: one(authUser, {
-		fields: [groups.ownerId],
-		references: [authUser.id]
-	}),
-	memberships: many(groupMemberships),
-	inviteCodes: many(groupInviteCodes),
+export const organizationRelations = relations(organization, ({ one, many }) => ({
+	members: many(member),
+	invitations: many(invitation),
 	predictions: many(predictions),
 	leagueTable: many(leagueTable),
 	subscription: one(subscriptions, {
-		fields: [groups.id],
+		fields: [organization.id],
 		references: [subscriptions.referenceId]
 	})
 }));
 
-export const groupInviteCodesRelations = relations(groupInviteCodes, ({ one }) => ({
-	group: one(groups, {
-		fields: [groupInviteCodes.groupId],
-		references: [groups.id]
-	}),
-	creator: one(authUser, {
-		fields: [groupInviteCodes.createdBy],
-		references: [authUser.id]
+export const memberRelations = relations(member, ({ one }) => ({
+	organization: one(organization, {
+		fields: [member.organizationId],
+		references: [organization.id]
 	}),
 	user: one(authUser, {
-		fields: [groupInviteCodes.usedBy],
+		fields: [member.userId],
 		references: [authUser.id]
 	})
 }));
 
-export const groupMembershipsRelations = relations(groupMemberships, ({ one }) => ({
-	group: one(groups, {
-		fields: [groupMemberships.groupId],
-		references: [groups.id]
+export const invitationRelations = relations(invitation, ({ one }) => ({
+	organization: one(organization, {
+		fields: [invitation.organizationId],
+		references: [organization.id]
 	}),
-	user: one(authUser, {
-		fields: [groupMemberships.userId],
+	inviter: one(authUser, {
+		fields: [invitation.inviterId],
 		references: [authUser.id]
 	})
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
-	group: one(groups, {
+	organization: one(organization, {
 		fields: [subscriptions.referenceId],
-		references: [groups.id]
+		references: [organization.id]
 	})
 }));
 
@@ -189,9 +177,9 @@ export const predictionsRelations = relations(predictions, ({ one }) => ({
 		fields: [predictions.userId],
 		references: [authUser.id]
 	}),
-	group: one(groups, {
-		fields: [predictions.groupId],
-		references: [groups.id]
+	organization: one(organization, {
+		fields: [predictions.organizationId],
+		references: [organization.id]
 	}),
 	fixture: one(fixtures, {
 		fields: [predictions.fixtureId],
@@ -204,17 +192,17 @@ export const leagueTableRelations = relations(leagueTable, ({ one }) => ({
 		fields: [leagueTable.userId],
 		references: [authUser.id]
 	}),
-	group: one(groups, {
-		fields: [leagueTable.groupId],
-		references: [groups.id]
+	organization: one(organization, {
+		fields: [leagueTable.organizationId],
+		references: [organization.id]
 	})
 }));
 
 // Type exports
 export type Team = typeof teams.$inferSelect;
-export type Group = typeof groups.$inferSelect;
-export type GroupMembership = typeof groupMemberships.$inferSelect;
-export type GroupInviteCode = typeof groupInviteCodes.$inferSelect;
+export type Organization = typeof organization.$inferSelect;
+export type Member = typeof member.$inferSelect;
+export type Invitation = typeof invitation.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type Fixture = typeof fixtures.$inferSelect;
 export type Prediction = typeof predictions.$inferSelect;

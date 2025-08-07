@@ -1,9 +1,15 @@
 import { writable, derived } from 'svelte/store';
-import type { Group, GroupMembership, Subscription, GroupInviteCode } from '$lib/server/db/schema';
 
-// Types for group management
-export interface GroupWithMembers extends Group {
-	memberships: (GroupMembership & {
+// Types for organization management
+export interface OrganizationWithMembers {
+	id: string;
+	name: string;
+	slug: string;
+	logo?: string;
+	metadata?: string;
+	createdAt: string;
+	updatedAt: string;
+	memberships: (Member & {
 		user: {
 			id: string;
 			name: string;
@@ -11,23 +17,34 @@ export interface GroupWithMembers extends Group {
 			username?: string;
 		};
 	})[];
-	subscription?: Subscription;
+	subscription?: any; // TODO: Add proper subscription type
 	memberCount: number;
 }
 
-export interface CreateGroupData {
-	name: string;
-	description?: string;
-	maxMembers?: number;
+export interface Member {
+	id: string;
+	userId: string;
+	organizationId: string;
+	role: string; // owner, admin, member
+	createdAt: string;
 }
 
-export interface InviteCodeWithUser extends GroupInviteCode {
-	creator: {
-		id: string;
-		name: string;
-		email: string;
-	};
-	user?: {
+export interface CreateOrganizationData {
+	name: string;
+	slug?: string;
+}
+
+export interface InvitationWithUser {
+	id: string;
+	email: string;
+	inviterId: string;
+	organizationId: string;
+	role: string;
+	status: string;
+	expiresAt: string;
+	createdAt: string;
+	updatedAt: string;
+	inviter: {
 		id: string;
 		name: string;
 		email: string;
@@ -35,33 +52,34 @@ export interface InviteCodeWithUser extends GroupInviteCode {
 }
 
 // Stores
-export const userGroups = writable<GroupWithMembers[]>([]);
-export const activeGroup = writable<GroupWithMembers | null>(null);
-export const isLoadingGroups = writable(false);
+export const userOrganizations = writable<OrganizationWithMembers[]>([]);
+export const activeOrganization = writable<OrganizationWithMembers | null>(null);
+export const isLoadingOrganizations = writable(false);
 
 // Derived stores
-export const ownedGroups = derived(userGroups, ($userGroups) =>
-	$userGroups.filter((group) => group.memberships.some((m) => m.role === 'owner'))
+export const ownedOrganizations = derived(userOrganizations, ($userOrganizations) =>
+	$userOrganizations.filter((org) => org.memberships.some((m) => m.role === 'owner'))
 );
 
-export const memberGroups = derived(userGroups, ($userGroups) =>
-	$userGroups.filter((group) => group.memberships.some((m) => m.role === 'member'))
+export const memberOrganizations = derived(userOrganizations, ($userOrganizations) =>
+	$userOrganizations.filter((org) => org.memberships.some((m) => m.role === 'member'))
 );
 
-export const hasActiveSubscription = derived(activeGroup, ($activeGroup) => {
-	if (!$activeGroup?.subscription) return false;
+export const hasActiveSubscription = derived(activeOrganization, ($activeOrganization) => {
+	if (!$activeOrganization?.subscription) return false;
 	return (
-		$activeGroup.subscription.status === 'active' || $activeGroup.subscription.status === 'trialing'
+		$activeOrganization.subscription.status === 'active' ||
+		$activeOrganization.subscription.status === 'trialing'
 	);
 });
 
-// Group management functions
-export function useGroups() {
-	const createGroup = async (
-		data: CreateGroupData
-	): Promise<{ success: boolean; group?: GroupWithMembers; error?: string }> => {
+// Organization management functions
+export function useOrganizations() {
+	const createOrganization = async (
+		data: CreateOrganizationData
+	): Promise<{ success: boolean; organization?: OrganizationWithMembers; error?: string }> => {
 		try {
-			const response = await fetch('/api/groups', {
+			const response = await fetch('/api/organizations', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -72,24 +90,24 @@ export function useGroups() {
 			const result = await response.json();
 
 			if (!response.ok) {
-				return { success: false, error: result.message || 'Failed to create group' };
+				return { success: false, error: result.message || 'Failed to create organization' };
 			}
 
 			// Update stores
-			userGroups.update((groups) => [...groups, result.group]);
-			activeGroup.set(result.group);
+			userOrganizations.update((orgs) => [...orgs, result.organization]);
+			activeOrganization.set(result.organization);
 
-			return { success: true, group: result.group };
+			return { success: true, organization: result.organization };
 		} catch (error) {
 			return { success: false, error: 'Network error occurred' };
 		}
 	};
 
-	const joinGroup = async (
+	const joinOrganization = async (
 		inviteCode: string
-	): Promise<{ success: boolean; group?: GroupWithMembers; error?: string }> => {
+	): Promise<{ success: boolean; organization?: OrganizationWithMembers; error?: string }> => {
 		try {
-			const response = await fetch('/api/groups/join', {
+			const response = await fetch('/api/organizations/join', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -100,33 +118,35 @@ export function useGroups() {
 			const result = await response.json();
 
 			if (!response.ok) {
-				return { success: false, error: result.message || 'Failed to join group' };
+				return { success: false, error: result.message || 'Failed to join organization' };
 			}
 
 			// Update stores
-			userGroups.update((groups) => [...groups, result.group]);
+			userOrganizations.update((orgs) => [...orgs, result.organization]);
 
-			return { success: true, group: result.group };
+			return { success: true, organization: result.organization };
 		} catch (error) {
 			return { success: false, error: 'Network error occurred' };
 		}
 	};
 
-	const leaveGroup = async (groupId: string): Promise<{ success: boolean; error?: string }> => {
+	const leaveOrganization = async (
+		organizationId: string
+	): Promise<{ success: boolean; error?: string }> => {
 		try {
-			const response = await fetch(`/api/groups/${groupId}/leave`, {
+			const response = await fetch(`/api/organizations/${organizationId}/leave`, {
 				method: 'POST'
 			});
 
 			const result = await response.json();
 
 			if (!response.ok) {
-				return { success: false, error: result.message || 'Failed to leave group' };
+				return { success: false, error: result.message || 'Failed to leave organization' };
 			}
 
 			// Update stores
-			userGroups.update((groups) => groups.filter((g) => g.id !== groupId));
-			activeGroup.update((current) => (current?.id === groupId ? null : current));
+			userOrganizations.update((orgs) => orgs.filter((org) => org.id !== organizationId));
+			activeOrganization.update((active) => (active?.id === organizationId ? null : active));
 
 			return { success: true };
 		} catch (error) {
@@ -134,109 +154,81 @@ export function useGroups() {
 		}
 	};
 
-	const updateGroup = async (
-		groupId: string,
-		data: Partial<CreateGroupData>
-	): Promise<{ success: boolean; group?: GroupWithMembers; error?: string }> => {
+	const loadUserOrganizations = async (): Promise<void> => {
+		isLoadingOrganizations.set(true);
 		try {
-			const response = await fetch(`/api/groups/${groupId}`, {
-				method: 'PATCH',
+			const response = await fetch('/api/organizations');
+
+			if (response.ok) {
+				const result = await response.json();
+				userOrganizations.set(result.organizations || []);
+
+				// Set first organization as active if none is set
+				const orgs = result.organizations || [];
+				if (orgs.length > 0) {
+					activeOrganization.update((current) => current || orgs[0]);
+				}
+			}
+		} catch (error) {
+			console.error('Error loading organizations:', error);
+		} finally {
+			isLoadingOrganizations.set(false);
+		}
+	};
+
+	const sendInvitation = async (
+		organizationId: string,
+		email: string,
+		role: string = 'member'
+	): Promise<{ success: boolean; invitation?: any; error?: string }> => {
+		try {
+			const response = await fetch(`/api/organizations/${organizationId}/invite`, {
+				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify(data)
+				body: JSON.stringify({ email, role })
 			});
 
 			const result = await response.json();
 
 			if (!response.ok) {
-				return { success: false, error: result.message || 'Failed to update group' };
+				return { success: false, error: result.message || 'Failed to send invitation' };
 			}
 
-			// Update stores
-			userGroups.update((groups) => groups.map((g) => (g.id === groupId ? result.group : g)));
-			activeGroup.update((current) => (current?.id === groupId ? result.group : current));
-
-			return { success: true, group: result.group };
+			return { success: true, invitation: result.invitation };
 		} catch (error) {
 			return { success: false, error: 'Network error occurred' };
 		}
 	};
 
-	const loadUserGroups = async (): Promise<void> => {
-		isLoadingGroups.set(true);
+	const getInvitations = async (
+		organizationId: string
+	): Promise<{ success: boolean; invitations?: InvitationWithUser[]; error?: string }> => {
 		try {
-			const response = await fetch('/api/groups');
-			const result = await response.json();
-
-			if (response.ok) {
-				userGroups.set(result.groups || []);
-
-				// Set first group as active if none is set
-				activeGroup.update((current) => {
-					if (!current && result.groups?.length > 0) {
-						return result.groups[0];
-					}
-					return current;
-				});
-			}
-		} catch (error) {
-			console.error('Failed to load user groups:', error);
-		} finally {
-			isLoadingGroups.set(false);
-		}
-	};
-
-	const generateInviteCode = async (
-		groupId: string
-	): Promise<{ success: boolean; inviteCode?: string; error?: string }> => {
-		try {
-			const response = await fetch(`/api/groups/${groupId}/invite-codes`, {
-				method: 'POST'
-			});
-
-			const result = await response.json();
+			const response = await fetch(`/api/organizations/${organizationId}/invitations`);
 
 			if (!response.ok) {
-				return { success: false, error: result.message || 'Failed to generate invite code' };
+				return { success: false, error: 'Failed to fetch invitations' };
 			}
-
-			return { success: true, inviteCode: result.code };
-		} catch (error) {
-			return { success: false, error: 'Network error occurred' };
-		}
-	};
-
-	const getGroupInviteCodes = async (
-		groupId: string
-	): Promise<{ success: boolean; inviteCodes?: InviteCodeWithUser[]; error?: string }> => {
-		try {
-			const response = await fetch(`/api/groups/${groupId}/invite-codes`);
 
 			const result = await response.json();
-
-			if (!response.ok) {
-				return { success: false, error: result.message || 'Failed to fetch invite codes' };
-			}
-
-			return { success: true, inviteCodes: result.inviteCodes };
+			return { success: true, invitations: result.invitations };
 		} catch (error) {
 			return { success: false, error: 'Network error occurred' };
 		}
 	};
 
-	const deleteInviteCode = async (
-		codeId: string
+	const cancelInvitation = async (
+		invitationId: string
 	): Promise<{ success: boolean; error?: string }> => {
 		try {
-			const response = await fetch(`/api/groups/invite-codes/${codeId}`, {
+			const response = await fetch(`/api/organizations/invitations/${invitationId}`, {
 				method: 'DELETE'
 			});
 
-			const result = await response.json();
-
 			if (!response.ok) {
-				return { success: false, error: result.message || 'Failed to delete invite code' };
+				return { success: false, error: 'Failed to cancel invitation' };
 			}
 
 			return { success: true };
@@ -246,30 +238,28 @@ export function useGroups() {
 	};
 
 	const removeMember = async (
-		groupId: string,
+		organizationId: string,
 		userId: string
 	): Promise<{ success: boolean; error?: string }> => {
 		try {
-			const response = await fetch(`/api/groups/${groupId}/members/${userId}`, {
+			const response = await fetch(`/api/organizations/${organizationId}/members/${userId}`, {
 				method: 'DELETE'
 			});
 
-			const result = await response.json();
-
 			if (!response.ok) {
-				return { success: false, error: result.message || 'Failed to remove member' };
+				return { success: false, error: 'Failed to remove member' };
 			}
 
 			// Update stores
-			userGroups.update((groups) =>
-				groups.map((g) =>
-					g.id === groupId
+			userOrganizations.update((orgs) =>
+				orgs.map((org) =>
+					org.id === organizationId
 						? {
-								...g,
-								memberships: g.memberships.filter((m) => m.userId !== userId),
-								memberCount: g.memberCount - 1
+								...org,
+								memberships: org.memberships.filter((m) => m.userId !== userId),
+								memberCount: org.memberCount - 1
 							}
-						: g
+						: org
 				)
 			);
 
@@ -280,14 +270,13 @@ export function useGroups() {
 	};
 
 	return {
-		createGroup,
-		joinGroup,
-		leaveGroup,
-		updateGroup,
-		loadUserGroups,
-		generateInviteCode,
-		getGroupInviteCodes,
-		deleteInviteCode,
+		createOrganization,
+		joinOrganization,
+		leaveOrganization,
+		loadUserOrganizations,
+		sendInvitation,
+		getInvitations,
+		cancelInvitation,
 		removeMember
 	};
 }

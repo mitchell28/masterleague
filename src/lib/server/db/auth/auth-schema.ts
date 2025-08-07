@@ -33,7 +33,10 @@ export const session = pgTable('auth_session', {
 	userAgent: text('user_agent'),
 	userId: text('user_id')
 		.notNull()
-		.references(() => user.id, { onDelete: 'cascade' })
+		.references(() => user.id, { onDelete: 'cascade' }),
+	// Organization plugin fields
+	activeOrganizationId: text('active_organization_id'),
+	activeTeamId: text('active_team_id')
 });
 
 export const account = pgTable('auth_account', {
@@ -63,8 +66,19 @@ export const verification = pgTable('auth_verification', {
 	updatedAt: timestamp('updated_at')
 });
 
+// Rate limiting table for Better Auth
+export const rateLimit = pgTable('auth_rate_limit', {
+	id: text('id').primaryKey(),
+	key: text('key').notNull(),
+	count: integer('count').default(0).notNull(),
+	windowStart: timestamp('window_start').notNull(),
+	createdAt: timestamp('created_at').notNull(),
+	updatedAt: timestamp('updated_at').notNull()
+});
+
 // Type exports
 export type AuthUser = typeof user.$inferSelect;
 export type AuthSession = typeof session.$inferSelect;
 export type AuthAccount = typeof account.$inferSelect;
 export type AuthVerification = typeof verification.$inferSelect;
+export type RateLimit = typeof rateLimit.$inferSelect;

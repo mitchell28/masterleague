@@ -1,5 +1,5 @@
 import { db } from '$lib/server/db';
-import { leagueTable, authUser, groupMemberships, groups } from '../../../drizzle/schema';
+import { leagueTable, authUser, member, organization } from '../../../drizzle/schema';
 import { desc, eq, and, inArray } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
@@ -27,35 +27,36 @@ export const load = (async ({ locals, url }) => {
 		console.error('Points calculation error:', err);
 	}
 
-	// Get user's groups
-	const userGroups = await db
+	// Get user's organizations
+	const userOrganizations = await db
 		.select({
-			id: groups.id,
-			name: groups.name,
-			description: groups.description
+			id: organization.id,
+			name: organization.name,
+			slug: organization.slug
 		})
-		.from(groupMemberships)
-		.innerJoin(groups, eq(groupMemberships.groupId, groups.id))
-		.where(and(eq(groupMemberships.userId, locals.user.id), eq(groupMemberships.isActive, true)));
+		.from(member)
+		.innerJoin(organization, eq(member.organizationId, organization.id))
+		.where(eq(member.userId, locals.user.id));
 
-	// Get selected group from URL parameter, default to first group
-	const selectedGroupId = url.searchParams.get('group') || userGroups[0]?.id;
+	// Get selected organization from URL parameter, default to first organization
+	const selectedOrganizationId = url.searchParams.get('organization') || userOrganizations[0]?.id;
 
-	if (!selectedGroupId || userGroups.length === 0) {
+	if (!selectedOrganizationId || userOrganizations.length === 0) {
 		return {
 			currentWeek: await getCurrentWeek(),
 			leaderboard: [],
-			userGroups: [],
-			selectedGroup: null,
+			userOrganizations: [],
+			selectedOrganization: null,
 			user: locals.user,
 			currentSeason: '2025-26'
 		};
 	}
 
-	// Find the selected group
-	const selectedGroup = userGroups.find((g) => g.id === selectedGroupId) || userGroups[0];
+	// Find the selected organization
+	const selectedOrganization =
+		userOrganizations.find((org) => org.id === selectedOrganizationId) || userOrganizations[0];
 
-	// Get the leaderboard data for the selected group and 2025-26 season
+	// Get the leaderboard data for the selected organization and 2025-26 season
 	const leaderboard = await db
 		.select({
 			id: leagueTable.userId,
@@ -68,11 +69,13 @@ export const load = (async ({ locals, url }) => {
 			completedFixtures: leagueTable.completedFixtures,
 			lastUpdated: leagueTable.lastUpdated,
 			season: leagueTable.season,
-			groupId: leagueTable.groupId
+			organizationId: leagueTable.organizationId
 		})
 		.from(leagueTable)
 		.innerJoin(authUser, eq(leagueTable.userId, authUser.id))
-		.where(and(eq(leagueTable.season, '2025-26'), eq(leagueTable.groupId, selectedGroupId)))
+		.where(
+			and(eq(leagueTable.season, '2025-26'), eq(leagueTable.organizationId, selectedOrganizationId))
+		)
 		.orderBy(desc(leagueTable.totalPoints), desc(leagueTable.completedFixtures));
 
 	const currentWeek = await getCurrentWeek();
@@ -80,8 +83,8 @@ export const load = (async ({ locals, url }) => {
 	return {
 		currentWeek,
 		leaderboard,
-		userGroups,
-		selectedGroup,
+		userOrganizations,
+		selectedOrganization,
 		user: locals.user,
 		currentSeason: '2025-26'
 	};

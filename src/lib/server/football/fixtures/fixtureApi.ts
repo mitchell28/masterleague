@@ -269,7 +269,7 @@ export interface ApiMatch {
 /**
  * Fetch fixtures from Football-Data.org API and seed them into the database
  */
-export async function seedFixturesWithMatchId(season: string = '2025'): Promise<void> {
+export async function seedFixturesWithSeasonYear(season: string = '2025'): Promise<void> {
 	// Get the API key
 	const apiKey = FOOTBALL_DATA_API_KEY;
 	if (!apiKey) {
@@ -356,6 +356,7 @@ export async function seedFixturesWithMatchId(season: string = '2025'): Promise<
 					id: randomUUID(),
 					matchId: match.id.toString(), // Use the API match ID as our matchId
 					weekId: parseInt(weekId),
+					season: season, // Add the season parameter
 					homeTeamId,
 					awayTeamId,
 					homeScore,

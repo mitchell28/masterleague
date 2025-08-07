@@ -252,6 +252,7 @@ async function seedFixtures() {
 						id: randomUUID(),
 						matchId: match.id.toString(),
 						weekId: parseInt(weekId),
+						season: season, // Add the season value
 						homeTeamId,
 						awayTeamId,
 						homeScore,

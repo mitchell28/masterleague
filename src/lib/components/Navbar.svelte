@@ -12,7 +12,7 @@
 	const navItems = [
 		{ href: '/predictions', label: 'Predictions', icon: 'Home', adminOnly: false },
 		{ href: '/leaderboard', label: 'Leaderboard', icon: 'Trophy', adminOnly: false },
-		{ href: '/groups', label: 'Groups', icon: 'Users', adminOnly: false },
+		{ href: '/groups', label: 'Organizations', icon: 'Users', adminOnly: false },
 		{ href: '/admin', label: 'Admin', icon: 'Settings', adminOnly: true }
 	];
 

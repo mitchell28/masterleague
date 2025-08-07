@@ -10,11 +10,11 @@ export const POST: RequestHandler = async ({ locals }) => {
 	try {
 		console.log('🔄 Starting 2025 season fixtures seeding via API...');
 
-		// Import the seedFixturesWithMatchId function
-		const { seedFixturesWithMatchId } = await import('$lib/server/football/fixtures/fixtureApi');
+		// Import the seedFixturesWithSeasonYear function
+		const { seedFixturesWithSeasonYear } = await import('$lib/server/football/fixtures/fixtureApi');
 
 		// Seed 2025 fixtures
-		await seedFixturesWithMatchId('2025');
+		await seedFixturesWithSeasonYear('2025');
 
 		console.log('✅ 2025 season fixtures seeded successfully via API');
 

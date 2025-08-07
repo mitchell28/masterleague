@@ -10,7 +10,7 @@ import {
 	updateAllWeekMultipliers
 } from './fixtureRepository';
 import {
-	seedFixturesWithMatchId,
+	seedFixturesWithSeasonYear,
 	updateFixtureStatuses,
 	// Import types with the 'type' keyword to comply with verbatimModuleSyntax
 	type ApiMatch,
@@ -33,7 +33,7 @@ export {
 	updateAllWeekMultipliers,
 
 	// API operations
-	seedFixturesWithMatchId,
+	seedFixturesWithSeasonYear,
 	updateFixtureStatuses
 };
 
