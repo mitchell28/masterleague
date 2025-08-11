@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db';
-import { teams, predictions, fixtures, type Fixture } from '$lib/server/db/schema';
+import { teams, predictions, fixtures, member, type Fixture } from '$lib/server/db/schema';
+import { session } from '$lib/server/db/auth/auth-schema';
 import { inArray, eq, and } from 'drizzle-orm';
 import { getFixturesByWeek } from '../fixtures';
 import { randomUUID } from 'crypto';
@@ -111,7 +112,8 @@ export function convertPredictionsToMap(
 export async function getFixturesWithPredictions(
 	userId: string,
 	week: number,
-	currentWeek: number
+	currentWeek: number,
+	organizationId?: string
 ) {
 	const cacheKey = `week-${week}-${userId}`;
 	const now = Date.now();
@@ -155,7 +157,7 @@ export async function getFixturesWithPredictions(
 	);
 
 	// Get user's predictions for this week
-	const userPredictions = await getUserPredictionsByWeek(userId, week);
+	const userPredictions = await getUserPredictionsByWeek(userId, week, organizationId);
 
 	// Get teams data
 	const teamsMap = await getTeamsForFixtures(sortedFixtures);
@@ -240,8 +242,20 @@ export function clearFixtureCache(week: number, userId?: string) {
  */
 export async function submitPrediction(
 	userId: string,
-	predictionsData: Array<{ fixtureId: string; homeScore: number; awayScore: number }>
+	predictionsData: Array<{ fixtureId: string; homeScore: number; awayScore: number }>,
+	organizationId?: string
 ): Promise<Array<{ id: string; fixtureId: string }>> {
+	// Get the user's active organization if not provided
+	let userOrganizationId = organizationId;
+
+	if (!userOrganizationId) {
+		const activeOrgId = await getUserActiveOrganization(userId);
+		userOrganizationId = activeOrgId || undefined;
+	}
+
+	if (!userOrganizationId) {
+		throw new Error('User must be a member of an organization to make predictions');
+	}
 	// Get all fixture IDs from predictions
 	const fixtureIds = predictionsData.map((p) => p.fixtureId);
 
@@ -262,7 +276,13 @@ export async function submitPrediction(
 	const existingPredictions = await db
 		.select()
 		.from(predictions)
-		.where(and(eq(predictions.userId, userId), inArray(predictions.fixtureId, fixtureIds)));
+		.where(
+			and(
+				eq(predictions.userId, userId),
+				inArray(predictions.fixtureId, fixtureIds),
+				eq(predictions.organizationId, userOrganizationId)
+			)
+		);
 
 	const existingPredictionsMap = new Map(existingPredictions.map((p) => [p.fixtureId, p]));
 
@@ -309,6 +329,7 @@ export async function submitPrediction(
 				fixtureId: prediction.fixtureId,
 				predictedHomeScore: prediction.homeScore,
 				predictedAwayScore: prediction.awayScore,
+				organizationId: userOrganizationId,
 				createdAt: now
 			});
 
@@ -325,8 +346,20 @@ export async function submitPrediction(
 // Helper function to get user predictions for a specific week
 export async function getUserPredictionsByWeek(
 	userId: string,
-	week: number
+	week: number,
+	organizationId?: string
 ): Promise<UserPrediction[]> {
+	// Get the user's active organization if not provided
+	let userOrganizationId = organizationId;
+
+	if (!userOrganizationId) {
+		const activeOrgId = await getUserActiveOrganization(userId);
+		userOrganizationId = activeOrgId || undefined;
+	}
+
+	if (!userOrganizationId) {
+		return []; // Return empty array if no organization found
+	}
 	// Get fixture IDs for the specified week
 	const weekFixtures = await db
 		.select({ id: fixtures.id })
@@ -351,7 +384,42 @@ export async function getUserPredictionsByWeek(
 			createdAt: predictions.createdAt
 		})
 		.from(predictions)
-		.where(and(eq(predictions.userId, userId), inArray(predictions.fixtureId, fixtureIds)));
+		.where(
+			and(
+				eq(predictions.userId, userId),
+				inArray(predictions.fixtureId, fixtureIds),
+				eq(predictions.organizationId, userOrganizationId)
+			)
+		);
 
 	return userPredictions;
+}
+
+/**
+ * Get the user's active organization ID from their session or default to their first organization
+ */
+async function getUserActiveOrganization(userId: string): Promise<string | null> {
+	// Get the user's active organization from their session
+	const userSession = await db
+		.select({ activeOrganizationId: session.activeOrganizationId })
+		.from(session)
+		.where(eq(session.userId, userId))
+		.limit(1);
+
+	if (userSession.length > 0 && userSession[0].activeOrganizationId) {
+		return userSession[0].activeOrganizationId;
+	}
+
+	// Fallback: get the user's first organization membership
+	const userMembership = await db
+		.select({ organizationId: member.organizationId })
+		.from(member)
+		.where(eq(member.userId, userId))
+		.limit(1);
+
+	if (userMembership.length === 0) {
+		return null;
+	}
+
+	return userMembership[0].organizationId;
 }

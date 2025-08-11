@@ -139,7 +139,7 @@ export const auth = betterAuth({
 					const inviteLink = `${getEnvVar('PUBLIC_BETTER_AUTH_URL')}/accept-invitation/${data.id}`;
 
 					await resend.emails.send({
-						from: 'Master League <onboarding@resend.dev>',
+						from: 'Master League <noreply@mail.masterleague.app>',
 						to: data.email,
 						subject: `You've been invited to join ${data.organization.name}`,
 						html: `
@@ -195,7 +195,7 @@ export const auth = betterAuth({
 
 				try {
 					const emailResult = await resend.emails.send({
-						from: 'Master League <onboarding@resend.dev>', // Use Resend's default domain to avoid deliverability issues
+						from: 'Master League <noreply@mail.masterleague.app>', // Use Resend's default domain to avoid deliverability issues
 						to: email,
 						subject:
 							type === 'sign-in'

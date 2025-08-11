@@ -1,201 +1,209 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { Menu, X, Trophy, Home, Settings, LogOut, LogIn, UserPlus, Users } from '@lucide/svelte';
+	import { Menu, X, LogOut, LogIn, UserPlus } from '@lucide/svelte';
 	import { authClient } from '$lib/client/auth-client';
 	import { fly } from 'svelte/transition';
-	import logo from '$lib/assets/logo/master_league_logo.png';
-	// Use reactive session from authClient
-	const session = authClient.useSession();
+	import logo from '$lib/assets/logo/masterleague.svg';
 
-	// Navigation items
+	const session = authClient.useSession();
 	const navItems = [
-		{ href: '/predictions', label: 'Predictions', icon: 'Home', adminOnly: false },
-		{ href: '/leaderboard', label: 'Leaderboard', icon: 'Trophy', adminOnly: false },
-		{ href: '/groups', label: 'Organizations', icon: 'Users', adminOnly: false },
-		{ href: '/admin', label: 'Admin', icon: 'Settings', adminOnly: true }
+		{ href: '/', label: 'Home', adminOnly: false },
+		{ href: '/predictions', label: 'Predictions', adminOnly: false },
+		{ href: '/leaderboard', label: 'Leaderboard', adminOnly: false },
+		{ href: '/groups', label: 'Groups', adminOnly: false }
 	];
 
-	// Reactive state
 	let isMenuOpen = $state(false);
-	let scrolled = $state(false);
+	let isDropdownOpen = $state(false);
 
-	// Effect for scroll handling
-	$effect(() => {
-		const handleScroll = () => {
-			scrolled = window.scrollY > 10;
-		};
-
-		window.addEventListener('scroll', handleScroll);
-
-		// Return cleanup function
-		return () => {
-			window.removeEventListener('scroll', handleScroll);
-		};
-	});
-
-	function toggleMenu() {
-		isMenuOpen = !isMenuOpen;
-	}
-
-	// Helper function to check if a nav item is active
 	function isNavItemActive(href: string): boolean {
-		if (href === '/') return page.url.pathname === href;
-		if (href === '/admin') return page.url.pathname.startsWith(href);
-		return page.url.pathname.startsWith(href);
+		return href === '/' ? page.url.pathname === href : page.url.pathname.startsWith(href);
 	}
+
+	async function handleSignOut() {
+		await authClient.signOut();
+		goto('/auth/login');
+	}
+
+	// Close dropdown when clicking outside
+	function handleClickOutside(event: MouseEvent) {
+		if (isDropdownOpen) {
+			const target = event.target as HTMLElement;
+			const dropdown = document.querySelector('[data-dropdown]');
+			const button = document.querySelector('[data-dropdown-button]');
+
+			if (dropdown && button && !dropdown.contains(target) && !button.contains(target)) {
+				isDropdownOpen = false;
+			}
+		}
+	}
+
+	// Add event listener for click outside
+	$effect(() => {
+		if (isDropdownOpen) {
+			document.addEventListener('click', handleClickOutside);
+			return () => {
+				document.removeEventListener('click', handleClickOutside);
+			};
+		}
+	});
 </script>
 
-<header
-	class="fixed top-0 left-0 z-50 w-full transition-all duration-300 {scrolled
-		? 'bg-black/90 py-4 shadow-xl backdrop-blur-lg'
-		: ' py-6'}"
->
-	<div class="container mx-auto flex items-center justify-between px-4">
-		<a href="/" class="group flex items-center gap-3">
-			<img src={logo} alt="Master League Logo" class="h-10 w-10" />
-			<span class="font-display text-gradient text-xl font-bold tracking-tight">Master League</span>
-		</a>
+<header class="fixed top-0 left-0 z-50 w-full">
+	<!-- Main navbar container -->
+	<div class="relative min-h-[80px] w-full bg-[#0D1326]">
+		<div class="container mx-auto flex items-center justify-between gap-10 px-6 py-5">
+			<div class="hidden items-center justify-center gap-10 md:flex">
+				<a href="/" class="group flex items-center gap-3">
+					<img src={logo} height="56" alt="Master League Logo" class="h-12" />
+				</a>
 
-		<!-- Desktop Navigation -->
-		<nav class="hidden items-center gap-8 md:flex">
-			{#each navItems as item}
-				{@const isActive = isNavItemActive(item.href)}
-
-				{#if !item.adminOnly || $session.data?.user?.role === 'admin'}
-					<a
-						data-sveltekit-preload-data="hover"
-						href={item.href}
-						class="relative flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-all duration-200
-							{isActive
-							? 'text-white after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:rounded-full after:bg-indigo-500'
-							: 'text-slate-400 hover:translate-y-[-1px] hover:text-white'}"
-					>
-						{#if item.icon === 'Home'}
-							<Home class="size-4" />
-						{:else if item.icon === 'Trophy'}
-							<Trophy class="size-4" />
-						{:else if item.icon === 'Users'}
-							<Users class="size-4" />
-						{:else if item.icon === 'Settings'}
-							<Settings class="size-4" />
-						{/if}
-						{item.label}
-					</a>
-				{/if}
-			{/each}
-
-			<div class="ml-6 flex items-center gap-3">
-				{#if $session.data}
-					<div class="flex items-center gap-6">
-						<div class="flex items-center gap-2">
-							<div
-								class="flex size-8 items-center justify-center rounded-full bg-indigo-600/30 text-white shadow-md"
+				<div class="flex gap-2">
+					{#each navItems as item}
+						{#if !item.adminOnly || $session.data?.user?.role === 'admin'}
+							{@const isActive = isNavItemActive(item.href)}
+							<a
+								data-sveltekit-preload-data="hover"
+								href={item.href}
+								class="text- relative flex items-center justify-center px-4 py-2 font-medium transition-all duration-200
+									{isActive ? 'bg-accent text-black' : 'hover:bg-accent/20'}"
+								style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
 							>
-								{$session.data.user.name.charAt(0).toUpperCase()}
-							</div>
-							<p class="text-sm font-medium text-white">
-								{$session.data.user.name}
-							</p>
-						</div>
-						<button
-							class="flex cursor-pointer items-center gap-1.5 rounded-lg bg-slate-800/80 px-4 py-2 text-sm font-medium text-white transition-all hover:translate-y-[-1px] hover:bg-slate-700 hover:shadow-lg"
-							onclick={async () => {
-								await authClient.signOut();
-								goto('/auth/login');
-							}}
-						>
-							<LogOut class="size-4" />
-							Logout
-						</button>
-					</div>
-				{:else}
-					<div class="flex items-center gap-3">
-						<a
-							href="/auth/login"
-							class="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:translate-y-[-1px] hover:bg-indigo-500 hover:shadow-lg hover:shadow-indigo-500/20"
-						>
-							<LogIn class="size-4" />
-							Login
-						</a>
-						<a
-							href="/auth/signup"
-							class="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm font-medium text-white transition-all hover:translate-y-[-1px] hover:bg-slate-700 hover:shadow-lg"
-						>
-							<UserPlus class="size-4" />
-							Sign Up
-						</a>
-					</div>
-				{/if}
+								{item.label}
+							</a>
+						{/if}
+					{/each}
+				</div>
 			</div>
-		</nav>
 
-		<!-- Mobile Menu Button -->
-		<button
-			class="flex size-10 items-center justify-center rounded-lg bg-slate-800/80 text-white transition-colors hover:bg-slate-700 md:hidden"
-			onclick={toggleMenu}
-			aria-label="Toggle menu"
-		>
-			{#if isMenuOpen}
-				<X class="size-6" />
-			{:else}
-				<Menu class="size-6" />
-			{/if}
-		</button>
+			<!-- Mobile Logo -->
+			<a href="/" class="group flex items-center gap-3 md:hidden">
+				<img src={logo} height="56" alt="Master League Logo" class="h-12" />
+			</a>
+
+			<!-- Desktop Navigation -->
+			<nav class="hidden items-center gap-8 md:flex">
+				<div class="ml-6 flex items-center gap-3">
+					{#if $session.data}
+						<div class="relative">
+							<button
+								data-dropdown-button
+								class="flex cursor-pointer items-center gap-2"
+								onclick={() => (isDropdownOpen = !isDropdownOpen)}
+							>
+								<div class="bg-accent flex size-8 items-center justify-center text-black shadow-md">
+									{$session.data.user.name.charAt(0).toUpperCase()}
+								</div>
+							</button>
+
+							<!-- Dropdown -->
+							{#if isDropdownOpen}
+								<div
+									data-dropdown
+									class="border-accent/30 absolute top-full right-0 z-[60] mt-2 w-64 rounded-lg border bg-[#0D1326] shadow-xl"
+								>
+									<div class="border-accent/30 border-b p-4">
+										<p class="font-medium text-white">{$session.data.user.name}</p>
+										<p class="text-xs text-slate-400">{$session.data.user.email}</p>
+									</div>
+									<div class="p-2">
+										<button
+											class="hover:bg-accent/20 flex w-full items-center gap-2 px-3 py-2 text-slate-300 transition-colors hover:text-white"
+											onclick={() => {
+												handleSignOut();
+												isDropdownOpen = false;
+											}}
+										>
+											<LogOut class="size-4" />
+											Logout
+										</button>
+									</div>
+								</div>
+							{/if}
+						</div>
+					{:else}
+						<div class="flex items-center gap-3">
+							<a
+								href="/auth/login"
+								class="flex items-center gap-1.5 px-4 py-2 shadow-md transition-all hover:opacity-90 hover:shadow-lg
+									{isNavItemActive('/auth/login') ? 'bg-accent text-black' : 'text-white'}"
+								style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
+							>
+								<LogIn class="size-4" />
+								Login
+							</a>
+							<a
+								href="/auth/signup"
+								class="flex items-center gap-1.5 px-4 py-2 transition-all
+									{isNavItemActive('/auth/signup') ? 'bg-accent text-black' : 'hover:bg-accent/20 text-white'}"
+								style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
+							>
+								<UserPlus class="size-4" />
+								Sign Up
+							</a>
+						</div>
+					{/if}
+				</div>
+			</nav>
+
+			<!-- Mobile Menu Button -->
+			<button
+				class="hover:bg-accent/20 bg-accent/30 flex size-10 items-center justify-center text-white transition-colors md:hidden"
+				style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
+				onclick={() => (isMenuOpen = !isMenuOpen)}
+				aria-label="Toggle menu"
+			>
+				{#if isMenuOpen}
+					<X class="size-6" />
+				{:else}
+					<Menu class="size-6" />
+				{/if}
+			</button>
+		</div>
 	</div>
 
 	<!-- Mobile Menu -->
 	{#if isMenuOpen}
 		<div
 			transition:fly={{ y: -10, duration: 200 }}
-			class="absolute top-full left-0 w-full border-t border-slate-800/50 bg-black/95 shadow-2xl backdrop-blur-lg md:hidden"
+			class="border-accent/30 absolute top-full left-0 w-full border-t bg-[#0D1326] shadow-2xl md:hidden"
+			style="clip-path: polygon(0% 0%, 100% 0%, 100% 90%, 95% 100%, 5% 100%, 0% 90%);"
 		>
-			<nav class="container mx-auto flex flex-col gap-2 px-4 py-6">
+			<nav class="container mx-auto flex flex-col gap-2 px-4 py-6 text-sm">
 				{#each navItems as item}
-					{@const isActive = isNavItemActive(item.href)}
-
 					{#if !item.adminOnly || $session.data?.user?.role === 'admin'}
+						{@const isActive = isNavItemActive(item.href)}
 						<a
 							href={item.href}
-							class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm transition-all duration-200
-								{isActive
-								? 'border-l-2 border-indigo-500 bg-slate-900/50 font-medium text-white'
-								: 'text-slate-300 hover:bg-slate-800/50 hover:text-white'}"
+							class="flex items-center gap-3 px-4 py-3 text-white transition-all duration-200
+								{isActive ? 'bg-accent font-medium text-black' : 'hover:bg-accent/20'}"
+							style={isActive
+								? 'clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);'
+								: ''}
 							onclick={() => (isMenuOpen = false)}
 						>
-							{#if item.icon === 'Home'}
-								<Home class="size-5" />
-							{:else if item.icon === 'Trophy'}
-								<Trophy class="size-5" />
-							{:else if item.icon === 'Users'}
-								<Users class="size-5" />
-							{:else if item.icon === 'Settings'}
-								<Settings class="size-5" />
-							{/if}
 							{item.label}
 						</a>
 					{/if}
 				{/each}
 
-				<div class="mt-6 border-t border-slate-800/50 pt-6">
+				<div class="border-accent/30 mt-6 border-t pt-6">
 					{#if $session.data}
 						<div class="flex flex-col gap-4">
 							<div class="flex items-center gap-3 px-4">
 								<div
-									class="flex size-10 items-center justify-center rounded-full bg-indigo-600/30 text-white shadow-md"
+									class="bg-accent flex size-10 items-center justify-center text-black shadow-md"
+									style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
 								>
 									{$session.data.user.name.charAt(0).toUpperCase()}
 								</div>
-								<p class="text-sm font-medium text-white">
-									{$session.data.user.name}
-								</p>
+								<p class="font-medium text-white">{$session.data.user.name}</p>
 							</div>
 							<button
-								class="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-800/80 py-3 text-center text-sm font-medium text-white transition-all hover:bg-slate-700 hover:shadow-lg"
-								onclick={async () => {
-									await authClient.signOut();
-									goto('/auth/login');
-								}}
+								class="hover:bg-accent/20 border-accent/30 flex w-full items-center justify-center gap-2 border py-3 text-center font-medium text-white transition-all"
+								style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
+								onclick={handleSignOut}
 							>
 								<LogOut class="size-4" />
 								Logout
@@ -205,14 +213,16 @@
 						<div class="flex flex-col gap-3">
 							<a
 								href="/auth/login"
-								class="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-3 text-center text-sm font-medium text-white shadow-md transition-all hover:bg-indigo-500 hover:shadow-lg"
+								class="bg-accent flex w-full items-center justify-center gap-2 py-3 text-center font-medium text-black shadow-md transition-all hover:opacity-90 hover:shadow-lg"
+								style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
 							>
 								<LogIn class="size-4" />
 								Login
 							</a>
 							<a
 								href="/auth/signup"
-								class="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800/80 py-3 text-center text-sm font-medium text-white transition-all hover:bg-slate-700 hover:shadow-lg"
+								class="hover:bg-accent/20 border-accent/30 flex w-full items-center justify-center gap-2 border py-3 text-center font-medium text-white transition-all"
+								style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
 							>
 								<UserPlus class="size-4" />
 								Sign Up

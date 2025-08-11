@@ -8,6 +8,10 @@
 		availablePlans,
 		type OrganizationWithMembers
 	} from '$lib/hooks';
+	import type { ActionData } from '../../routes/groups/$types';
+
+	// Props
+	let { form } = $props<{ form?: ActionData }>();
 
 	// Local state for invitations
 	let organizationInvitations = $state<Record<string, any[]>>({});
@@ -25,7 +29,8 @@
 		sendInvitation,
 		getInvitations,
 		cancelInvitation,
-		removeMember
+		removeMember,
+		deleteOrganization
 	} = useOrganizations();
 
 	const { upgradeSubscription, loadPlans, loadSubscription, cancelSubscription } =
@@ -69,6 +74,33 @@
 
 		loadData();
 	});
+
+	// Handle form responses
+	$effect(() => {
+		if (form?.success) {
+			showToast(form.message || 'Action completed successfully', 'success');
+		} else if (form?.error) {
+			showToast(form.error, 'error');
+		}
+	});
+
+	async function handleDeleteOrganization(organization: OrganizationWithMembers) {
+		const confirmed = confirm(
+			`Are you sure you want to delete "${organization.name}"? This action cannot be undone and will remove all members and data.`
+		);
+
+		if (!confirmed) {
+			return;
+		}
+
+		const result = await deleteOrganization(organization.id);
+
+		if (result.success) {
+			showToast('Organization deleted successfully!', 'success');
+		} else {
+			showToast(result.error || 'Failed to delete organization', 'error');
+		}
+	}
 
 	async function handleCreateOrganization() {
 		if (!newOrganizationName.trim()) return;
@@ -123,9 +155,8 @@
 		const result = await getInvitations(organizationId);
 		if (result.success && result.invitations) {
 			organizationInvitations[organizationId] = result.invitations;
-		} else {
-			showToast(result.error || 'Failed to load invitations', 'error');
 		}
+		// Remove the error toast - just fail silently for UX
 
 		loadingInvites = null;
 	}
@@ -225,22 +256,22 @@
 <div class="space-y-8">
 	<div class="mb-8 flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold text-white">Organizations</h1>
-			<p class="text-slate-400">Manage your prediction organizations and subscriptions</p>
+			<h1 class="text-2xl font-bold text-white">Groups</h1>
+			<p class="text-slate-400">Manage your prediction groups</p>
 		</div>
 
 		<div class="flex gap-3">
 			<button
 				onclick={() => (showCreateOrganization = true)}
-				class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+				class="bg-accent hover:bg-accent/80 px-4 py-2 text-sm font-medium text-black transition-colors"
 			>
-				Create Organization
+				Create Group
 			</button>
 			<button
 				onclick={() => (showJoinOrganization = true)}
-				class="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700"
+				class="bg-slate-800/50 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700/80"
 			>
-				Join Organization
+				Join Group
 			</button>
 		</div>
 	</div>
@@ -248,7 +279,7 @@
 	<!-- Organizations List -->
 	<div class="mb-8 grid gap-6">
 		{#each $userOrganizations as organization}
-			<div class="rounded-lg border border-slate-700 bg-slate-800 p-6">
+			<div class="border-b-4 border-indigo-600 bg-slate-800/50 p-6">
 				<div class="mb-4 flex items-start justify-between">
 					<div class="flex-1">
 						<h3 class="text-lg font-semibold text-white">{organization.name}</h3>
@@ -260,13 +291,11 @@
 
 					<div class="flex gap-2">
 						{#if $activeOrganization?.id === organization.id}
-							<span class="rounded-full bg-indigo-600 px-3 py-1 text-xs font-medium text-white">
-								Active
-							</span>
+							<span class="bg-accent px-3 py-1 text-xs font-medium text-black"> Active </span>
 						{:else}
 							<button
 								onclick={() => selectOrganization(organization)}
-								class="rounded-lg bg-slate-700 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-slate-600"
+								class="bg-slate-700/80 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-slate-700"
 							>
 								Select
 							</button>
@@ -275,28 +304,87 @@
 						{#if canManageOrganization(organization)}
 							<button
 								onclick={() => toggleInvitations(organization.id)}
-								class="rounded-lg bg-slate-700 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-slate-600"
+								class="bg-slate-700/80 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-slate-700"
 							>
 								{showInvitations === organization.id ? 'Hide' : 'Invitations'}
 							</button>
+
+							{#if organization.memberships.some((m) => m.role === 'owner')}
+								<button
+									onclick={() => handleDeleteOrganization(organization)}
+									class="bg-red-600/80 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-red-600"
+								>
+									Delete
+								</button>
+							{/if}
 						{/if}
 					</div>
 				</div>
+
+				<!-- Invitations Section (moved to top when shown) -->
+				{#if showInvitations === organization.id && canManageOrganization(organization)}
+					<div class="mb-4 border-b border-slate-700/70 pb-4">
+						<h4 class="mb-3 text-sm font-medium text-slate-300">Send Invitation</h4>
+
+						<div class="mb-4 flex gap-2">
+							<input
+								bind:value={inviteEmail}
+								type="email"
+								placeholder="Email address"
+								class="flex-1 bg-slate-700/80 px-3 py-2 text-sm text-white placeholder-slate-400 outline-none focus:bg-slate-700"
+							/>
+							<select
+								bind:value={inviteRole}
+								class="bg-slate-700/80 px-3 py-2 text-sm text-white outline-none focus:bg-slate-700"
+							>
+								<option value="member">Member</option>
+								<option value="admin">Admin</option>
+							</select>
+							<button
+								onclick={() => handleSendInvitation(organization)}
+								disabled={!inviteEmail.trim()}
+								class="bg-accent hover:bg-accent/80 font-display px-4 py-2 text-sm font-medium text-black transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								Send
+							</button>
+						</div>
+
+						{#if loadingInvites === organization.id}
+							<p class="text-sm text-slate-400">Loading invitations...</p>
+						{:else if organizationInvitations[organization.id]?.length > 0}
+							<div class="space-y-2">
+								<h5 class="text-sm font-medium text-slate-300">Pending Invitations</h5>
+								{#each organizationInvitations[organization.id] as invitation}
+									<div class="flex items-center justify-between bg-slate-900/50 p-3">
+										<div>
+											<p class="text-sm font-medium text-white">{invitation.email}</p>
+											<p class="text-xs text-slate-400">Role: {invitation.role}</p>
+										</div>
+										<button
+											onclick={() => handleCancelInvitation(organization.id, invitation.id)}
+											class="text-xs text-red-400 hover:text-red-300"
+										>
+											Cancel
+										</button>
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{/if}
 
 				<!-- Members List -->
 				<div class="mb-4">
 					<h4 class="mb-2 text-sm font-medium text-slate-300">Members</h4>
 					<div class="space-y-2">
 						{#each organization.memberships as membership}
-							<div class="flex items-center justify-between rounded-lg bg-slate-900 p-3">
+							<div class="flex items-center justify-between bg-slate-900/50 p-3">
 								<div>
 									<p class="text-sm font-medium text-white">{membership.user.name}</p>
 									<p class="text-xs text-slate-400">{membership.user.email}</p>
 								</div>
 								<div class="flex items-center gap-2">
-									<span
-										class="rounded-full bg-slate-700 px-2 py-1 text-xs font-medium text-slate-300"
-									>
+									<span class="bg-slate-700/80 px-2 py-1 text-xs font-medium text-slate-300">
 										{membership.role}
 									</span>
 									{#if canManageOrganization(organization) && membership.role !== 'owner'}
@@ -312,80 +400,25 @@
 						{/each}
 					</div>
 				</div>
-
-				<!-- Invitations Section -->
-				{#if showInvitations === organization.id && canManageOrganization(organization)}
-					<div class="border-t border-slate-700 pt-4">
-						<h4 class="mb-3 text-sm font-medium text-slate-300">Send Invitation</h4>
-
-						<div class="mb-4 flex gap-2">
-							<input
-								bind:value={inviteEmail}
-								type="email"
-								placeholder="Email address"
-								class="flex-1 rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white placeholder-slate-400"
-							/>
-							<select
-								bind:value={inviteRole}
-								class="rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white"
-							>
-								<option value="member">Member</option>
-								<option value="admin">Admin</option>
-							</select>
-							<button
-								onclick={() => handleSendInvitation(organization)}
-								disabled={!inviteEmail.trim()}
-								class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								Send
-							</button>
-						</div>
-
-						{#if loadingInvites === organization.id}
-							<p class="text-sm text-slate-400">Loading invitations...</p>
-						{:else if organizationInvitations[organization.id]?.length > 0}
-							<div class="space-y-2">
-								<h5 class="text-sm font-medium text-slate-300">Pending Invitations</h5>
-								{#each organizationInvitations[organization.id] as invitation}
-									<div class="flex items-center justify-between rounded-lg bg-slate-900 p-3">
-										<div>
-											<p class="text-sm text-white">{invitation.email}</p>
-											<p class="text-xs text-slate-400">
-												Role: {invitation.role} • Status: {invitation.status}
-											</p>
-										</div>
-										<button
-											onclick={() => handleCancelInvitation(organization.id, invitation.id)}
-											class="text-xs text-red-400 hover:text-red-300"
-										>
-											Cancel
-										</button>
-									</div>
-								{/each}
-							</div>
-						{:else}
-							<p class="text-sm text-slate-400">No pending invitations</p>
-						{/if}
-					</div>
-				{/if}
 			</div>
 		{/each}
 
 		{#if $userOrganizations.length === 0}
-			<div class="rounded-lg border border-slate-700 bg-slate-800 p-8 text-center">
+			<div class="border-b-4 border-slate-500 bg-slate-800/50 p-8 text-center">
 				<p class="text-slate-400">You're not a member of any organizations yet.</p>
 				<p class="mt-2 text-sm text-slate-500">Create one or join using an invite code.</p>
 			</div>
 		{/if}
 	</div>
 
-	<!-- Subscription Management -->
+	<!-- Subscription Management - Hidden during testing phase -->
+	<!-- 
 	{#if $activeOrganization}
-		<div class="rounded-lg border border-slate-700 bg-slate-800 p-6">
+		<div class="border-b-4 border-indigo-600 bg-slate-800/50 p-6">
 			<h3 class="mb-4 text-lg font-semibold text-white">Subscription</h3>
 
 			{#if $hasActiveSubscription}
-				<div class="mb-4 rounded-lg border border-green-700 bg-green-900/50 p-4">
+				<div class="mb-4 border-b-2 border-green-500 bg-green-900/50 p-4">
 					<p class="text-green-100">Active subscription for {$activeOrganization.name}</p>
 				</div>
 
@@ -406,6 +439,7 @@
 			{/if}
 		</div>
 	{/if}
+	-->
 </div>
 
 <!-- Create Organization Modal -->
@@ -448,7 +482,7 @@
 						bind:value={newOrganizationSlug}
 						type="text"
 						placeholder="organization-slug"
-						class="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-white placeholder-slate-400"
+						class="w-full bg-slate-700/80 px-3 py-2 text-white placeholder-slate-400 outline-none focus:bg-slate-700"
 					/>
 				</div>
 			</div>
@@ -457,13 +491,13 @@
 				<button
 					onclick={handleCreateOrganization}
 					disabled={!newOrganizationName.trim()}
-					class="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+					class="bg-accent hover:bg-accent/80 font-display flex-1 px-4 py-2 text-sm font-medium text-black transition-colors disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					Create
 				</button>
 				<button
 					onclick={() => (showCreateOrganization = false)}
-					class="flex-1 rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-600"
+					class="flex-1 bg-slate-700/80 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700"
 				>
 					Cancel
 				</button>

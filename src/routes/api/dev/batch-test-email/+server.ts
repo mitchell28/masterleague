@@ -24,7 +24,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				const startTime = Date.now();
 
 				const result = await resend.emails.send({
-					from: 'Master League <onboarding@resend.dev>',
+					from: 'Master League <noreply@mail.masterleague.app',
 					to: email,
 					subject: `Batch Test Email for ${email.split('@')[1]}`,
 					html: `

@@ -1,7 +1,7 @@
 import type { Fixture } from '../../db/schema';
 import { fixtures, predictions } from '../../db/schema';
 import { db } from '../../db';
-import { eq, inArray as drizzleInArray } from 'drizzle-orm';
+import { eq, inArray as drizzleInArray, and, gt, or } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
 /**
@@ -10,6 +10,29 @@ import { randomUUID } from 'crypto';
 export async function getFixturesByWeek(weekId: number): Promise<Fixture[]> {
 	// Get all fixtures for this week, regardless of status
 	return db.select().from(fixtures).where(eq(fixtures.weekId, weekId));
+}
+
+/**
+ * Get 3 upcoming fixtures for a specific team
+ * @param teamId - The ID of the team to get fixtures for
+ * @param limit - Maximum number of fixtures to return (default is 3)
+ * @returns Array of fixtures for the team
+ */
+export async function getUpcomingFixturesForTeam(teamId: string, limit = 3): Promise<Fixture[]> {
+	const now = new Date();
+
+	return db
+		.select()
+		.from(fixtures)
+		.where(
+			and(
+				or(eq(fixtures.homeTeamId, teamId), eq(fixtures.awayTeamId, teamId)),
+				eq(fixtures.status, 'SCHEDULED'),
+				gt(fixtures.matchDate, now)
+			)
+		)
+		.orderBy(fixtures.matchDate)
+		.limit(limit);
 }
 
 /**

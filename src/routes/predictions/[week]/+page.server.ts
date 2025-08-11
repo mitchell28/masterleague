@@ -8,7 +8,7 @@ import {
 } from '$lib/server/football/predictions/userPredictions';
 import type { PageServerLoad, Actions } from './$types';
 import type { Fixture } from '$lib/server/db/schema';
-import { processRecentFixtures } from '$lib/scripts/recalculate-points-api';
+import { usePointsCalculation } from '../hooks';
 
 /**
  * Update fixtures with missing scores
@@ -55,7 +55,8 @@ export const load: PageServerLoad = async ({ params, locals, parent, depends }) 
 
 	// Process recent fixtures to ensure points are calculated before displaying the page
 	try {
-		const result = await processRecentFixtures();
+		const pointsCalculation = usePointsCalculation();
+		const result = await pointsCalculation.processRecentFixtures();
 		if (result.processedPredictions > 0) {
 			console.log(
 				`Processed ${result.processedFixtures} fixtures and ${result.processedPredictions} predictions`
@@ -73,7 +74,7 @@ export const load: PageServerLoad = async ({ params, locals, parent, depends }) 
 	const weeks = parentData.weeks;
 
 	// Get fixtures with predictions using the extracted function
-	const { fixturesWithPrediction, predictionsMap, teamsMap, lastUpdated, fromCache } =
+	const { fixturesWithPrediction, predictionsMap, teamsMap, lastUpdated } =
 		await getFixturesWithPredictions(userId, week, currentWeek);
 
 	// Return processed data

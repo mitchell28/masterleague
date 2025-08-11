@@ -1,51 +1,46 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+@import '@fontsource-variable/work-sans';
+@import './fonts.css';
 @import 'tailwindcss';
+
+@theme {
+	--font-sans: 'Work Sans Variable', sans-serif;
+	--font-display: 'Gunterz', sans-serif;
+	--color-accent: oklch(88.266% 0.20737 155.248);
+	--color-background: oklch(20.992% 0.03416 263.451);
+}
 
 @layer base {
 	html {
+		scrollbar-gutter: stable;
 		@apply scroll-smooth;
 	}
 
 	body {
-		@apply min-h-screen bg-gradient-to-br from-slate-800 to-slate-950 font-sans text-white;
+		@apply min-h-screen font-sans text-white;
 	}
 
-	.glass-card {
-		@apply border border-slate-700/50 bg-slate-800/70 shadow-xl backdrop-blur-md;
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		font-family: var(--font-display);
+		letter-spacing: 0.02em;
+		line-height: 1.2;
+		font-weight: 700;
 	}
 
-	.glass-panel {
-		@apply border border-slate-700/40 bg-slate-800/50 backdrop-blur-lg;
+	h1 {
+		font-weight: 900;
+		letter-spacing: 0.015em;
 	}
 
-	.text-gradient {
-		@apply bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent;
+	h2 {
+		font-weight: 800;
 	}
 
-	/* Silver/metallic gradient buttons */
-	.silver-gradient {
-		@apply bg-gradient-to-r from-slate-300 via-white to-slate-300;
-	}
-
-	/* Additional utility classes for monochrome theme */
-	.bg-dark-gradient {
-		@apply bg-gradient-to-br from-slate-800 to-slate-900;
-	}
-
-	.border-dark {
-		@apply border-slate-600/50;
-	}
-
-	.text-muted {
-		@apply text-slate-400;
-	}
-
-	/* Subtle glow effects */
-	.glow-subtle {
-		@apply shadow-[0_0_15px_rgba(203,213,225,0.15)];
-	}
-
-	.glow-button {
-		@apply shadow-[0_0_10px_rgba(203,213,225,0.3)];
+	.font-display {
+		font-family: var(--font-display);
 	}
 }

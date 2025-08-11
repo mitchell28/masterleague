@@ -1,8 +1,8 @@
 import * as dotenv from 'dotenv';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { teams, fixtures } from '../../../drizzle/schema';
-import { eq } from 'drizzle-orm';
+import { teams, fixtures, predictions } from '../../../drizzle/schema';
+import { eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
 // Load environment variables from .env file
@@ -56,6 +56,20 @@ interface ApiMatch {
  * Delete fixtures for a specific week
  */
 async function deleteFixturesByWeek(weekId: number): Promise<void> {
+	// First, get the IDs of all fixtures for this week
+	const weekFixtures = await db
+		.select({ id: fixtures.id })
+		.from(fixtures)
+		.where(eq(fixtures.weekId, weekId));
+	const fixtureIds = weekFixtures.map((fixture) => fixture.id);
+
+	if (fixtureIds.length > 0) {
+		// Delete any predictions that reference these fixtures
+		await db.delete(predictions).where(inArray(predictions.fixtureId, fixtureIds));
+		console.log(`   Deleted predictions for ${fixtureIds.length} fixtures in week ${weekId}`);
+	}
+
+	// Now it's safe to delete the fixtures
 	await db.delete(fixtures).where(eq(fixtures.weekId, weekId));
 }
 
@@ -241,11 +255,11 @@ async function seedFixtures() {
 					const awayScore = match.score.fullTime.away !== null ? match.score.fullTime.away : null;
 
 					// Map API status to our status
-					let status = 'upcoming';
+					let status = 'SCHEDULED';
 					if (match.status === 'FINISHED') {
-						status = 'completed';
+						status = 'FINISHED';
 					} else if (['IN_PLAY', 'PAUSED', 'SUSPENDED'].includes(match.status)) {
-						status = 'in_play';
+						status = 'IN_PLAY';
 					}
 
 					return {

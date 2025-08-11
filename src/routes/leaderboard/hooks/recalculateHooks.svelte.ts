@@ -7,10 +7,52 @@ import { randomUUID } from 'crypto';
 /**
  * Interface for recalculation result
  */
-interface RecalculationResult {
+export interface RecalculationResult {
 	processedFixtures: number;
 	processedPredictions: number;
 	updatedUsers: number;
+}
+
+/**
+ * Svelte 5 hook for managing points recalculation
+ * This hook provides reactive functionality for processing fixture points
+ */
+export function useRecalculation(organizationId?: string, season: string = '2025-26') {
+	/**
+	 * Process recent fixtures that need point calculation
+	 * Returns a promise with the recalculation results
+	 */
+	async function processRecentFixtures(): Promise<RecalculationResult> {
+		return await processRecentFixturesImpl();
+	}
+
+	/**
+	 * Process specific fixtures by their IDs
+	 */
+	async function processFixtures(fixtureIds: string[]): Promise<RecalculationResult> {
+		return await processFixturePoints(fixtureIds, organizationId, season);
+	}
+
+	/**
+	 * Recalculate all points for all fixtures
+	 */
+	async function recalculateAll(): Promise<RecalculationResult> {
+		return await recalculateAllPoints();
+	}
+
+	/**
+	 * Update league table for specific users
+	 */
+	async function updateUsersLeagueTable(userIds: string[]): Promise<number> {
+		return await updateLeagueTableForUsers(userIds, organizationId, season);
+	}
+
+	return {
+		processRecentFixtures,
+		processFixtures,
+		recalculateAll,
+		updateUsersLeagueTable
+	};
 }
 
 /**
@@ -65,7 +107,11 @@ function calculatePredictionPoints(
  * Process points for specific fixtures
  * This function is optimized for processing a targeted set of fixtures
  */
-export async function processFixturePoints(fixtureIds: string[]): Promise<RecalculationResult> {
+async function processFixturePoints(
+	fixtureIds: string[],
+	organizationId?: string,
+	season: string = '2025-26'
+): Promise<RecalculationResult> {
 	console.log(`Processing points for ${fixtureIds.length} fixtures`);
 	let processedFixtures = 0;
 	let processedPredictions = 0;
@@ -148,7 +194,7 @@ export async function processFixturePoints(fixtureIds: string[]): Promise<Recalc
 		}
 
 		// Update league table for affected users
-		await updateLeagueTableForUsers(Object.keys(userStats));
+		await updateLeagueTableForUsers(Object.keys(userStats), organizationId, season);
 		updatedUsers = Object.keys(userStats).length;
 
 		console.log(
@@ -165,7 +211,11 @@ export async function processFixturePoints(fixtureIds: string[]): Promise<Recalc
  * Update league table entries for specific users
  * This function recalculates the full stats for each user
  */
-export async function updateLeagueTableForUsers(userIds: string[]): Promise<number> {
+async function updateLeagueTableForUsers(
+	userIds: string[],
+	organizationId?: string,
+	season: string = '2025-26'
+): Promise<number> {
 	let updatedUsers = 0;
 
 	for (const userId of userIds) {
@@ -188,11 +238,19 @@ export async function updateLeagueTableForUsers(userIds: string[]): Promise<numb
 			const correctScorelines = allUserPredictions.filter((p) => p.points === 3).length;
 			const correctOutcomes = allUserPredictions.filter((p) => p.points === 1).length;
 
-			// Check if user already has a league table entry
+			// Check if user already has a league table entry for this organization and season
 			const existingEntry = await db
 				.select()
 				.from(leagueTable)
-				.where(eq(leagueTable.userId, userId))
+				.where(
+					organizationId
+						? and(
+								eq(leagueTable.userId, userId),
+								eq(leagueTable.organizationId, organizationId),
+								eq(leagueTable.season, season)
+							)
+						: eq(leagueTable.userId, userId)
+				)
 				.then((rows) => rows[0]);
 
 			if (existingEntry) {
@@ -209,17 +267,21 @@ export async function updateLeagueTableForUsers(userIds: string[]): Promise<numb
 					})
 					.where(eq(leagueTable.id, existingEntry.id));
 			} else {
-				// Create new entry
-				await db.insert(leagueTable).values({
-					id: randomUUID(),
-					userId,
-					totalPoints,
-					correctScorelines,
-					correctOutcomes,
-					predictedFixtures: allUserPredictions.length,
-					completedFixtures: userCompletedFixtures.length,
-					lastUpdated: new Date()
-				});
+				// Create new entry - only if organizationId is provided
+				if (organizationId) {
+					await db.insert(leagueTable).values({
+						id: randomUUID(),
+						userId,
+						organizationId,
+						season,
+						totalPoints,
+						correctScorelines,
+						correctOutcomes,
+						predictedFixtures: allUserPredictions.length,
+						completedFixtures: userCompletedFixtures.length,
+						lastUpdated: new Date()
+					});
+				}
 			}
 
 			updatedUsers++;
@@ -280,7 +342,7 @@ export async function recalculateAllPoints(): Promise<RecalculationResult> {
  * Process recent fixtures that need point calculation
  * This is designed to be called frequently without performance impact
  */
-export async function processRecentFixtures(): Promise<RecalculationResult> {
+async function processRecentFixturesImpl(): Promise<RecalculationResult> {
 	console.log('🔍 Looking for recent fixtures to process...');
 
 	try {
@@ -348,3 +410,6 @@ export async function processRecentFixtures(): Promise<RecalculationResult> {
 		return { processedFixtures: 0, processedPredictions: 0, updatedUsers: 0 };
 	}
 }
+
+// Export standalone functions for backward compatibility
+export { processRecentFixturesImpl as processRecentFixtures };

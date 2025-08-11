@@ -187,273 +187,284 @@
 	);
 </script>
 
-<div class="container mx-auto max-w-6xl p-4">
-	<!-- Header with last updated info -->
-	<div class="mb-4">
-		<div class="flex items-center justify-between">
-			<h1
-				class="bg-gradient-to-r from-white to-slate-300 bg-clip-text text-3xl font-bold text-white"
+<div class=" mx-auto mt-22">
+	<!-- Main Header with clean geometric design -->
+	<div class="relative mb-8">
+		<div class="font-display relative h-[120px] w-full overflow-hidden bg-[#020618]">
+			<!-- Accent top bar -->
+			<div class="mx-auto mt-6 max-w-6xl">
+				<!-- Main content area -->
+				<div class="relative flex h-full items-center justify-between px-4 py-4">
+					<div>
+						<h1 class="text-3xl font-bold text-white">{data.user.name}'s Predictions</h1>
+						<div class="mt-2 flex items-center gap-3">
+							<span class="text-sm font-medium text-slate-300"
+								>Week {data.weekData.weekId} - Detailed prediction results</span
+							>
+						</div>
+					</div>
+					<div class="flex items-center gap-2 text-sm text-slate-300">
+						<Clock class="h-4 w-4" />
+						<span>Last updated: {new Date().toLocaleString()}</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="mx-auto max-w-6xl px-4">
+		<!-- Stats overview with Lucide icons -->
+		<div class="mb-6 grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+			<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center shadow-md">
+				<div class="mb-1 flex justify-center">
+					<BarChart4 class="h-5 w-5 text-white" />
+				</div>
+				<p class="text-2xl font-bold text-white">{data.stats.totalPoints}</p>
+				<p class="text-xs font-medium text-slate-400">Total Points</p>
+			</div>
+
+			<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center shadow-md">
+				<div class="mb-1 flex justify-center">
+					<Medal class="h-5 w-5 text-green-400" />
+				</div>
+				<p class="text-2xl font-bold text-green-400">{data.stats.correctScorelines}</p>
+				<p class="text-xs font-medium text-slate-400">Perfect Scores</p>
+			</div>
+
+			<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center shadow-md">
+				<div class="mb-1 flex justify-center">
+					<Target class="h-5 w-5 text-blue-400" />
+				</div>
+				<p class="text-2xl font-bold text-blue-400">{data.stats.correctOutcomes}</p>
+				<p class="text-xs font-medium text-slate-400">Correct Outcomes</p>
+			</div>
+
+			<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center shadow-md">
+				<div class="mb-1 flex justify-center">
+					<XCircle class="h-5 w-5 text-red-400" />
+				</div>
+				<p class="text-2xl font-bold text-red-400">{data.stats.incorrectPredictions}</p>
+				<p class="text-xs font-medium text-slate-400">Incorrect</p>
+			</div>
+
+			<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center shadow-md">
+				<div class="mb-1 flex justify-center">
+					<Award class="h-5 w-5 text-purple-400" />
+				</div>
+				<p class="text-2xl font-bold text-purple-400">{data.stats.totalPredictions}</p>
+				<p class="text-xs font-medium text-slate-400">Total Predictions</p>
+			</div>
+
+			<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center shadow-md">
+				<div class="mb-1 flex justify-center">
+					<TrendingUp class="h-5 w-5 text-yellow-400" />
+				</div>
+				<p class="text-2xl font-bold text-yellow-400">
+					{data.stats.completedPredictions
+						? Math.round(
+								((data.stats.correctScorelines + data.stats.correctOutcomes) /
+									data.stats.completedPredictions) *
+									100
+							)
+						: 0}%
+				</p>
+				<p class="text-xs font-medium text-slate-400">Success Rate</p>
+			</div>
+		</div>
+
+		<!-- Refresh button and processing indicator -->
+		<div class="mt-2 mb-4 text-right">
+			<button
+				onclick={refreshPage}
+				class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
 			>
-				{data.user.name}'s Predictions
-			</h1>
-			<div class="flex items-center gap-2 text-sm text-slate-400">
-				<Clock class="h-4 w-4" />
-				<span>Last updated: {new Date().toLocaleString()}</span>
-			</div>
-		</div>
-	</div>
-
-	<!-- Stats overview with Lucide icons -->
-	<div class="mb-6 grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-		<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center shadow-md">
-			<div class="mb-1 flex justify-center">
-				<BarChart4 class="h-5 w-5 text-white" />
-			</div>
-			<p class="text-2xl font-bold text-white">{data.stats.totalPoints}</p>
-			<p class="text-xs font-medium text-slate-400">Total Points</p>
-		</div>
-
-		<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center shadow-md">
-			<div class="mb-1 flex justify-center">
-				<Medal class="h-5 w-5 text-green-400" />
-			</div>
-			<p class="text-2xl font-bold text-green-400">{data.stats.correctScorelines}</p>
-			<p class="text-xs font-medium text-slate-400">Perfect Scores</p>
+				<RefreshCw class="mr-1.5 h-4 w-4" />
+				Refresh Data
+			</button>
+			{#if hasProcessingPredictions}
+				<span class="ml-3 inline-flex items-center text-xs text-indigo-400">
+					<svg
+						class="mr-1 h-4 w-4 animate-spin"
+						xmlns="http://www.w3.org/2000/svg"
+						fill="none"
+						viewBox="0 0 24 24"
+					>
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"
+						></circle>
+						<path
+							class="opacity-75"
+							fill="currentColor"
+							d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+						></path>
+					</svg>
+					Points are being calculated. Refresh in a moment to see updated results.
+				</span>
+			{/if}
 		</div>
 
-		<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center shadow-md">
-			<div class="mb-1 flex justify-center">
-				<Target class="h-5 w-5 text-blue-400" />
-			</div>
-			<p class="text-2xl font-bold text-blue-400">{data.stats.correctOutcomes}</p>
-			<p class="text-xs font-medium text-slate-400">Correct Outcomes</p>
-		</div>
-
-		<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center shadow-md">
-			<div class="mb-1 flex justify-center">
-				<XCircle class="h-5 w-5 text-red-400" />
-			</div>
-			<p class="text-2xl font-bold text-red-400">{data.stats.incorrectPredictions}</p>
-			<p class="text-xs font-medium text-slate-400">Incorrect</p>
-		</div>
-
-		<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center shadow-md">
-			<div class="mb-1 flex justify-center">
-				<Award class="h-5 w-5 text-purple-400" />
-			</div>
-			<p class="text-2xl font-bold text-purple-400">{data.stats.totalPredictions}</p>
-			<p class="text-xs font-medium text-slate-400">Total Predictions</p>
-		</div>
-
-		<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-center shadow-md">
-			<div class="mb-1 flex justify-center">
-				<TrendingUp class="h-5 w-5 text-yellow-400" />
-			</div>
-			<p class="text-2xl font-bold text-yellow-400">
-				{data.stats.completedPredictions
-					? Math.round(
-							((data.stats.correctScorelines + data.stats.correctOutcomes) /
-								data.stats.completedPredictions) *
-								100
-						)
-					: 0}%
-			</p>
-			<p class="text-xs font-medium text-slate-400">Success Rate</p>
-		</div>
-	</div>
-
-	<!-- Refresh button and processing indicator -->
-	<div class="mt-2 mb-4 text-right">
-		<button
-			onclick={refreshPage}
-			class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
-		>
-			<RefreshCw class="mr-1.5 h-4 w-4" />
-			Refresh Data
-		</button>
-		{#if hasProcessingPredictions}
-			<span class="ml-3 inline-flex items-center text-xs text-indigo-400">
-				<svg
-					class="mr-1 h-4 w-4 animate-spin"
-					xmlns="http://www.w3.org/2000/svg"
-					fill="none"
-					viewBox="0 0 24 24"
-				>
-					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"
-					></circle>
-					<path
-						class="opacity-75"
-						fill="currentColor"
-						d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-					></path>
-				</svg>
-				Points are being calculated. Refresh in a moment to see updated results.
-			</span>
-		{/if}
-	</div>
-
-	<!-- Weekly predictions table -->
-	{#if data.weekData.predictions.length > 0}
-		<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4 shadow-md">
-			<div class="overflow-x-auto">
-				<table class="min-w-full divide-y divide-slate-700">
-					<thead>
-						<tr>
-							<th
-								class="px-3 py-2 text-left text-xs font-medium tracking-wider text-slate-300 uppercase"
-							>
-								Match
-							</th>
-							<th
-								class="px-3 py-2 text-center text-xs font-medium tracking-wider text-slate-300 uppercase"
-							>
-								Date
-							</th>
-							<th
-								class="px-3 py-2 text-center text-xs font-medium tracking-wider text-slate-300 uppercase"
-							>
-								Prediction
-							</th>
-							<th
-								class="px-3 py-2 text-center text-xs font-medium tracking-wider text-slate-300 uppercase"
-							>
-								Result
-							</th>
-							<th
-								class="px-3 py-2 text-center text-xs font-medium tracking-wider text-slate-300 uppercase"
-							>
-								Multiplier
-							</th>
-							<th
-								class="px-3 py-2 text-center text-xs font-medium tracking-wider text-slate-300 uppercase"
-							>
-								Status
-							</th>
-							<th
-								class="px-3 py-2 text-center text-xs font-medium tracking-wider text-slate-300 uppercase"
-							>
-								Points
-							</th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-slate-700">
-						{#each data.weekData.predictions as { prediction, fixture, homeTeam }}
-							<tr class="transition-colors hover:bg-slate-700/30">
-								<td class="px-3 py-2 text-sm font-medium text-white">
-									<div>
-										{homeTeam.shortName} vs {data.awayTeams[fixture.id]?.shortName || '???'}
-										{#if prediction && prediction.updatedAt}
-											<div class="mt-1 flex items-center gap-1 text-xs text-slate-400">
-												<Clock class="h-3 w-3" />
-												<span>Updated: {formatTimestamp(prediction.updatedAt)}</span>
-											</div>
-										{/if}
-									</div>
-								</td>
-								<td class="px-3 py-2 text-center text-sm text-slate-300">
-									{formatDate(fixture.matchDate)}
-								</td>
-								<td class="px-3 py-2 text-center text-sm font-bold text-white">
-									{#if prediction}
-										<div class="flex items-center justify-center gap-1">
-											{prediction.predictedHomeScore}-{prediction.predictedAwayScore}
-										</div>
-									{:else}
-										<span class="text-slate-500">No prediction</span>
-									{/if}
-								</td>
-								<td class="px-3 py-2 text-center text-sm text-slate-300">
-									{fixture.homeScore !== null && fixture.awayScore !== null
-										? `${fixture.homeScore}-${fixture.awayScore}`
-										: 'TBD'}
-								</td>
-								<td class="px-3 py-2 text-center text-sm font-bold">
-									{#if fixture.pointsMultiplier > 1}
-										<span
-											class="rounded-full bg-yellow-700 px-2 py-1 text-xs font-bold text-yellow-200"
-										>
-											<Star class="mr-0.5 inline-block h-3 w-3" />
-											{fixture.pointsMultiplier}×
-										</span>
-									{:else}
-										<span class="text-slate-400">1×</span>
-									{/if}
-								</td>
-								<td class="px-3 py-2 text-center text-sm">
-									<span
-										class={`inline-block rounded-full px-2 py-1 text-xs font-medium ${getResultClass(
-											prediction?.totalPoints ?? null,
-											fixture.status,
-											fixture.pointsMultiplier,
-											prediction !== null // Pass whether there is a prediction
-										)}`}
-									>
-										{#if ['IN_PLAY', 'PAUSED'].includes(fixture.status)}
-											<AlertTriangle class="mr-0.5 inline-block h-3 w-3" />
-										{:else if fixture.status === 'FINISHED' && !prediction}
-											<!-- No prediction case -->
-											<XCircle class="mr-0.5 inline-block h-3 w-3" />
-										{:else if fixture.status === 'FINISHED' && prediction?.totalPoints !== null && prediction?.totalPoints !== undefined}
-											{#if prediction?.totalPoints > 0}
-												<CheckCircle2 class="mr-0.5 inline-block h-3 w-3" />
-											{:else}
-												<XCircle class="mr-0.5 inline-block h-3 w-3" />
+		<!-- Weekly predictions table -->
+		{#if data.weekData.predictions.length > 0}
+			<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4 shadow-md">
+				<div class="overflow-x-auto">
+					<table class="min-w-full divide-y divide-slate-700">
+						<thead>
+							<tr>
+								<th
+									class="px-3 py-2 text-left text-xs font-medium tracking-wider text-slate-300 uppercase"
+								>
+									Match
+								</th>
+								<th
+									class="px-3 py-2 text-center text-xs font-medium tracking-wider text-slate-300 uppercase"
+								>
+									Date
+								</th>
+								<th
+									class="px-3 py-2 text-center text-xs font-medium tracking-wider text-slate-300 uppercase"
+								>
+									Prediction
+								</th>
+								<th
+									class="px-3 py-2 text-center text-xs font-medium tracking-wider text-slate-300 uppercase"
+								>
+									Result
+								</th>
+								<th
+									class="px-3 py-2 text-center text-xs font-medium tracking-wider text-slate-300 uppercase"
+								>
+									Multiplier
+								</th>
+								<th
+									class="px-3 py-2 text-center text-xs font-medium tracking-wider text-slate-300 uppercase"
+								>
+									Status
+								</th>
+								<th
+									class="px-3 py-2 text-center text-xs font-medium tracking-wider text-slate-300 uppercase"
+								>
+									Points
+								</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-slate-700">
+							{#each data.weekData.predictions as { prediction, fixture, homeTeam }}
+								<tr class="transition-colors hover:bg-slate-700/30">
+									<td class="px-3 py-2 text-sm font-medium text-white">
+										<div>
+											{homeTeam.shortName} vs {data.awayTeams[fixture.id]?.shortName || '???'}
+											{#if prediction && prediction.updatedAt}
+												<div class="mt-1 flex items-center gap-1 text-xs text-slate-400">
+													<Clock class="h-3 w-3" />
+													<span>Updated: {formatTimestamp(prediction.updatedAt)}</span>
+												</div>
 											{/if}
-										{:else if fixture.status === 'FINISHED' && prediction && (prediction?.totalPoints === null || prediction?.totalPoints === undefined)}
-											<RefreshCw class="mr-0.5 inline-block h-3 w-3 animate-spin" />
-										{/if}
-										{getResultText(
-											prediction?.totalPoints ?? null,
-											fixture.status,
-											fixture.pointsMultiplier,
-											prediction !== null // Pass whether there is a prediction
-										)}
-									</span>
-								</td>
-								<td class="px-3 py-2 text-center text-sm font-bold text-white">
-									{#if prediction}
-										{#if prediction.totalPoints !== null && prediction.totalPoints !== undefined}
-											<div class="flex items-center justify-center">
-												{#if prediction.totalPoints > 0}
-													<ThumbsUp class="mr-1 h-3.5 w-3.5 text-green-400" />
-												{/if}
-												<span
-													class={prediction.totalPoints > 0 ? 'text-green-400' : 'text-red-400'}
-												>
-													{prediction.totalPoints}
-												</span>
+										</div>
+									</td>
+									<td class="px-3 py-2 text-center text-sm text-slate-300">
+										{formatDate(fixture.matchDate)}
+									</td>
+									<td class="px-3 py-2 text-center text-sm font-bold text-white">
+										{#if prediction}
+											<div class="flex items-center justify-center gap-1">
+												{prediction.predictedHomeScore}-{prediction.predictedAwayScore}
 											</div>
-										{:else if fixture.status === 'FINISHED'}
-											<span class="inline-flex items-center gap-1">
-												<span
-													class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-400"
-												></span>
-												<span
-													class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-400"
-													style="animation-delay: 0.2s"
-												></span>
-												<span
-													class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-400"
-													style="animation-delay: 0.4s"
-												></span>
+										{:else}
+											<span class="text-slate-500">No prediction</span>
+										{/if}
+									</td>
+									<td class="px-3 py-2 text-center text-sm text-slate-300">
+										{fixture.homeScore !== null && fixture.awayScore !== null
+											? `${fixture.homeScore}-${fixture.awayScore}`
+											: 'TBD'}
+									</td>
+									<td class="px-3 py-2 text-center text-sm font-bold">
+										{#if fixture.pointsMultiplier > 1}
+											<span
+												class="rounded-full bg-yellow-700 px-2 py-1 text-xs font-bold text-yellow-200"
+											>
+												<Star class="mr-0.5 inline-block h-3 w-3" />
+												{fixture.pointsMultiplier}×
 											</span>
 										{:else}
-											-
+											<span class="text-slate-400">1×</span>
 										{/if}
-									{:else}
-										<!-- No prediction was made -->
-										<span class="text-slate-500">-</span>
-									{/if}
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
+									</td>
+									<td class="px-3 py-2 text-center text-sm">
+										<span
+											class={`inline-block rounded-full px-2 py-1 text-xs font-medium ${getResultClass(
+												prediction?.totalPoints ?? null,
+												fixture.status,
+												fixture.pointsMultiplier,
+												prediction !== null // Pass whether there is a prediction
+											)}`}
+										>
+											{#if ['IN_PLAY', 'PAUSED'].includes(fixture.status)}
+												<AlertTriangle class="mr-0.5 inline-block h-3 w-3" />
+											{:else if fixture.status === 'FINISHED' && !prediction}
+												<!-- No prediction case -->
+												<XCircle class="mr-0.5 inline-block h-3 w-3" />
+											{:else if fixture.status === 'FINISHED' && prediction?.totalPoints !== null && prediction?.totalPoints !== undefined}
+												{#if prediction?.totalPoints > 0}
+													<CheckCircle2 class="mr-0.5 inline-block h-3 w-3" />
+												{:else}
+													<XCircle class="mr-0.5 inline-block h-3 w-3" />
+												{/if}
+											{:else if fixture.status === 'FINISHED' && prediction && (prediction?.totalPoints === null || prediction?.totalPoints === undefined)}
+												<RefreshCw class="mr-0.5 inline-block h-3 w-3 animate-spin" />
+											{/if}
+											{getResultText(
+												prediction?.totalPoints ?? null,
+												fixture.status,
+												fixture.pointsMultiplier,
+												prediction !== null // Pass whether there is a prediction
+											)}
+										</span>
+									</td>
+									<td class="px-3 py-2 text-center text-sm font-bold text-white">
+										{#if prediction}
+											{#if prediction.totalPoints !== null && prediction.totalPoints !== undefined}
+												<div class="flex items-center justify-center">
+													{#if prediction.totalPoints > 0}
+														<ThumbsUp class="mr-1 h-3.5 w-3.5 text-green-400" />
+													{/if}
+													<span
+														class={prediction.totalPoints > 0 ? 'text-green-400' : 'text-red-400'}
+													>
+														{prediction.totalPoints}
+													</span>
+												</div>
+											{:else if fixture.status === 'FINISHED'}
+												<span class="inline-flex items-center gap-1">
+													<span
+														class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-400"
+													></span>
+													<span
+														class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-400"
+														style="animation-delay: 0.2s"
+													></span>
+													<span
+														class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-400"
+														style="animation-delay: 0.4s"
+													></span>
+												</span>
+											{:else}
+												-
+											{/if}
+										{:else}
+											<!-- No prediction was made -->
+											<span class="text-slate-500">-</span>
+										{/if}
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
 			</div>
-		</div>
-	{:else}
-		<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-6 text-center">
-			<p class="text-lg text-slate-300">No predictions for this week</p>
-		</div>
-	{/if}
+		{:else}
+			<div class="rounded-lg border border-slate-700 bg-slate-800/50 p-6 text-center">
+				<p class="text-lg text-slate-300">No predictions for this week</p>
+			</div>
+		{/if}
+	</div>
 </div>

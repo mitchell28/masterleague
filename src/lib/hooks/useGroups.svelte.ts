@@ -269,6 +269,37 @@ export function useOrganizations() {
 		}
 	};
 
+	const deleteOrganization = async (
+		organizationId: string
+	): Promise<{ success: boolean; error?: string }> => {
+		try {
+			const formData = new FormData();
+			formData.append('organizationId', organizationId);
+
+			const response = await fetch('/groups?/deleteOrganization', {
+				method: 'POST',
+				body: formData
+			});
+
+			const result = await response.json();
+
+			if (!response.ok) {
+				return { success: false, error: result.error || 'Failed to delete organization' };
+			}
+
+			// Update stores - remove the deleted organization
+			userOrganizations.update((orgs) => orgs.filter((org) => org.id !== organizationId));
+
+			// If the deleted organization was active, clear it
+			activeOrganization.update((active) => (active?.id === organizationId ? null : active));
+
+			return { success: true };
+		} catch (error) {
+			console.error('Error in deleteOrganization hook:', error);
+			return { success: false, error: 'Network error occurred' };
+		}
+	};
+
 	return {
 		createOrganization,
 		joinOrganization,
@@ -277,6 +308,7 @@ export function useOrganizations() {
 		sendInvitation,
 		getInvitations,
 		cancelInvitation,
-		removeMember
+		removeMember,
+		deleteOrganization
 	};
 }

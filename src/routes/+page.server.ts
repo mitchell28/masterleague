@@ -1,16 +1,13 @@
+import { getUpcomingFixturesForTeam } from '$lib/server/football/fixtures/fixtureRepository';
 import { initializeTeams } from '$lib/server/football/teams';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
 	try {
-		// Initialize the database with Premier League teams
-		await initializeTeams();
+		const upcomingFixtures = await getUpcomingFixturesForTeam('ars', 5);
 
 		return {
-			initialized: {
-				success: true,
-				message: 'Database initialized successfully'
-			}
+			upcomingFixtures
 		};
 	} catch (err) {
 		console.error('Error initializing database:', err);

@@ -4,9 +4,9 @@
 	import { Check, AlertTriangle, RefreshCw } from '@lucide/svelte';
 	import type { Team, Prediction } from '$lib/server/db/schema';
 	import type { Fixture as BaseFixture } from '$lib/server/db/schema';
-	import PredictionCard from '../components/PredictionCard.svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
+	import PredictionCardV2 from '../components/PredictionCardV2.svelte';
 
 	// Extended Fixture type with canPredict property
 	type Fixture = BaseFixture & {
@@ -294,84 +294,144 @@
 	});
 </script>
 
-<!-- Live matches indicator - only show for current week with live matches -->
+<!-- Live matches indicator with clean design -->
 {#if hasLiveFixtures && isCurrentWeek}
-	<div class="mb-4 rounded-lg bg-gradient-to-r from-blue-900/50 to-blue-700/30 p-3 shadow">
-		<div class="flex items-center justify-between">
-			<div class="flex items-center gap-2">
-				<span class="relative flex h-3 w-3">
-					<span
-						class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75"
-					></span>
-					<span class="relative inline-flex h-3 w-3 rounded-full bg-red-600"></span>
-				</span>
-				<span class="font-semibold text-blue-200">Live Matches</span>
-				<span class="text-xs text-blue-300">
-					Auto-updating {#if isPolling}(last update: {new Date(lastPollTime).toLocaleTimeString()})
-					{/if}
-				</span>
+	<div class="relative mb-6">
+		<div
+			class="relative h-[90px] w-full overflow-hidden border-b-4 border-red-500 bg-gradient-to-r from-red-900/50 to-red-700/30"
+		>
+			<!-- Red top bar -->
+			<div class="flex h-[18px] w-full items-center justify-center bg-red-500">
+				<span class="text-xs font-bold text-white">LIVE MATCHES</span>
 			</div>
-			<button
-				onclick={manualRefresh}
-				class="flex items-center gap-1 rounded-md bg-blue-800/50 px-2 py-1 text-xs text-blue-200 hover:bg-blue-800"
-				disabled={isUpdating}
-				title="Refresh scores now"
-			>
-				<RefreshCw size={14} class={isUpdating ? 'animate-spin' : ''} />
-				<span>Refresh</span>
-			</button>
+
+			<!-- Content -->
+			<div class="relative flex h-full items-center justify-between px-6 pt-3 pb-4">
+				<div class="flex items-center gap-3">
+					<span class="relative flex h-4 w-4">
+						<span
+							class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75"
+						></span>
+						<span class="relative inline-flex h-4 w-4 rounded-full bg-red-600"></span>
+					</span>
+					<div class="flex flex-col">
+						<span class="font-semibold text-red-100">Auto-updating scores</span>
+						{#if isPolling}
+							<span class="text-xs text-red-200">
+								Last update: {new Date(lastPollTime).toLocaleTimeString()}
+							</span>
+						{/if}
+					</div>
+				</div>
+				<button
+					onclick={manualRefresh}
+					class="flex items-center gap-2 rounded bg-red-800/50 px-3 py-2 text-xs text-red-100 hover:bg-red-800"
+					disabled={isUpdating}
+					title="Refresh scores now"
+				>
+					<RefreshCw size={14} class={isUpdating ? 'animate-spin' : ''} />
+					<span>Refresh</span>
+				</button>
+			</div>
 		</div>
 	</div>
 {/if}
 
 {#if showSuccess}
-	<div class="mb-4 animate-pulse rounded-lg bg-green-500/20 p-4 text-green-100 shadow-lg">
-		<div class="flex items-center justify-between">
-			<div class="flex items-center gap-2">
-				<Check size={20} />
-				<span class="font-medium">Predictions saved successfully!</span>
+	<div class="relative mb-6">
+		<div
+			class="relative h-[80px] w-full overflow-hidden border-b-4 border-green-500 bg-green-500/20"
+		>
+			<!-- Success top bar -->
+			<div class="flex h-[16px] w-full items-center justify-center bg-green-500">
+				<span class="text-xs font-bold text-black">SUCCESS</span>
+			</div>
+
+			<!-- Content -->
+			<div class="relative flex h-full items-center gap-3 px-6 pt-3 pb-4">
+				<Check size={20} class="text-green-200" />
+				<span class="font-medium text-green-100">Predictions saved successfully!</span>
 			</div>
 		</div>
 	</div>
 {/if}
 
 {#if showError}
-	<div class="mb-4 animate-pulse rounded-lg bg-red-500/20 p-4 text-red-100 shadow-lg">
-		<div class="flex items-center justify-between">
-			<div class="flex items-center gap-2">
-				<AlertTriangle size={20} />
-				<span class="font-medium">{errorMessage}</span>
+	<div class="relative mb-6">
+		<div class="relative h-[80px] w-full overflow-hidden border-b-4 border-red-500 bg-red-500/20">
+			<!-- Error top bar -->
+			<div class="flex h-[16px] w-full items-center justify-center bg-red-500">
+				<span class="text-xs font-bold text-white">ERROR</span>
+			</div>
+
+			<!-- Content -->
+			<div class="relative flex h-full items-center gap-3 px-6 pt-3 pb-4">
+				<AlertTriangle size={20} class="text-red-200" />
+				<span class="font-medium text-red-100">{errorMessage}</span>
 			</div>
 		</div>
 	</div>
 {/if}
 
 {#if updateFailed}
-	<div class="mb-4 rounded-lg bg-yellow-500/20 p-3 text-yellow-100 shadow">
-		<div class="flex items-center gap-2">
-			<AlertTriangle size={16} />
-			<span class="text-sm"
-				>Unable to get the latest scores. <button class="underline" onclick={manualRefresh}
-					>Try again</button
-				></span
-			>
+	<div class="relative mb-6">
+		<div
+			class="relative h-[80px] w-full overflow-hidden border-b-4 border-yellow-500 bg-yellow-500/20"
+		>
+			<!-- Warning top bar -->
+			<div class="flex h-[16px] w-full items-center justify-center bg-yellow-500">
+				<span class="text-xs font-bold text-black">WARNING</span>
+			</div>
+
+			<!-- Content -->
+			<div class="relative flex h-full items-center gap-3 px-6 pt-3 pb-4">
+				<AlertTriangle size={16} class="text-yellow-200" />
+				<span class="text-sm text-yellow-100">
+					Unable to get the latest scores.
+					<button class="underline hover:no-underline" onclick={manualRefresh}>Try again</button>
+				</span>
+			</div>
 		</div>
 	</div>
 {/if}
 
 <!-- Show API rate limit warning if needed -->
 {#if form?.rateLimited}
-	<div class="mb-4 rounded-lg bg-amber-600/20 p-3 text-amber-100 shadow">
-		<div class="flex items-center gap-2">
-			<AlertTriangle size={16} />
-			<span class="text-sm">Football API rate limit reached. Using cached data.</span>
+	<div class="relative mb-6">
+		<div
+			class="relative h-[80px] w-full overflow-hidden border-b-4 border-amber-500 bg-amber-600/20"
+		>
+			<!-- Rate limit top bar -->
+			<div class="flex h-[16px] w-full items-center justify-center bg-amber-500">
+				<span class="text-xs font-bold text-black">RATE LIMITED</span>
+			</div>
+
+			<!-- Content -->
+			<div class="relative flex h-full items-center gap-3 px-6 pt-3 pb-4">
+				<AlertTriangle size={16} class="text-amber-200" />
+				<span class="text-sm text-amber-100"
+					>Football API rate limit reached. Using cached data.</span
+				>
+			</div>
 		</div>
 	</div>
 {/if}
 
 {#if !localFixtures?.length}
-	<div class="rounded-xl border border-slate-700 bg-slate-800/50 p-6 text-center shadow-lg">
-		<p class="text-lg">No fixtures found for Week {weekParam}.</p>
+	<div class="relative mb-6">
+		<div
+			class="relative h-[120px] w-full overflow-hidden border-b-6 border-slate-500 bg-slate-800/50"
+		>
+			<!-- No fixtures top bar -->
+			<div class="flex h-[20px] w-full items-center justify-center bg-slate-500">
+				<span class="font-bold text-black">NO FIXTURES</span>
+			</div>
+
+			<!-- Content -->
+			<div class="relative flex h-full items-center justify-center px-6 pt-4 pb-4">
+				<p class="text-center text-lg text-white">No fixtures found for Week {weekParam}.</p>
+			</div>
+		</div>
 	</div>
 {:else}
 	<!-- Main predictions form -->
@@ -380,9 +440,9 @@
 			<input type="hidden" name="week" value={weekParam} />
 
 			<!-- Grid to display match predictions - with optimized keyed each -->
-			<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+			<div class="grid grid-cols-1 items-center justify-center gap-10 md:grid-cols-2">
 				{#each localFixtures as fixture (fixture.id)}
-					<PredictionCard
+					<PredictionCardV2
 						{fixture}
 						homeTeam={teams[fixture.homeTeamId]}
 						awayTeam={teams[fixture.awayTeamId]}
@@ -411,18 +471,32 @@
 
 			<!-- Submit button - only shown for current or future weeks -->
 			{#if !isPastWeek}
-				<div class="flex justify-end">
+				<div class="mt-8 flex justify-end">
 					<button
 						type="submit"
-						class="rounded-md bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+						class="bg-accent hover:bg-accent/80 font-display rounded px-8 py-3 font-medium text-black disabled:cursor-not-allowed disabled:opacity-50"
 						disabled={submitting}
 					>
-						{submitting ? 'Saving...' : 'Save Predictions'}
+						{submitting ? 'SAVING...' : 'SAVE PREDICTIONS'}
 					</button>
 				</div>
 			{:else}
-				<div class="mt-4 text-center text-sm text-slate-400 italic">
-					Viewing past predictions - no changes allowed
+				<div class="relative mt-8">
+					<div
+						class="relative h-[60px] w-full overflow-hidden border-b-2 border-slate-400 bg-slate-800/30"
+					>
+						<!-- Past week top bar -->
+						<div class="flex h-[12px] w-full items-center justify-center bg-slate-400">
+							<span class="text-xs font-bold text-black">PAST WEEK</span>
+						</div>
+
+						<!-- Content -->
+						<div class="relative flex h-full items-center justify-center px-6 pt-2 pb-4">
+							<span class="text-sm text-slate-400 italic">
+								Viewing past predictions - no changes allowed
+							</span>
+						</div>
+					</div>
 				</div>
 			{/if}
 		</form>

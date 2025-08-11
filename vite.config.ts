@@ -1,24 +1,9 @@
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 
-export default defineConfig(({ mode }) => {
-	// Load environment variables based on mode
-	const env = loadEnv(mode, process.cwd(), '');
-
+export default defineConfig(() => {
 	return {
-		plugins: [sveltekit(), tailwindcss()],
-		// Make Vite aware of environment variables
-		define: {
-			'process.env.BETTER_AUTH_URL': JSON.stringify(env.BETTER_AUTH_URL)
-		},
-		server: {
-			allowedHosts: [
-				'localhost',
-				'127.0.0.1',
-				'0.0.0.0',
-				'cure-pts-spin-equation.trycloudflare.com'
-			]
-		}
+		plugins: [tailwindcss(), sveltekit()]
 	};
 });

@@ -30,7 +30,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Test sending a basic email
 		const result = await resend.emails.send({
-			from: 'Master League <onboarding@resend.dev>',
+			from: 'Master League <noreply@mail.masterleague.app',
 			to: email,
 			subject: 'Test Email from Master League',
 			html: `

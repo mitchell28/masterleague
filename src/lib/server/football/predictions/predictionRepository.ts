@@ -133,16 +133,28 @@ export async function processPredictionsForFixture(
 		totalPointsAllocated += points;
 	}
 
-	// Update league table entries for affected users
+	// Update league table entries for affected users, grouped by organization
 	const affectedUsers = Array.from(userUpdateMap.keys());
 	for (const userId of affectedUsers) {
 		const userData = userUpdateMap.get(userId)!;
 
-		// Get existing league table entry
+		// Get the user's organization for this prediction (we need to get it from one of their predictions)
+		const userPrediction = fixturePredictions.find((p) => p.userId === userId);
+		if (!userPrediction?.organizationId) {
+			console.warn(`No organization found for user ${userId} in fixture ${fixtureId}`);
+			continue;
+		}
+
+		// Get existing league table entry for this user and organization
 		const existingEntry: LeagueTable | undefined = await db
 			.select()
 			.from(leagueTable)
-			.where(eq(leagueTable.userId, userId))
+			.where(
+				and(
+					eq(leagueTable.userId, userId),
+					eq(leagueTable.organizationId, userPrediction.organizationId)
+				)
+			)
 			.then((rows) => rows[0]);
 
 		if (existingEntry) {
@@ -162,6 +174,8 @@ export async function processPredictionsForFixture(
 			await db.insert(leagueTable).values({
 				id: randomUUID(),
 				userId: userId,
+				organizationId: userPrediction.organizationId,
+				season: '2025-26', // TODO: Make this dynamic based on fixture season
 				totalPoints: userData.points,
 				correctScorelines: userData.correctScore,
 				correctOutcomes: userData.correctOutcome,
@@ -180,13 +194,11 @@ export async function processPredictionsForFixture(
 }
 
 /**
- * Get the current league table rankings
+ * Get the current league table rankings for a specific organization
  */
-export async function getLeagueTable() {
+export async function getLeagueTable(organizationId?: string) {
 	try {
-		// Import user schema from auth to avoid circular dependencies
-
-		const leaderboard = await db
+		const query = db
 			.select({
 				id: leagueTable.id,
 				userId: leagueTable.userId,
@@ -202,6 +214,11 @@ export async function getLeagueTable() {
 			.from(leagueTable)
 			.innerJoin(user, eq(leagueTable.userId, user.id))
 			.orderBy(desc(leagueTable.totalPoints));
+
+		// Add organization filter if provided
+		const leaderboard = organizationId
+			? await query.where(eq(leagueTable.organizationId, organizationId))
+			: await query;
 
 		return leaderboard;
 	} catch (error) {

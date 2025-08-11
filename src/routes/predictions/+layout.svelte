@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { Info } from '@lucide/svelte';
+	import WeekSelector from './components/WeekSelector.svelte';
 
 	// Correct way to handle slots in SvelteKit 5
 	let { children } = $props();
@@ -17,6 +18,8 @@
 				: parseInt(page.params.week, 10)
 			: currentWeek
 	);
+
+	$inspect('Current week:', currentWeek, 'Selected week:', week);
 
 	// State for managing week transitions and validation
 	let isValidWeek = $state(true);
@@ -56,79 +59,65 @@
 		}
 	});
 
-	// Enhanced week change handler with validation
-	function changeWeek(event: Event) {
-		const target = event.target as HTMLSelectElement;
-		const newWeek = parseInt(target.value, 10);
-
-		// Validate the new week
-		if (isNaN(newWeek)) {
-			console.error('Invalid week selected');
-			return;
-		}
-
-		// Only navigate if actually changing weeks and week is valid
+	// Week navigation handlers
+	function handleWeekChange(newWeek: number) {
 		if (newWeek !== week && weeks.includes(newWeek)) {
 			goto(`/predictions/${newWeek}`);
 		}
 	}
+
+	function handleNavigate(direction: 'prev' | 'next') {
+		const targetWeek = direction === 'prev' ? week - 1 : week + 1;
+		if (weeks.includes(targetWeek)) {
+			goto(`/predictions/${targetWeek}`);
+		}
+	}
 </script>
 
-<div class="container mx-auto mt-26 max-w-6xl p-4">
-	<div class="mb-6 flex items-center justify-between">
-		<h1 class="text-3xl font-bold">Week {week} Predictions</h1>
-	</div>
+<div class=" mx-auto mt-22">
+	<!-- Main Header with clean geometric design -->
+	<div class="relative">
+		<div class="font-display mb-6 w-full overflow-hidden bg-[#030926]">
+			<!-- Accent top bar -->
+			<div class="mx-auto my-6 max-w-6xl">
+				<!-- Main content area -->
+				<div class="relative flex h-full items-center justify-between px-4 py-4">
+					<div>
+						<h1 class="text-3xl font-bold text-white">Week {week}</h1>
+						<div class="mt-2 flex items-center gap-3">
+							<span class="text-sm font-medium text-slate-300"
+								>Current League Week: {currentWeek}</span
+							>
+							{#if weekStatus === 'current'}
+								<span class="bg-accent rounded px-3 py-1 text-xs font-bold text-black">
+									CURRENT
+								</span>
+							{:else if weekStatus === 'future'}
+								<span class="rounded bg-blue-500 px-3 py-1 text-xs font-bold text-white">
+									FUTURE
+								</span>
+							{:else if weekStatus === 'past'}
+								<span class="rounded bg-gray-500 px-3 py-1 text-xs font-bold text-white">
+									PAST
+								</span>
+							{/if}
+						</div>
+					</div>
 
-	{#if showFutureWeekMessage}
-		<div class="mb-4 rounded-lg bg-blue-500/20 p-4 text-blue-100 shadow-lg">
-			<div class="flex items-center gap-2">
-				<Info class="size-5" />
-				<span>
-					You're viewing a future week (Week {week}). You can make predictions for any match with
-					"upcoming" status.
-				</span>
-			</div>
-		</div>
-	{/if}
-
-	<!-- Week navigation panel - enhanced with status indicators -->
-	<div class="mb-8 rounded-xl border border-slate-700 bg-slate-800/50 p-4 shadow-lg">
-		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-			<!-- Enhanced current week indicator with status -->
-			<div>
-				<span class="text-sm font-medium text-slate-300">Current League Week: {currentWeek}</span>
-				{#if weekStatus === 'current'}
-					<span class="ml-2 rounded-full bg-green-500 px-2 py-0.5 text-xs font-bold text-black">
-						Current
-					</span>
-				{:else if weekStatus === 'future'}
-					<span class="ml-2 rounded-full bg-blue-500 px-2 py-0.5 text-xs font-bold text-white">
-						Future - Week {week}
-					</span>
-				{:else if weekStatus === 'past'}
-					<span class="ml-2 rounded-full bg-gray-500 px-2 py-0.5 text-xs font-bold text-white">
-						Past - Week {week}
-					</span>
-				{/if}
-			</div>
-
-			<!-- Week selector dropdown - optimized -->
-			<div>
-				<label for="week-selector" class="font-medium">Go to week:</label>
-				<select
-					id="week-selector"
-					class="ml-2 rounded-lg border border-slate-600 bg-slate-700 px-3 py-1 text-slate-100 focus:border-blue-400 focus:outline-none"
-					onchange={changeWeek}
-					value={week}
-				>
-					{#each weeks as weekNum}
-						<option value={weekNum}>{weekNum}</option>
-					{/each}
-				</select>
+					<!-- Week navigation on the right -->
+					<WeekSelector
+						{weeks}
+						{currentWeek}
+						{week}
+						onWeekChange={handleWeekChange}
+						onNavigate={handleNavigate}
+					/>
+				</div>
 			</div>
 		</div>
 	</div>
 
-	<!-- Correctly use the children slot without optional chaining -->
-	{@render children()}
+	<div class="mx-auto max-w-6xl">
+		{@render children()}
+	</div>
 </div>

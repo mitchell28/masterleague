@@ -3,7 +3,7 @@ import { leagueTable, authUser, member, organization } from '../../../drizzle/sc
 import { desc, eq, and, inArray } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { processRecentFixtures } from '$lib/scripts/recalculate-points-api';
+import { useRecalculation } from './hooks/recalculateHooks.svelte';
 import { getCurrentWeek } from '$lib/server/football/fixtures';
 
 export const load = (async ({ locals, url }) => {
@@ -15,19 +15,9 @@ export const load = (async ({ locals, url }) => {
 	if (!locals.user?.id) {
 		console.log('❌ No user ID found, redirecting to auth');
 		redirect(302, '/auth/otp?redirectTo=/leaderboard');
-	} // Process recent fixtures and await the result to ensure points are calculated
-	try {
-		const result = await processRecentFixtures();
-		if (result.processedPredictions > 0) {
-			console.log(
-				`Processed ${result.processedFixtures} fixtures and ${result.processedPredictions} predictions`
-			);
-		}
-	} catch (err) {
-		console.error('Points calculation error:', err);
 	}
 
-	// Get user's organizations
+	// Get user's organizations first
 	const userOrganizations = await db
 		.select({
 			id: organization.id,
@@ -40,6 +30,21 @@ export const load = (async ({ locals, url }) => {
 
 	// Get selected organization from URL parameter, default to first organization
 	const selectedOrganizationId = url.searchParams.get('organization') || userOrganizations[0]?.id;
+
+	// Initialize the recalculation hook with organization context
+	const { processRecentFixtures } = useRecalculation(selectedOrganizationId);
+
+	// Process recent fixtures and await the result to ensure points are calculated
+	try {
+		const result = await processRecentFixtures();
+		if (result.processedPredictions > 0) {
+			console.log(
+				`Processed ${result.processedFixtures} fixtures and ${result.processedPredictions} predictions`
+			);
+		}
+	} catch (err) {
+		console.error('Points calculation error:', err);
+	}
 
 	if (!selectedOrganizationId || userOrganizations.length === 0) {
 		return {
