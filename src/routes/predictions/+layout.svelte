@@ -74,10 +74,10 @@
 	}
 </script>
 
-<div class=" mx-auto mt-22">
+<div class="mx-auto mt-22">
 	<!-- Main Header with clean geometric design -->
 	<div class="relative">
-		<div class="font-display mb-6 w-full overflow-hidden bg-[#030926]">
+		<div class="font-display mb-6 w-full overflow-hidden bg-slate-900">
 			<!-- Accent top bar -->
 			<div class="mx-auto my-6 max-w-6xl">
 				<!-- Main content area -->

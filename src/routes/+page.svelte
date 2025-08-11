@@ -44,12 +44,9 @@
 	});
 </script>
 
-<div bind:this={heroRef} class="relative flex min-h-screen items-center justify-center p-4">
+<div bind:this={heroRef} class="relative mt-22 flex min-h-screen items-center justify-center p-4">
 	<div class="container mx-auto max-w-4xl space-y-12 text-center">
 		<!-- Logo -->
-		<div bind:this={logoRef} class="opacity-0">
-			<img src={logo} alt="Master League" class="mx-auto h-24 w-auto sm:h-32 md:h-40" />
-		</div>
 
 		<!-- Main Title -->
 		<div bind:this={titleRef} class="space-y-4 opacity-0">

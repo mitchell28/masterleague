@@ -12,9 +12,23 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'Username is required' }, { status: 400 });
 		}
 
+		// Validate username format before checking database
+		const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+		if (!usernameRegex.test(username) || !username.match(/^[a-zA-Z]/)) {
+			return json(
+				{
+					error:
+						'Username can only contain letters, numbers, underscores, and hyphens. Must start with a letter.',
+					taken: false,
+					invalid: true
+				},
+				{ status: 400 }
+			);
+		}
+
 		// Check if username exists in database
 		const existingUser = await db
-			.select({ id: user.id })
+			.select({ id: user.id, username: user.username })
 			.from(user)
 			.where(eq(user.username, username))
 			.limit(1);
@@ -24,7 +38,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			username
 		});
 	} catch (error) {
-		console.error('Username check error:', error);
+		console.error('❌ Username check error:', error);
 		return json({ error: 'Failed to check username' }, { status: 500 });
 	}
 };

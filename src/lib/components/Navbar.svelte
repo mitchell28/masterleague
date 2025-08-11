@@ -52,7 +52,7 @@
 
 <header class="fixed top-0 left-0 z-50 w-full">
 	<!-- Main navbar container -->
-	<div class="relative min-h-[80px] w-full bg-[#0D1326]">
+	<div class="relative min-h-[80px] w-full bg-[#090e1e]">
 		<div class="container mx-auto flex items-center justify-between gap-10 px-6 py-5">
 			<div class="hidden items-center justify-center gap-10 md:flex">
 				<a href="/" class="group flex items-center gap-3">

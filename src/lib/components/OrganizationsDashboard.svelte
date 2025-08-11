@@ -405,7 +405,7 @@
 
 		{#if $userOrganizations.length === 0}
 			<div class="border-b-4 border-slate-500 bg-slate-800/50 p-8 text-center">
-				<p class="text-slate-400">You're not a member of any organizations yet.</p>
+				<p class="text-slate-400">You're not a member of any groups yet.</p>
 				<p class="mt-2 text-sm text-slate-500">Create one or join using an invite code.</p>
 			</div>
 		{/if}

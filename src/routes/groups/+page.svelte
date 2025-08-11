@@ -13,7 +13,7 @@
 <div class="mx-auto mt-22">
 	<!-- Main Header with clean geometric design -->
 	<div class="relative">
-		<div class="font-display mb-6 w-full overflow-hidden bg-[#030926]">
+		<div class="font-display mb-6 w-full overflow-hidden bg-slate-900">
 			<div class="mx-auto my-6 max-w-6xl">
 				<!-- Main content area -->
 				<div class="relative flex h-full items-center justify-between px-4 py-4">

@@ -67,6 +67,29 @@ export const auth = betterAuth({
 		autoSignIn: true
 	},
 
+	// Add user creation debugging
+	user: {
+		changeEmail: {
+			enabled: true
+		},
+		changePassword: {
+			enabled: true
+		}
+	},
+
+	// Add callbacks for debugging
+	callbacks: {
+		user: {
+			created: async ({ user }: any) => {
+				console.log('✅ [Auth] User created successfully:', {
+					id: user.id,
+					username: user.username,
+					email: user.email
+				});
+			}
+		}
+	},
+
 	// Rate limiting configuration
 	rateLimit: {
 		enabled: true, // Enable in all environments
@@ -87,8 +110,6 @@ export const auth = betterAuth({
 			if (!clientIP) {
 				clientIP = '127.0.0.1'; // localhost fallback
 				console.warn(`⚠️  [Rate Limit] No IP address found, using fallback: ${clientIP}`);
-			} else {
-				console.log(`🔍 [Rate Limit] Client IP detected: ${clientIP}`);
 			}
 
 			return clientIP;
@@ -171,31 +192,9 @@ export const auth = betterAuth({
 			overrideDefaultEmailVerification: true, // Use OTP instead of email links
 			sendVerificationOnSignUp: true, // Send OTP when user signs up
 			async sendVerificationOTP({ email, otp, type }) {
-				console.log(`🔐 [OTP] Attempting to send OTP to: ${email}`);
-				console.log(`🔐 [OTP] Type: ${type}`);
-				console.log(`🔐 [OTP] OTP Code: ${otp}`);
-
-				// Log email domain for debugging
-				const emailDomain = email.split('@')[1];
-				console.log(`🔐 [OTP] Email domain: ${emailDomain}`);
-
-				// Check for common email domains and log
-				const commonDomains = [
-					'gmail.com',
-					'yahoo.com',
-					'outlook.com',
-					'hotmail.com',
-					'icloud.com'
-				];
-				if (commonDomains.includes(emailDomain)) {
-					console.log(`✅ [OTP] Using common email domain: ${emailDomain}`);
-				} else {
-					console.log(`⚠️  [OTP] Using less common email domain: ${emailDomain}`);
-				}
-
 				try {
 					const emailResult = await resend.emails.send({
-						from: 'Master League <noreply@mail.masterleague.app>', // Use Resend's default domain to avoid deliverability issues
+						from: 'Master League <noreply@mail.masterleague.app>',
 						to: email,
 						subject:
 							type === 'sign-in'
@@ -217,10 +216,6 @@ export const auth = betterAuth({
 						text: `Your Master League verification code is: ${otp}. This code will expire in 5 minutes.`
 					});
 
-					console.log(`✅ [OTP] Email sent successfully to ${email}`);
-					console.log(`✅ [OTP] Full Resend result:`, JSON.stringify(emailResult, null, 2));
-					console.log(`✅ [OTP] Resend Email ID:`, emailResult.data?.id);
-
 					// Check for Resend API errors (like testing restrictions)
 					if (emailResult.error) {
 						console.error(`❌ [OTP] Resend API Error:`, emailResult.error);
@@ -228,16 +223,8 @@ export const auth = betterAuth({
 						// Handle specific Resend testing restrictions
 						const errorObj = emailResult.error as any;
 						if (errorObj.statusCode === 403 && errorObj.error?.includes('testing emails')) {
-							console.error(
-								`🚫 [OTP] RESEND TESTING RESTRICTION: Can only send to verified email addresses`
-							);
-							console.error(
-								`🚫 [OTP] To fix: Verify a domain at resend.com/domains or add ${email} as a verified sender`
-							);
-
-							// Throw a more user-friendly error
 							throw new Error(
-								`Email verification unavailable for ${emailDomain}. Please contact support or use a different email address.`
+								`Email verification unavailable. Please contact support or use a different email address.`
 							);
 						}
 
@@ -246,26 +233,8 @@ export const auth = betterAuth({
 							errorObj.error || errorObj.message || 'Failed to send verification email'
 						);
 					}
-
-					// Check if email was actually sent
-					if (!emailResult.data?.id) {
-						console.warn(`⚠️  [OTP] No email ID returned, email may not have been sent properly`);
-					}
 				} catch (error) {
 					console.error(`❌ [OTP] Failed to send email to ${email}:`, error);
-
-					// Log detailed error information
-					if (error instanceof Error) {
-						console.error(`❌ [OTP] Error message:`, error.message);
-						console.error(`❌ [OTP] Error stack:`, error.stack);
-					}
-
-					// Log specific error details for Resend API
-					if (typeof error === 'object' && error !== null) {
-						console.error(`❌ [OTP] Full error object:`, JSON.stringify(error, null, 2));
-					}
-
-					// Re-throw the error so Better Auth can handle it
 					throw error;
 				}
 			},

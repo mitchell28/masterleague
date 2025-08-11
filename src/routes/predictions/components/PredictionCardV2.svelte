@@ -213,7 +213,7 @@
 
 	<!-- Main card background -->
 	<div
-		class="absolute inset-0 bg-[#030926]"
+		class="absolute inset-0 bg-slate-900"
 		style="clip-path: polygon(0% 9%, 5% 0%, 35% 0%, 40% 13%, 60% 13%, 65% 0%, 95% 0%, 100% 9%, 100% 100%, 0% 100%);"
 	>
 		<!-- Prediction outcome badge in top left -->
