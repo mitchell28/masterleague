@@ -17,8 +17,8 @@
 
 	// Redirect if already logged in
 	$effect(() => {
-		if ($session.data) {
-			goto(redirectTo);
+		if ($session.data && !isLoading) {
+			goto(redirectTo, { replaceState: true });
 		}
 	});
 
@@ -31,6 +31,33 @@
 	let successMessage: string = $state('');
 	let isLoading = $state(false);
 	let isResending = $state(false);
+
+	// Check if email exists in the system
+	async function checkEmailExists(email: string): Promise<boolean> {
+		try {
+			const response = await fetch('/api/check-email', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email })
+			});
+
+			const result = await response.json();
+
+			if (!response.ok) {
+				// If there's a validation error (invalid email format)
+				if (result.invalid) {
+					$message = result.error;
+					return false;
+				}
+				throw new Error(result.error || 'Failed to check email');
+			}
+
+			return result.taken; // Return true if email exists (is "taken")
+		} catch (error) {
+			console.error('Failed to check email existence:', error);
+			throw error;
+		}
+	}
 
 	// Send OTP
 	async function sendOTP(e?: Event) {
@@ -46,24 +73,41 @@
 		}
 
 		try {
-			await authClient.emailOtp.sendVerificationOtp({
+			// For new OTP requests (not resends), check if email exists first
+			if (!isResendOperation) {
+				const emailExists = await checkEmailExists($form.email);
+
+				if (!emailExists) {
+					$message = `No account found with email ${$form.email}. Please sign up first or check your email address.`;
+					return;
+				}
+			}
+
+			const result = await authClient.emailOtp.sendVerificationOtp({
 				email: $form.email,
 				type: 'sign-in'
 			});
 
-			if (isResendOperation) {
-				successMessage = `Code resent to ${$form.email}`;
-				// Clear the success message after 3 seconds
-				setTimeout(() => {
-					successMessage = '';
-				}, 3000);
-			} else {
-				step = 'otp';
-				successMessage = `We've sent a 6-digit code to ${$form.email}`;
+			if (result.data) {
+				if (isResendOperation) {
+					successMessage = `Code resent to ${$form.email}`;
+					// Clear the success message after 3 seconds
+					setTimeout(() => {
+						successMessage = '';
+					}, 3000);
+				} else {
+					step = 'otp';
+					successMessage = `We've sent a 6-digit code to ${$form.email}`;
+				}
+				// Clear any previous error messages
+				$message = '';
+			} else if (result.error) {
+				console.error('Failed to send OTP:', result.error);
+				$message = result.error.message || 'Failed to send verification code. Please try again.';
 			}
 		} catch (error) {
 			console.error('Failed to send OTP:', error);
-			// Handle error - could set an error message
+			$message = 'Something went wrong. Please try again.';
 		} finally {
 			if (isResendOperation) {
 				isResending = false;
@@ -83,12 +127,16 @@
 			});
 
 			if (result.data) {
-				// Sign in successful - redirect
-				goto(redirectTo);
+				// Sign in successful - redirect immediately
+				// The session will be updated automatically via cookies
+				goto(redirectTo, { replaceState: true });
+			} else if (result.error) {
+				console.error('OTP sign in failed:', result.error);
+				$message = result.error.message || 'Invalid verification code. Please try again.';
 			}
 		} catch (error) {
 			console.error('OTP sign in failed:', error);
-			// Handle error - could set an error message
+			$message = 'Something went wrong. Please try again.';
 		} finally {
 			isLoading = false;
 		}
@@ -99,6 +147,11 @@
 		const target = e.target as HTMLInputElement;
 		const value = target.value.replace(/\D/g, '').slice(0, 6);
 		$form.otp = value;
+
+		// Clear any error messages when user starts typing
+		if ($message) {
+			$message = '';
+		}
 	}
 
 	// Go back to email step
@@ -129,21 +182,26 @@
 
 			<!-- Success message -->
 			{#if successMessage}
-				<div
-					class="mb-6 border border-green-500/30 bg-green-500/10 p-4"
-					style="clip-path: polygon(8% 0%, 100% 0%, 100% 85%, 92% 100%, 0% 100%, 0% 15%);"
-				>
+				<div class="mb-6 border border-green-500/30 bg-green-500/10 p-4">
 					<p class="text-sm text-green-400">{successMessage}</p>
 				</div>
 			{/if}
 
 			<!-- Error messages -->
 			{#if $message}
-				<div
-					class="mb-6 border border-red-500/30 bg-red-500/10 p-4"
-					style="clip-path: polygon(8% 0%, 100% 0%, 100% 85%, 92% 100%, 0% 100%, 0% 15%);"
-				>
+				<div class="mb-6 border border-red-500/30 bg-red-500/10 p-4">
 					<p class="text-sm text-red-400">{$message}</p>
+					{#if $message.includes('No account found')}
+						<p class="mt-2 text-sm text-red-300">
+							<a
+								href="/auth/signup"
+								class="text-accent hover:text-accent/80 font-medium underline transition-colors"
+							>
+								Create an account
+							</a>
+							or double-check your email address.
+						</p>
+					{/if}
 				</div>
 			{/if}
 

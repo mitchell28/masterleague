@@ -1,8 +1,14 @@
-import { error, fail } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import { db } from '$lib/server/db';
 import { organization, member } from '$lib/server/db/auth/auth-schema';
 import { eq, and } from 'drizzle-orm';
+
+export const load = async ({ locals, url }) => {
+	if (!locals.user?.id) {
+		throw redirect(302, '/auth/login');
+	}
+};
 
 export const actions: Actions = {
 	deleteOrganization: async ({ request, locals }) => {

@@ -8,7 +8,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const session = locals.session;
 
 	if (session) {
-		redirect(302, '/predictions');
+		throw redirect(302, '/predictions');
 	}
 
 	return {

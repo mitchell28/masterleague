@@ -15,7 +15,7 @@ export const load = (async ({ locals, url }) => {
 
 	if (!locals.user?.id) {
 		console.log('❌ No user ID found, redirecting to auth');
-		redirect(302, '/auth/otp?redirectTo=/leaderboard');
+		throw redirect(302, '/auth/login');
 	}
 
 	// Get user's organizations first

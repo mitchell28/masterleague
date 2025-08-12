@@ -3,7 +3,6 @@
 	import { goto } from '$app/navigation';
 	import { Menu, X, LogOut, LogIn, UserPlus } from '@lucide/svelte';
 	import { authClient } from '$lib/client/auth-client';
-	import { fly } from 'svelte/transition';
 	import logo from '$lib/assets/logo/masterleague.svg';
 
 	const session = authClient.useSession();
@@ -14,8 +13,8 @@
 		{ href: '/groups', label: 'Groups', adminOnly: false }
 	];
 
-	let isMenuOpen = $state(false);
 	let isDropdownOpen = $state(false);
+	let isMobileMenuOpen = $state(false);
 
 	function isNavItemActive(href: string): boolean {
 		return href === '/' ? page.url.pathname === href : page.url.pathname.startsWith(href);
@@ -26,27 +25,43 @@
 		goto('/auth/login');
 	}
 
-	// Close dropdown when clicking outside
+	// Simple click outside handler
 	function handleClickOutside(event: MouseEvent) {
-		if (isDropdownOpen) {
-			const target = event.target as HTMLElement;
-			const dropdown = document.querySelector('[data-dropdown]');
-			const button = document.querySelector('[data-dropdown-button]');
+		const target = event.target as HTMLElement;
 
-			if (dropdown && button && !dropdown.contains(target) && !button.contains(target)) {
+		// Close dropdown if clicked outside
+		if (isDropdownOpen) {
+			const dropdown = document.querySelector('[data-dropdown]');
+			const dropdownButton = document.querySelector('[data-dropdown-button]');
+			if (
+				dropdown &&
+				dropdownButton &&
+				!dropdown.contains(target) &&
+				!dropdownButton.contains(target)
+			) {
 				isDropdownOpen = false;
+			}
+		}
+
+		// Close mobile menu if clicked outside
+		if (isMobileMenuOpen) {
+			const mobileMenu = document.querySelector('[data-mobile-menu]');
+			const mobileButton = document.querySelector('[data-mobile-button]');
+			if (
+				mobileMenu &&
+				mobileButton &&
+				!mobileMenu.contains(target) &&
+				!mobileButton.contains(target)
+			) {
+				isMobileMenuOpen = false;
 			}
 		}
 	}
 
-	// Add event listener for click outside
+	// Always listen for clicks - simpler and more reliable
 	$effect(() => {
-		if (isDropdownOpen) {
-			document.addEventListener('click', handleClickOutside);
-			return () => {
-				document.removeEventListener('click', handleClickOutside);
-			};
-		}
+		document.addEventListener('click', handleClickOutside);
+		return () => document.removeEventListener('click', handleClickOutside);
 	});
 </script>
 
@@ -149,26 +164,23 @@
 
 			<!-- Mobile Menu Button -->
 			<button
-				class="hover:bg-accent/20 bg-accent/30 flex size-10 items-center justify-center text-white transition-colors md:hidden"
+				data-mobile-button
 				style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
-				onclick={() => (isMenuOpen = !isMenuOpen)}
+				class="hover:bg-accent/20 bg-accent/30 flex size-10 items-center justify-center text-white transition-colors md:hidden"
+				onclick={() => (isMobileMenuOpen = !isMobileMenuOpen)}
 				aria-label="Toggle menu"
 			>
-				{#if isMenuOpen}
-					<X class="size-6" />
-				{:else}
-					<Menu class="size-6" />
-				{/if}
+				<Menu class="size-6 {isMobileMenuOpen ? 'hidden' : 'block'}" />
+				<X class="size-6 {isMobileMenuOpen ? 'block' : 'hidden'}" />
 			</button>
 		</div>
 	</div>
 
 	<!-- Mobile Menu -->
-	{#if isMenuOpen}
+	{#if isMobileMenuOpen}
 		<div
-			transition:fly={{ y: -10, duration: 200 }}
+			data-mobile-menu
 			class="border-accent/30 absolute top-full left-0 w-full border-t bg-[#0D1326] shadow-2xl md:hidden"
-			style="clip-path: polygon(0% 0%, 100% 0%, 100% 90%, 95% 100%, 5% 100%, 0% 90%);"
 		>
 			<nav class="container mx-auto flex flex-col gap-2 px-4 py-6 text-sm">
 				{#each navItems as item}
@@ -176,12 +188,9 @@
 						{@const isActive = isNavItemActive(item.href)}
 						<a
 							href={item.href}
-							class="flex items-center gap-3 px-4 py-3 text-white transition-all duration-200
-								{isActive ? 'bg-accent font-medium text-black' : 'hover:bg-accent/20'}"
-							style={isActive
-								? 'clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);'
-								: ''}
-							onclick={() => (isMenuOpen = false)}
+							class="flex items-center gap-3 px-4 py-3 transition-all duration-200
+								{isActive ? 'bg-accent font-medium text-black' : 'hover:bg-accent/20 text-white'}"
+							onclick={() => (isMobileMenuOpen = false)}
 						>
 							{item.label}
 						</a>
@@ -202,8 +211,10 @@
 							</div>
 							<button
 								class="hover:bg-accent/20 border-accent/30 flex w-full items-center justify-center gap-2 border py-3 text-center font-medium text-white transition-all"
-								style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
-								onclick={handleSignOut}
+								onclick={() => {
+									handleSignOut();
+									isMobileMenuOpen = false;
+								}}
 							>
 								<LogOut class="size-4" />
 								Logout
@@ -214,7 +225,7 @@
 							<a
 								href="/auth/login"
 								class="bg-accent flex w-full items-center justify-center gap-2 py-3 text-center font-medium text-black shadow-md transition-all hover:opacity-90 hover:shadow-lg"
-								style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
+								onclick={() => (isMobileMenuOpen = false)}
 							>
 								<LogIn class="size-4" />
 								Login
@@ -222,7 +233,7 @@
 							<a
 								href="/auth/signup"
 								class="hover:bg-accent/20 border-accent/30 flex w-full items-center justify-center gap-2 border py-3 text-center font-medium text-white transition-all"
-								style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
+								onclick={() => (isMobileMenuOpen = false)}
 							>
 								<UserPlus class="size-4" />
 								Sign Up

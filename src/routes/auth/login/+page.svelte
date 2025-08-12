@@ -89,7 +89,7 @@
 			{/if}
 
 			<!-- Login form -->
-			<form onsubmit={handleSignIn} use:enhance class="space-y-5">
+			<form onsubmit={handleSignIn} class="space-y-5">
 				<div>
 					<label for="email" class="block text-sm font-medium text-slate-300">Email address</label>
 					<input
