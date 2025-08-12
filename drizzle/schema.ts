@@ -8,7 +8,7 @@ import {
 	text,
 	foreignKey
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
+import { user as authUser } from '../src/lib/server/db/auth/auth-schema';
 
 export const subscriptions = pgTable('subscriptions', {
 	id: varchar().primaryKey().notNull(),
@@ -26,30 +26,6 @@ export const subscriptions = pgTable('subscriptions', {
 	createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
 	updatedAt: timestamp('updated_at', { mode: 'string' }).notNull()
 });
-
-export const authUser = pgTable(
-	'auth_user',
-	{
-		id: text().primaryKey().notNull(),
-		name: text().notNull(),
-		email: text().notNull(),
-		emailVerified: boolean('email_verified').notNull(),
-		image: text(),
-		createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
-		updatedAt: timestamp('updated_at', { mode: 'string' }).notNull(),
-		role: text().default('user'),
-		banned: boolean().default(false),
-		banReason: text('ban_reason'),
-		banExpires: integer('ban_expires'),
-		username: text(),
-		displayName: text('display_name'),
-		stripeCustomerId: text('stripe_customer_id')
-	},
-	(table) => [
-		unique('auth_user_email_unique').on(table.email),
-		unique('auth_user_username_unique').on(table.username)
-	]
-);
 
 // Better Auth Organization Plugin Tables
 export const organization = pgTable(
@@ -153,62 +129,6 @@ export const teams = pgTable('teams', {
 	logo: varchar()
 });
 
-export const authAccount = pgTable(
-	'auth_account',
-	{
-		id: text().primaryKey().notNull(),
-		accountId: text('account_id').notNull(),
-		providerId: text('provider_id').notNull(),
-		userId: text('user_id').notNull(),
-		accessToken: text('access_token'),
-		refreshToken: text('refresh_token'),
-		idToken: text('id_token'),
-		accessTokenExpiresAt: timestamp('access_token_expires_at', { mode: 'string' }),
-		refreshTokenExpiresAt: timestamp('refresh_token_expires_at', { mode: 'string' }),
-		scope: text(),
-		password: text(),
-		createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
-		updatedAt: timestamp('updated_at', { mode: 'string' }).notNull()
-	},
-	(table) => [
-		foreignKey({
-			columns: [table.userId],
-			foreignColumns: [authUser.id],
-			name: 'auth_account_user_id_auth_user_id_fk'
-		}).onDelete('cascade')
-	]
-);
-
-export const authSession = pgTable(
-	'auth_session',
-	{
-		id: text().primaryKey().notNull(),
-		expiresAt: timestamp('expires_at', { mode: 'string' }).notNull(),
-		token: text().notNull(),
-		createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
-		updatedAt: timestamp('updated_at', { mode: 'string' }).notNull(),
-		ipAddress: text('ip_address'),
-		userAgent: text('user_agent'),
-		userId: text('user_id').notNull(),
-		impersonatedBy: text('impersonated_by'),
-		activeOrganizationId: text('active_organization_id'),
-		activeTeamId: text('active_team_id')
-	},
-	(table) => [
-		foreignKey({
-			columns: [table.userId],
-			foreignColumns: [authUser.id],
-			name: 'auth_session_user_id_auth_user_id_fk'
-		}).onDelete('cascade'),
-		foreignKey({
-			columns: [table.activeOrganizationId],
-			foreignColumns: [organization.id],
-			name: 'auth_session_active_organization_id_organization_id_fk'
-		}),
-		unique('auth_session_token_unique').on(table.token)
-	]
-);
-
 export const fixtures = pgTable(
 	'fixtures',
 	{
@@ -275,21 +195,3 @@ export const predictions = pgTable(
 		})
 	]
 );
-
-export const authVerification = pgTable('auth_verification', {
-	id: text().primaryKey().notNull(),
-	identifier: text().notNull(),
-	value: text().notNull(),
-	expiresAt: timestamp('expires_at', { mode: 'string' }).notNull(),
-	createdAt: timestamp('created_at', { mode: 'string' }),
-	updatedAt: timestamp('updated_at', { mode: 'string' })
-});
-
-export const rateLimit = pgTable('auth_rate_limit', {
-	id: text().primaryKey().notNull(),
-	key: text().notNull(),
-	count: integer().default(0).notNull(),
-	windowStart: timestamp('window_start', { mode: 'string' }).notNull(),
-	createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
-	updatedAt: timestamp('updated_at', { mode: 'string' }).notNull()
-});

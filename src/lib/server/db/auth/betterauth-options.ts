@@ -1,13 +1,13 @@
 import type { BetterAuthOptions } from 'better-auth';
 import { admin, username, emailOTP, organization } from 'better-auth/plugins';
+import { getRequestEvent } from '$app/server';
+import Stripe from 'stripe';
 import { stripe } from '@better-auth/stripe';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from '../index';
-import { getRequestEvent } from '$app/server';
 import { Resend } from 'resend';
 import { getEnvVar } from '../../utils/env';
-import Stripe from 'stripe';
 import { PUBLIC_BETTER_AUTH_URL } from '$env/static/public';
 
 const resend = new Resend(getEnvVar('RESEND_API_KEY'));
@@ -83,6 +83,12 @@ export const betterAuthOptions: BetterAuthOptions = {
 		}
 	},
 
+	advanced: {
+		ipAddress: {
+			ipAddressHeaders: ['x-forwarded-for'] // Cloudflare specific header example
+		}
+	},
+
 	// Rate limiting configuration
 	rateLimit: {
 		enabled: true, // Enable in all environments
@@ -94,7 +100,7 @@ export const betterAuthOptions: BetterAuthOptions = {
 			// Stricter limits for authentication endpoints
 			'/sign-in/email': {
 				window: 60, // 1 minute
-				max: 5 // Only 5 login attempts per minute
+				max: 3 // Only 5 login attempts per minute
 			},
 			'/sign-up/email': {
 				window: 60, // 1 minute
@@ -102,18 +108,17 @@ export const betterAuthOptions: BetterAuthOptions = {
 			},
 			'/email-otp/send-verification-otp': {
 				window: 60, // 1 minute
-				max: 5 // Increased from 3 to 5 OTP requests per minute
+				max: 3 // Increased from 3 OTP requests per minute
 			},
 			'/sign-in/email-otp': {
 				window: 60, // 1 minute
-				max: 8 // Increased from 5 to 8 OTP login attempts per minute
+				max: 5 // Increased from 5 to 8 OTP login attempts per minute
 			}
 		}
 	},
 
 	plugins: [
 		username(),
-		sveltekitCookies(async () => getRequestEvent()),
 		admin({
 			adminRoles: ['admin'] // Roles that have admin access
 		}),
@@ -227,7 +232,7 @@ export const betterAuthOptions: BetterAuthOptions = {
 					) {
 						// Import the database query here to avoid circular imports
 						const { db } = await import('../index');
-						const { member } = await import('../schema');
+						const { member } = await import('../auth/auth-schema');
 						const { eq, and } = await import('drizzle-orm');
 
 						const membership = await db
@@ -257,6 +262,8 @@ export const betterAuthOptions: BetterAuthOptions = {
 					modelName: 'subscriptions' // Map to our existing subscriptions table
 				}
 			}
-		})
+		}),
+		// @ts-expect-error
+		sveltekitCookies(getRequestEvent)
 	]
 };

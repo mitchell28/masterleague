@@ -1,6 +1,5 @@
-import { db } from '$lib/server/db';
-import { teams, predictions, fixtures, member, type Fixture } from '$lib/server/db/schema';
-import { session } from '$lib/server/db/auth/auth-schema';
+import { db, member, session } from '$lib/server/db';
+import { teams, predictions, fixtures, type Fixture } from '$lib/server/db/schema';
 import { inArray, eq, and } from 'drizzle-orm';
 import { getFixturesByWeek } from '../fixtures';
 import { randomUUID } from 'crypto';

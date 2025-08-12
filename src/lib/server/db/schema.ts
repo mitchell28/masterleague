@@ -1,51 +1,12 @@
 import { pgTable, varchar, integer, timestamp, boolean, text } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { user as authUser } from './auth/auth-schema';
+import { user as authUser, organization, member, invitation } from './auth/auth-schema';
 
 export const teams = pgTable('teams', {
 	id: varchar('id').primaryKey(),
 	name: varchar('name').notNull(),
 	shortName: varchar('short_name').notNull(),
 	logo: varchar('logo')
-});
-
-// Better Auth Organization Plugin Tables
-export const organization = pgTable('organization', {
-	id: text('id').primaryKey(),
-	name: text('name').notNull(),
-	slug: text('slug').notNull().unique(),
-	logo: text('logo'),
-	metadata: text('metadata'), // JSON string for additional metadata
-	createdAt: timestamp('created_at').notNull(),
-	updatedAt: timestamp('updated_at').notNull()
-});
-
-export const member = pgTable('member', {
-	id: text('id').primaryKey(),
-	userId: text('user_id')
-		.notNull()
-		.references(() => authUser.id, { onDelete: 'cascade' }),
-	organizationId: text('organization_id')
-		.notNull()
-		.references(() => organization.id, { onDelete: 'cascade' }),
-	role: text('role').default('member').notNull(), // owner, admin, member
-	createdAt: timestamp('created_at').notNull()
-});
-
-export const invitation = pgTable('invitation', {
-	id: text('id').primaryKey(),
-	email: text('email').notNull(),
-	inviterId: text('inviter_id')
-		.notNull()
-		.references(() => authUser.id),
-	organizationId: text('organization_id')
-		.notNull()
-		.references(() => organization.id, { onDelete: 'cascade' }),
-	role: text('role').default('member').notNull(),
-	status: text('status').default('pending').notNull(), // pending, accepted, rejected, cancelled
-	expiresAt: timestamp('expires_at').notNull(),
-	createdAt: timestamp('created_at').notNull(),
-	updatedAt: timestamp('updated_at').notNull()
 });
 
 // Stripe subscriptions

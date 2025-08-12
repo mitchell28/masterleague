@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
-import { invitation, member, organization, authUser } from '../../../../../drizzle/schema';
+import { invitation, member, organization, authUser } from '$lib/server/db';
 import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -83,9 +83,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				role,
 				inviterId: locals.user.id,
 				status: 'pending',
-				expiresAt: expiresAt.toISOString(),
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString()
+				expiresAt: expiresAt
 			})
 			.returning();
 
@@ -199,8 +197,7 @@ export const DELETE: RequestHandler = async ({ url, locals }) => {
 		await db
 			.update(invitation)
 			.set({
-				status: 'cancelled',
-				updatedAt: new Date().toISOString()
+				status: 'cancelled'
 			})
 			.where(eq(invitation.id, invitationId));
 

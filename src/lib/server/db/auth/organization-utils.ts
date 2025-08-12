@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { db } from '../index';
-import { organization as orgSchema, member } from '../schema';
+import { organization as orgSchema, member } from '../auth/auth-schema';
 
 /**
  * Helper function to assign users to default organization

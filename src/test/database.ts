@@ -66,16 +66,16 @@ export async function clearAllTables() {
 
 	// Get all table names from schema
 	const tables = [
-		'auth_rate_limit',
-		'auth_verification',
+		'rateLimit',
+		'verification',
 		'predictions',
 		'league_table',
-		'auth_session',
-		'auth_account',
+		'session',
+		'account',
 		'member',
 		'invitation',
 		'organization',
-		'auth_user',
+		'user',
 		'subscriptions',
 		'fixtures',
 		'teams'

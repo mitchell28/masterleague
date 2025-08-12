@@ -5,7 +5,7 @@ import { assignUserToDefaultOrganization } from './organization-utils';
 // Create and export the auth instance with custom callbacks
 export const auth = betterAuth({
 	...betterAuthOptions,
-	// Add callbacks for debugging and default organization assignment
+
 	callbacks: {
 		user: {
 			created: async ({ user }: any) => {

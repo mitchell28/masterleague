@@ -28,16 +28,19 @@ export const db = drizzle(sql, {
 });
 
 // Export game-related tables from app schema
-export const { teams, fixtures, predictions, leagueTable, organization, member, invitation } =
-	appSchema;
+export const { teams, fixtures, predictions, leagueTable } = appSchema;
 
 // Export auth-related tables from auth schema
 export const {
-	user, // Primary user table (auth_user)
+	user, // Primary user table (user)
 	session, // Auth session
 	account,
 	verification,
-	rateLimit
+	rateLimit,
+	// Organization plugin tables
+	organization,
+	member,
+	invitation
 } = authSchema;
 
 // Also export user table as authUser for explicit clarity if needed
@@ -50,5 +53,8 @@ export type {
 	AuthSession,
 	AuthAccount,
 	AuthVerification,
-	RateLimit
+	RateLimit,
+	Organization,
+	Member,
+	Invitation
 } from './auth/auth-schema';

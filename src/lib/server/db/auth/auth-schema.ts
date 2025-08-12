@@ -1,7 +1,6 @@
-import { pgTable, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, integer, bigint } from 'drizzle-orm/pg-core';
 
-// Prefix auth tables with 'auth_' to avoid conflicts
-export const user = pgTable('auth_user', {
+export const user = pgTable('user', {
 	id: text('id').primaryKey(),
 	username: text('username').unique(),
 	displayUsername: text('display_name'),
@@ -21,7 +20,7 @@ export const user = pgTable('auth_user', {
 	updatedAt: timestamp('updated_at').notNull()
 });
 
-export const session = pgTable('auth_session', {
+export const session = pgTable('session', {
 	id: text('id').primaryKey(),
 	expiresAt: timestamp('expires_at').notNull(),
 	token: text('token').notNull().unique(),
@@ -39,7 +38,7 @@ export const session = pgTable('auth_session', {
 	activeTeamId: text('active_team_id')
 });
 
-export const account = pgTable('auth_account', {
+export const account = pgTable('account', {
 	id: text('id').primaryKey(),
 	accountId: text('account_id').notNull(),
 	providerId: text('provider_id').notNull(),
@@ -57,7 +56,7 @@ export const account = pgTable('auth_account', {
 	updatedAt: timestamp('updated_at').notNull()
 });
 
-export const verification = pgTable('auth_verification', {
+export const verification = pgTable('verification', {
 	id: text('id').primaryKey(),
 	identifier: text('identifier').notNull(),
 	value: text('value').notNull(),
@@ -67,13 +66,48 @@ export const verification = pgTable('auth_verification', {
 });
 
 // Rate limiting table for Better Auth
-export const rateLimit = pgTable('auth_rate_limit', {
+export const rateLimit = pgTable('rateLimit', {
 	id: text('id').primaryKey(),
 	key: text('key').notNull(),
 	count: integer('count').default(0).notNull(),
-	windowStart: timestamp('window_start').notNull(),
+	lastRequest: bigint('lastRequest', { mode: 'number' }).default(0).notNull() // Unix timestamp in seconds
+});
+
+// Better Auth Organization Plugin Tables
+export const organization = pgTable('organization', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull(),
+	slug: text('slug').notNull().unique(),
+	logo: text('logo'),
+	metadata: text('metadata'), // JSON string for additional metadata
 	createdAt: timestamp('created_at').notNull(),
 	updatedAt: timestamp('updated_at').notNull()
+});
+
+export const member = pgTable('member', {
+	id: text('id').primaryKey(),
+	userId: text('user_id')
+		.notNull()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	organizationId: text('organization_id')
+		.notNull()
+		.references(() => organization.id, { onDelete: 'cascade' }),
+	role: text('role').default('member').notNull(), // owner, admin, member
+	createdAt: timestamp('created_at').notNull()
+});
+
+export const invitation = pgTable('invitation', {
+	id: text('id').primaryKey(),
+	email: text('email').notNull(),
+	inviterId: text('inviter_id')
+		.notNull()
+		.references(() => user.id),
+	organizationId: text('organization_id')
+		.notNull()
+		.references(() => organization.id, { onDelete: 'cascade' }),
+	role: text('role').default('member').notNull(),
+	status: text('status').default('pending').notNull(), // pending, accepted, rejected, cancelled
+	expiresAt: timestamp('expires_at').notNull()
 });
 
 // Type exports
@@ -82,3 +116,6 @@ export type AuthSession = typeof session.$inferSelect;
 export type AuthAccount = typeof account.$inferSelect;
 export type AuthVerification = typeof verification.$inferSelect;
 export type RateLimit = typeof rateLimit.$inferSelect;
+export type Organization = typeof organization.$inferSelect;
+export type Member = typeof member.$inferSelect;
+export type Invitation = typeof invitation.$inferSelect;
