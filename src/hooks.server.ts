@@ -4,14 +4,21 @@ import type { Handle } from '@sveltejs/kit';
 import { building } from '$app/environment';
 
 export const handle: Handle = async ({ event, resolve }) => {
-	// Get the session first
-	const session = await auth.api.getSession({
-		headers: event.request.headers
-	});
+	try {
+		// Get the session first
+		const session = await auth.api.getSession({
+			headers: event.request.headers
+		});
 
-	// Set session and user to locals
-	event.locals.session = session?.session;
-	event.locals.user = session?.user;
+		// Set session and user to locals
+		event.locals.session = session?.session;
+		event.locals.user = session?.user;
+	} catch (error) {
+		console.error('❌ [Auth] Session error in hooks:', error);
+		// Set null values on error
+		event.locals.session = null;
+		event.locals.user = null;
+	}
 
 	return svelteKitHandler({ event, resolve, auth, building });
 };

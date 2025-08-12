@@ -11,8 +11,13 @@ if (!DATABASE_URL) {
 	throw new Error("DATABASE_URL is not set. Make sure it's available in process.env");
 }
 
-// Create the Neon PostgreSQL client
-const sql = neon(DATABASE_URL);
+// Create the Neon PostgreSQL client with connection options
+const sql = neon(DATABASE_URL, {
+	fetchOptions: {
+		cache: 'no-store',
+		keepalive: true
+	}
+});
 
 // Export the database connection with both schemas
 export const db = drizzle(sql, {
