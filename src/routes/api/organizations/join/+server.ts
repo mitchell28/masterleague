@@ -1,7 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
-import { organization, member, invitation, authUser } from '../../../../../drizzle/schema';
+import {
+	organization,
+	member,
+	invitation,
+	user as authUser
+} from '$lib/server/db/auth/auth-schema';
 import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -69,15 +74,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			userId: locals.user.id,
 			organizationId: targetOrganization.id,
 			role: invite.role,
-			createdAt: new Date().toISOString()
+			createdAt: new Date()
 		});
 
 		// Mark invitation as accepted
 		await db
 			.update(invitation)
 			.set({
-				status: 'accepted',
-				updatedAt: new Date().toISOString()
+				status: 'accepted'
 			})
 			.where(eq(invitation.id, invite.id));
 

@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
-import { member, organization, authUser } from '../../../../../drizzle/schema';
+import { member } from '$lib/server/db/auth/auth-schema';
 import { eq, and, count } from 'drizzle-orm';
 
 export const DELETE: RequestHandler = async ({ url, locals }) => {

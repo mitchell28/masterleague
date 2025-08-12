@@ -1,7 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import { db } from '$lib/server/db';
-import { organization, member } from '../../../drizzle/schema';
+import { organization, member } from '$lib/server/db/auth/auth-schema';
 import { eq, and } from 'drizzle-orm';
 
 export const actions: Actions = {

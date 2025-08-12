@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/server/db';
-import { organization, member, authUser } from '../../../../drizzle/schema';
+import { db, organization, member, user as authUser } from '$lib/server/db';
 import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -88,8 +87,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					.replace(/[^a-z0-9-]/g, '-'),
 			logo: null,
 			metadata: null,
-			createdAt: now.toISOString(),
-			updatedAt: now.toISOString()
+			createdAt: now,
+			updatedAt: now
 		});
 
 		// Add creator as owner
@@ -98,7 +97,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			userId: locals.user.id,
 			organizationId,
 			role: 'owner',
-			createdAt: now.toISOString()
+			createdAt: now
 		});
 
 		// Fetch the created organization with membership data

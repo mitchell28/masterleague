@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db';
-import { leagueTable, authUser, member, organization } from '../../../drizzle/schema';
+import { user as authUser, member, organization } from '$lib/server/db/auth/auth-schema';
+import { leagueTable } from '$lib/server/db/schema';
 import { desc, eq, and, inArray } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';

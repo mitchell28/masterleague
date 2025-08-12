@@ -85,7 +85,7 @@ export const betterAuthOptions: BetterAuthOptions = {
 
 	advanced: {
 		ipAddress: {
-			ipAddressHeaders: ['x-forwarded-for'] // Cloudflare specific header example
+			ipAddressHeaders: ['x-forwarded-for'] // generic specific header example
 		}
 	},
 
