@@ -8,6 +8,10 @@ import { getRequestEvent } from '$app/server';
 import { Resend } from 'resend';
 import { getEnvVar } from '../../utils/env.js';
 import Stripe from 'stripe';
+import { randomUUID } from 'crypto';
+import { eq } from 'drizzle-orm';
+import { organization as orgSchema, member } from '../schema';
+
 const resend = new Resend(getEnvVar('RESEND_API_KEY'));
 
 // Initialize Stripe client
@@ -55,6 +59,63 @@ const subscriptionPlans = [
 	}
 ];
 
+// Helper function to assign users to default organization
+async function assignUserToDefaultOrganization(userId: string) {
+	const DEFAULT_ORG_NAME = 'Master League';
+	const DEFAULT_ORG_SLUG = 'master-league';
+
+	// Check if default organization exists
+	let defaultOrg = await db
+		.select()
+		.from(orgSchema)
+		.where(eq(orgSchema.slug, DEFAULT_ORG_SLUG))
+		.limit(1);
+
+	// Create default organization if it doesn't exist
+	if (defaultOrg.length === 0) {
+		const newOrgId = randomUUID();
+		await db.insert(orgSchema).values({
+			id: newOrgId,
+			name: DEFAULT_ORG_NAME,
+			slug: DEFAULT_ORG_SLUG,
+			logo: null,
+			metadata: JSON.stringify({ isDefault: true }),
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString()
+		});
+
+		defaultOrg = [
+			{
+				id: newOrgId,
+				name: DEFAULT_ORG_NAME,
+				slug: DEFAULT_ORG_SLUG,
+				logo: null,
+				metadata: JSON.stringify({ isDefault: true }),
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString()
+			}
+		];
+	}
+
+	// Check if user is already a member
+	const existingMembership = await db
+		.select()
+		.from(member)
+		.where(eq(member.userId, userId))
+		.limit(1);
+
+	// Add user as member if not already a member of any organization
+	if (existingMembership.length === 0) {
+		await db.insert(member).values({
+			id: randomUUID(),
+			userId,
+			organizationId: defaultOrg[0].id,
+			role: 'member',
+			createdAt: new Date().toISOString()
+		});
+	}
+}
+
 // Create and export the auth instance
 export const auth = betterAuth({
 	database: drizzleAdapter(db, {
@@ -77,7 +138,7 @@ export const auth = betterAuth({
 		}
 	},
 
-	// Add callbacks for debugging
+	// Add callbacks for debugging and default organization assignment
 	callbacks: {
 		user: {
 			created: async ({ user }: any) => {
@@ -86,6 +147,17 @@ export const auth = betterAuth({
 					username: user.username,
 					email: user.email
 				});
+
+				// Assign user to default organization
+				try {
+					await assignUserToDefaultOrganization(user.id);
+					console.log(`✅ [Auth] User ${user.id} assigned to default organization`);
+				} catch (error) {
+					console.error(
+						`❌ [Auth] Failed to assign user ${user.id} to default organization:`,
+						error
+					);
+				}
 			}
 		}
 	},

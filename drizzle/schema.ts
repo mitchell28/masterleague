@@ -253,11 +253,16 @@ export const predictions = pgTable(
 		season: varchar().default('2025-26').notNull()
 	},
 	(table) => [
+		unique('predictions_user_fixture_org_unique').on(
+			table.userId,
+			table.fixtureId,
+			table.organizationId
+		),
 		foreignKey({
 			columns: [table.userId],
 			foreignColumns: [authUser.id],
 			name: 'predictions_user_id_auth_user_id_fk'
-		}),
+		}).onDelete('cascade'),
 		foreignKey({
 			columns: [table.fixtureId],
 			foreignColumns: [fixtures.id],
