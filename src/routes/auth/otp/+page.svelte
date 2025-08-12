@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { authClient } from '$lib/client/auth-client';
-	import { z } from 'zod';
+	import { enhance } from '$app/forms';
 	import { Loader2 } from '@lucide/svelte';
 	import logo from '$lib/assets/logo/masterleague.svg';
 
@@ -24,108 +24,49 @@
 	let isEmailValid = $derived(email.length > 0 && email.includes('@'));
 	let isOtpValid = $derived(otp.length === 6);
 
-	// Handle input changes
-	function handleInput(e: Event) {
+	// Handle OTP input to only allow digits
+	function handleOtpInput(e: Event) {
 		const target = e.target as HTMLInputElement;
-		const field = target.name;
-		const value = target.value;
-
-		// Update the appropriate state variable
-		if (field === 'email') email = value;
-		if (field === 'otp') otp = value.replace(/\D/g, ''); // Only allow digits
-
-		// Clear error for this field
-		if (field in errors) {
-			const newErrors = { ...errors };
-			delete newErrors[field];
-			errors = newErrors;
-		}
+		const value = target.value.replace(/\D/g, '').slice(0, 6);
+		otp = value;
 	}
 
-	// Send OTP to email
-	async function sendOTP() {
-		if (!isEmailValid) {
-			errorMessage = 'Please enter a valid email address';
-			return;
-		}
+	// Enhanced form submission for email
+	function handleEmailSubmit({ formData, cancel }: any) {
+		isLoading = true;
+		errorMessage = '';
 
-		try {
-			isLoading = true;
-			errorMessage = '';
+		return async ({ result, update }: any) => {
+			isLoading = false;
 
-			console.log(`🔐 [Client] Requesting OTP for email: ${email}`);
-
-			await authClient.emailOtp.sendVerificationOtp({
-				email,
-				type: 'sign-in'
-			});
-
-			console.log(`✅ [Client] OTP request successful for: ${email}`);
-			step = 'otp';
-			successMessage = `We've sent a 6-digit code to ${email}`;
-		} catch (error) {
-			console.error(`❌ [Client] Failed to send OTP to ${email}:`, error);
-
-			// Log more details about the error
-			if (error instanceof Error) {
-				console.error(`❌ [Client] Error details:`, {
-					message: error.message,
-					stack: error.stack
-				});
+			if (result.type === 'success' || (result.type === 'failure' && result.status === 200)) {
+				// Move to OTP step
+				step = 'otp';
+				successMessage = `We've sent a 6-digit code to ${email}`;
+			} else if (result.type === 'failure') {
+				errorMessage = result.data?.form?.message || 'Failed to send verification code';
 			}
 
-			errorMessage = error instanceof Error ? error.message : 'Failed to send OTP';
-		} finally {
-			isLoading = false;
-		}
+			await update();
+		};
 	}
 
-	// Verify OTP and sign in
-	async function verifyOTP() {
-		if (!isOtpValid) {
-			errorMessage = 'Please enter a valid 6-digit code';
-			return;
-		}
+	// Enhanced form submission for OTP
+	function handleOtpSubmit({ formData, cancel }: any) {
+		isLoading = true;
+		errorMessage = '';
 
-		try {
-			isLoading = true;
-			errorMessage = '';
-
-			console.log(`🔐 [Client] Verifying OTP for email: ${email}, OTP: ${otp}`);
-
-			await authClient.signIn.emailOtp(
-				{
-					email,
-					otp
-				},
-				{
-					onSuccess: () => {
-						console.log(`✅ [Client] OTP verification successful for: ${email}`);
-						goto(redirectTo);
-					},
-					onError: (ctx) => {
-						console.error(`❌ [Client] OTP verification failed for ${email}:`, ctx.error);
-						errorMessage = ctx.error.message;
-					}
-				}
-			);
-		} catch (error) {
-			console.error(`❌ [Client] OTP verification error for ${email}:`, error);
-			errorMessage = error instanceof Error ? error.message : 'Invalid verification code';
-		} finally {
+		return async ({ result, update }: any) => {
 			isLoading = false;
-		}
-	}
 
-	// Handle form submission
-	async function onSubmit(e: Event) {
-		e.preventDefault();
+			if (result.type === 'redirect') {
+				goto(result.location);
+			} else if (result.type === 'failure') {
+				errorMessage = result.data?.form?.message || 'Invalid verification code';
+			}
 
-		if (step === 'email') {
-			await sendOTP();
-		} else {
-			await verifyOTP();
-		}
+			await update();
+		};
 	}
 
 	// Go back to email step
@@ -165,7 +106,7 @@
 		<!-- OTP form - centered -->
 		<div class="flex w-full flex-col items-center justify-center px-8 py-12">
 			<div
-				class="w-full max-w-md bg-slate-900/50 p-8 backdrop-blur-sm"
+				class="w-full max-w-md bg-slate-900 p-8 backdrop-blur-sm"
 				style="clip-path: polygon(10% 0%, 100% 0%, 100% 94%, 90% 100%, 0% 100%, 0% 6%);"
 			>
 				<!-- Logo -->
@@ -179,6 +120,7 @@
 					</p>
 				</div>
 
+				<!-- Success message -->
 				{#if successMessage}
 					<div
 						class="mb-6 border border-green-500/30 bg-green-500/10 p-4"
@@ -188,6 +130,7 @@
 					</div>
 				{/if}
 
+				<!-- Error messages -->
 				{#if errorMessage}
 					<div
 						class="mb-6 border border-red-500/30 bg-red-500/10 p-4"
@@ -197,8 +140,14 @@
 					</div>
 				{/if}
 
-				<form onsubmit={onSubmit} class="space-y-5">
-					{#if step === 'email'}
+				{#if step === 'email'}
+					<!-- Email form -->
+					<form
+						action="?/requestOtp"
+						method="POST"
+						use:enhance={handleEmailSubmit}
+						class="space-y-5"
+					>
 						<div>
 							<label for="email" class="block text-sm font-medium text-slate-300"
 								>Email address</label
@@ -207,9 +156,9 @@
 								type="email"
 								id="email"
 								name="email"
-								oninput={handleInput}
-								value={email}
+								bind:value={email}
 								class="focus:border-accent focus:ring-accent/20 mt-1 block w-full border border-slate-600 bg-slate-800/50 px-3 py-2.5 text-white placeholder-slate-400 transition-colors focus:ring-2 focus:outline-none"
+								class:border-red-500={errors.email}
 								placeholder="Enter your email address"
 								autocomplete="email"
 								required
@@ -233,7 +182,12 @@
 								Send verification code
 							{/if}
 						</button>
-					{:else}
+					</form>
+				{:else}
+					<!-- OTP form -->
+					<form action="?/verifyOtp" method="POST" use:enhance={handleOtpSubmit} class="space-y-5">
+						<input type="hidden" name="email" value={email} />
+
 						<div>
 							<label for="otp" class="block text-sm font-medium text-slate-300"
 								>Verification Code</label
@@ -242,10 +196,11 @@
 								type="text"
 								id="otp"
 								name="otp"
-								oninput={handleInput}
-								value={otp}
+								bind:value={otp}
+								oninput={handleOtpInput}
 								maxlength="6"
 								class="focus:border-accent focus:ring-accent/20 mt-1 block w-full border border-slate-600 bg-slate-800/50 px-3 py-2.5 text-center font-mono text-2xl tracking-widest text-white placeholder-slate-400 transition-colors focus:ring-2 focus:outline-none"
+								class:border-red-500={errors.otp}
 								placeholder="000000"
 								autocomplete="one-time-code"
 								required
@@ -284,15 +239,29 @@
 						<div class="text-center">
 							<button
 								type="button"
-								onclick={sendOTP}
+								onclick={() => {
+									// Resend code by submitting the request form
+									const form = new FormData();
+									form.append('email', email);
+									fetch('?/requestOtp', {
+										method: 'POST',
+										body: form
+									})
+										.then(() => {
+											successMessage = `We've resent a 6-digit code to ${email}`;
+										})
+										.catch(() => {
+											errorMessage = 'Failed to resend code. Please try again.';
+										});
+								}}
 								disabled={isLoading}
 								class="text-accent hover:text-accent/80 text-sm transition-colors hover:underline disabled:text-slate-500"
 							>
 								Resend code
 							</button>
 						</div>
-					{/if}
-				</form>
+					</form>
+				{/if}
 
 				<div class="mt-6 text-center">
 					<p class="text-sm text-slate-400">

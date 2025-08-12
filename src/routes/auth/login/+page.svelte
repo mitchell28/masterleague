@@ -56,7 +56,7 @@
 	<!-- Login form - centered -->
 	<div class="flex w-full flex-col items-center justify-center px-8 py-12">
 		<div
-			class="w-full max-w-md bg-[#030926] p-8 backdrop-blur-sm"
+			class="w-full max-w-md bg-slate-900 p-8 backdrop-blur-sm"
 			style="clip-path: polygon(10% 0%, 100% 0%, 100% 94%, 90% 100%, 0% 100%, 0% 6%);"
 		>
 			<!-- Logo -->
