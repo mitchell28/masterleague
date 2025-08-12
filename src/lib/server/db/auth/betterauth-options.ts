@@ -8,6 +8,7 @@ import { getRequestEvent } from '$app/server';
 import { Resend } from 'resend';
 import { getEnvVar } from '../../utils/env';
 import Stripe from 'stripe';
+import { PUBLIC_BETTER_AUTH_URL } from '$env/static/public';
 
 const resend = new Resend(getEnvVar('RESEND_API_KEY'));
 
@@ -123,7 +124,7 @@ export const betterAuthOptions: BetterAuthOptions = {
 			invitationExpiresIn: 172800, // 48 hours
 			async sendInvitationEmail(data) {
 				try {
-					const inviteLink = `${getEnvVar('PUBLIC_BETTER_AUTH_URL')}/accept-invitation/${data.id}`;
+					const inviteLink = `${PUBLIC_BETTER_AUTH_URL}/accept-invitation/${data.id}`;
 
 					await resend.emails.send({
 						from: 'Master League <noreply@mail.masterleague.app>',

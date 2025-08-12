@@ -19,6 +19,7 @@
 	let usernameSuggestions = $state<string[]>([]);
 	let checkingUsername = $state(false);
 	let debounceTimer: NodeJS.Timeout | null = null;
+	let isLoading = $state(false);
 
 	// Generate username suggestions
 	function generateUsernameSuggestions(baseUsername: string): string[] {
@@ -79,12 +80,37 @@
 		usernameValidationError = '';
 	}
 
+	// Check email availability
+	async function checkEmailAvailability(email: string): Promise<boolean> {
+		try {
+			const response = await fetch('/api/check-email', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email })
+			});
+
+			const result = await response.json();
+			return !result.taken; // Return true if email is available (not taken)
+		} catch (error) {
+			console.error('❌ Email availability check failed:', error);
+			return true; // Assume available if check fails
+		}
+	}
+
 	// Handle Better Auth sign-up directly
 	async function handleSignUp(e: Event) {
 		e.preventDefault();
 
+		isLoading = true;
 		try {
-			await authClient.signUp.email(
+			// First, check if email is available (only runs on form submission)
+			const emailAvailable = await checkEmailAvailability($form.email);
+			if (!emailAvailable) {
+				$message = 'An account with this email already exists. Please sign in instead.';
+				return;
+			}
+
+			const result = await authClient.signUp.email(
 				{
 					name: $form.firstName + ' ' + $form.lastName, // Better Auth expects 'name' field
 					username: $form.username,
@@ -94,6 +120,7 @@
 				},
 				{
 					onSuccess: () => {
+						console.log('✅ Signup success callback triggered');
 						// With OTP verification enabled, redirect to verification page
 						goto(`/auth/verify-email?email=${encodeURIComponent($form.email)}`);
 					},
@@ -130,9 +157,16 @@
 					}
 				}
 			);
+
+			// If we get here without an error, the signup was successful
+			// Redirect to verification page with email parameter
+			console.log('✅ Signup completed, redirecting to verification');
+			goto(`/auth/verify-email?email=${encodeURIComponent($form.email)}`);
 		} catch (error) {
 			$message = 'Account creation failed. Please try again.';
 			console.error('Sign up failed:', error);
+		} finally {
+			isLoading = false;
 		}
 	}
 </script>
@@ -333,10 +367,10 @@
 
 				<button
 					type="submit"
-					disabled={$submitting}
+					disabled={isLoading}
 					class="bg-accent hover:bg-accent/90 focus:ring-accent w-full px-4 py-2.5 text-sm font-semibold text-black transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					{#if $submitting}
+					{#if isLoading}
 						<div class="flex items-center justify-center">
 							<Loader2 class="mr-2 h-4 w-4 animate-spin" />
 							Creating account...

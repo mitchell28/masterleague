@@ -15,26 +15,53 @@
 
 	let step: 'request' | 'verify' = $state(data.email ? 'verify' : 'request');
 	let successMessage: string = $state('');
+	let isLoading = $state(false);
+	let isResending = $state(false);
 
 	// Send verification OTP
-	async function sendVerificationOTP() {
+	async function sendVerificationOTP(e?: Event) {
+		if (e) e.preventDefault();
+
+		// Check if this is a resend operation
+		const isResendOperation = step === 'verify';
+
+		if (isResendOperation) {
+			isResending = true;
+		} else {
+			isLoading = true;
+		}
+
 		try {
 			await authClient.emailOtp.sendVerificationOtp({
 				email: $form.email,
 				type: 'email-verification'
 			});
 
-			step = 'verify';
-			successMessage = `We've sent a 6-digit code to ${$form.email}`;
+			if (isResendOperation) {
+				successMessage = `Code resent to ${$form.email}`;
+				// Clear the success message after 3 seconds
+				setTimeout(() => {
+					successMessage = '';
+				}, 3000);
+			} else {
+				step = 'verify';
+				successMessage = `We've sent a 6-digit code to ${$form.email}`;
+			}
 		} catch (error) {
 			console.error('Failed to send verification OTP:', error);
+			// Set error message that will show in the main message area
+		} finally {
+			if (isResendOperation) {
+				isResending = false;
+			} else {
+				isLoading = false;
+			}
 		}
-	}
-
-	// Verify email with OTP
+	} // Verify email with OTP
 	async function verifyEmail(e: Event) {
 		e.preventDefault();
 
+		isLoading = true;
 		try {
 			await authClient.emailOtp.verifyEmail({
 				email: $form.email,
@@ -45,6 +72,8 @@
 			goto('/predictions');
 		} catch (error) {
 			console.error('Email verification failed:', error);
+		} finally {
+			isLoading = false;
 		}
 	}
 
@@ -56,51 +85,52 @@
 	}
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-[#0D1326] px-4">
-	<div class="mx-auto w-full max-w-md">
-		<!-- Logo -->
-		<div class="mb-8 text-center">
-			<img src={logo} alt="Master League" class="mx-auto mb-6 h-16" />
-		</div>
-
-		<!-- Auth container with subtle clip-path -->
+<div class="flex min-h-screen">
+	<!-- Verify email form - centered -->
+	<div class="flex w-full flex-col items-center justify-center px-8 py-12">
 		<div
-			class="bg-navy-darker/80 border-navy-light/20 rounded-2xl border p-8 shadow-2xl backdrop-blur-sm"
-			style="clip-path: polygon(0% 5%, 5% 0%, 95% 0%, 100% 5%, 100% 95%, 95% 100%, 5% 100%, 0% 95%)"
+			class="w-full max-w-md bg-slate-900 p-8 backdrop-blur-sm"
+			style="clip-path: polygon(10% 0%, 100% 0%, 100% 94%, 90% 100%, 0% 100%, 0% 6%);"
 		>
-			<h1 class="font-display mb-2 text-center text-3xl font-bold text-white">
-				{step === 'request' ? 'Verify Your Email' : 'Enter Verification Code'}
-			</h1>
-			<p class="text-navy-light mb-8 text-center">
-				{step === 'request'
-					? 'Enter your email to receive a verification link'
-					: 'Check your email for the verification code'}
-			</p>
+			<!-- Logo -->
+			<div class="mb-8 text-center">
+				<img src={logo} height="48" alt="Master League Logo" class="mx-auto mb-4 h-12" />
+				<h1 class="font-display text-3xl font-bold tracking-tight text-white">
+					{step === 'request' ? 'Verify Your Email' : 'Enter Verification Code'}
+				</h1>
+				<p class="mt-2 text-sm text-slate-400">
+					{step === 'request'
+						? 'Enter your email to receive a verification code'
+						: 'Check your email for the verification code'}
+				</p>
+			</div>
 
 			{#if successMessage}
-				<div class="mb-6 rounded-lg border border-green-500/30 bg-green-600/20 p-4">
+				<div class="mb-6 border border-green-500/30 bg-green-500/10 p-4">
 					<p class="text-sm text-green-400">{successMessage}</p>
 				</div>
 			{/if}
 
 			{#if $message}
-				<div class="mb-6 rounded-lg border border-red-500/30 bg-red-600/20 p-4">
+				<div
+					class="mb-6 border border-red-500/30 bg-red-500/10 p-4"
+					style="clip-path: polygon(8% 0%, 100% 0%, 100% 85%, 92% 100%, 0% 100%, 0% 15%);"
+				>
 					<p class="text-sm text-red-400">{$message}</p>
 				</div>
 			{/if}
 
-			<form onsubmit={step === 'request' ? sendVerificationOTP : verifyEmail}>
+			<form onsubmit={step === 'request' ? sendVerificationOTP : verifyEmail} class="space-y-5">
 				{#if step === 'request'}
-					<div class="mb-6">
-						<label for="email" class="text-navy-light mb-2 block text-sm font-medium"
-							>Email Address</label
+					<div>
+						<label for="email" class="block text-sm font-medium text-slate-300">Email Address</label
 						>
 						<input
 							type="email"
 							id="email"
 							name="email"
 							bind:value={$form.email}
-							class="bg-navy-darker border-navy-light/30 placeholder-navy-light/60 focus:border-accent w-full rounded-lg border px-4 py-3 text-white transition-colors focus:outline-none"
+							class="focus:border-accent focus:ring-accent/20 mt-1 block w-full border border-slate-600 bg-slate-800/50 px-3 py-2.5 text-white placeholder-slate-400 transition-colors focus:ring-2 focus:outline-none"
 							class:border-red-500={$errors.email}
 							placeholder="Enter your email address"
 							autocomplete="email"
@@ -113,19 +143,21 @@
 
 					<button
 						type="submit"
-						disabled={$submitting}
-						class="bg-accent hover:bg-accent/90 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 font-semibold text-black transition-colors disabled:opacity-50"
+						disabled={isLoading}
+						class="bg-accent hover:bg-accent/90 focus:ring-accent w-full px-4 py-2.5 text-sm font-semibold text-black transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 					>
-						{#if $submitting}
-							<Loader2 class="h-4 w-4 animate-spin" />
-							Sending...
+						{#if isLoading}
+							<div class="flex items-center justify-center">
+								<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+								Sending...
+							</div>
 						{:else}
-							Send Verification Email
+							Send Verification Code
 						{/if}
 					</button>
 				{:else}
-					<div class="mb-6">
-						<label for="otp" class="text-navy-light mb-2 block text-sm font-medium"
+					<div>
+						<label for="otp" class="block text-sm font-medium text-slate-300"
 							>Verification Code</label
 						>
 						<input
@@ -134,7 +166,7 @@
 							name="otp"
 							bind:value={$form.otp}
 							maxlength="6"
-							class="bg-navy-darker border-navy-light/30 placeholder-navy-light/60 focus:border-accent w-full rounded-lg border px-4 py-3 text-center font-mono text-xl tracking-widest text-white transition-colors focus:outline-none"
+							class="focus:border-accent focus:ring-accent/20 mt-1 block w-full border border-slate-600 bg-slate-800/50 px-3 py-2.5 text-center font-mono text-2xl tracking-widest text-white placeholder-slate-400 transition-colors focus:ring-2 focus:outline-none"
 							class:border-red-500={$errors.otp}
 							placeholder="000000"
 							autocomplete="one-time-code"
@@ -143,19 +175,21 @@
 						{#if $errors.otp}
 							<p class="mt-2 text-sm text-red-400">{$errors.otp}</p>
 						{/if}
-						<p class="text-navy-light mt-2 text-sm">
+						<p class="mt-2 text-sm text-slate-400">
 							Enter the 6-digit code sent to {$form.email}
 						</p>
 					</div>
 
 					<button
 						type="submit"
-						disabled={$submitting}
-						class="bg-accent hover:bg-accent/90 mb-4 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 font-semibold text-black transition-colors disabled:opacity-50"
+						disabled={isLoading}
+						class="bg-accent hover:bg-accent/90 focus:ring-accent w-full px-4 py-2.5 text-sm font-semibold text-black transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 					>
-						{#if $submitting}
-							<Loader2 class="h-4 w-4 animate-spin" />
-							Verifying...
+						{#if isLoading}
+							<div class="flex items-center justify-center">
+								<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+								Verifying...
+							</div>
 						{:else}
 							Verify Email
 						{/if}
@@ -164,32 +198,42 @@
 					<button
 						type="button"
 						onclick={goBack}
-						class="border-navy-light/30 hover:bg-navy-light/10 w-full rounded-lg border bg-transparent px-4 py-3 text-white transition-colors"
+						class="w-full border border-slate-600 bg-slate-700/50 px-4 py-2.5 font-medium text-slate-300 transition-colors hover:bg-slate-700 hover:text-white focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:outline-none"
 					>
 						Back to Email
 					</button>
 
 					{#if step === 'verify'}
-						<div class="mt-4 text-center">
+						<div class="text-center">
 							<button
 								type="button"
 								onclick={sendVerificationOTP}
-								disabled={$submitting}
-								class="text-accent hover:text-accent/80 text-sm hover:underline disabled:opacity-50"
+								disabled={isLoading || isResending}
+								class="text-accent hover:text-accent/80 text-sm transition-colors hover:underline disabled:text-slate-500"
 							>
-								Resend Code
+								{#if isResending}
+									<div class="flex items-center justify-center gap-1">
+										<Loader2 class="h-3 w-3 animate-spin" />
+										Resending...
+									</div>
+								{:else}
+									Resend Code
+								{/if}
 							</button>
 						</div>
 					{/if}
 				{/if}
 			</form>
 
-			<div class="mt-8 text-center">
-				<p class="text-navy-light text-sm">
-					Already verified? <a
+			<div class="mt-6 text-center">
+				<p class="text-sm text-slate-400">
+					Already verified?
+					<a
 						href="/auth/login"
-						class="text-accent hover:text-accent/80 font-medium hover:underline">Sign in</a
+						class="text-accent hover:text-accent/80 font-medium transition-colors"
 					>
+						Sign in
+					</a>
 				</p>
 			</div>
 		</div>

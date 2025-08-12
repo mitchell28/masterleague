@@ -14,10 +14,13 @@
 		validators: zod(authLoginSchema)
 	});
 
+	let isLoading = $state(false);
+
 	// Handle Better Auth sign-in directly
 	async function handleSignIn(e: Event) {
 		e.preventDefault();
 
+		isLoading = true;
 		try {
 			await authClient.signIn.email(
 				{
@@ -48,6 +51,8 @@
 			// Generic error message for any unexpected errors
 			$message = 'Login failed. Please try again.';
 			console.error('Sign in failed:', error);
+		} finally {
+			isLoading = false;
 		}
 	}
 </script>
@@ -78,10 +83,7 @@
 
 			<!-- Error message -->
 			{#if $message}
-				<div
-					class="mb-6 border border-red-500/30 bg-red-500/10 p-4"
-					style="clip-path: polygon(8% 0%, 100% 0%, 100% 85%, 92% 100%, 0% 100%, 0% 15%);"
-				>
+				<div class="mb-6 border border-red-500/30 bg-red-500/10 p-4">
 					<p class="text-sm text-red-400">{$message}</p>
 				</div>
 			{/if}
@@ -130,10 +132,10 @@
 
 				<button
 					type="submit"
-					disabled={$submitting}
+					disabled={isLoading}
 					class="bg-accent hover:bg-accent/90 focus:ring-accent w-full px-4 py-2.5 text-sm font-semibold text-black transition-all duration-200 focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D1326] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					{#if $submitting}
+					{#if isLoading}
 						<div class="flex items-center justify-center">
 							<Loader2 class="mr-2 h-4 w-4 animate-spin" />
 							Signing in...
@@ -151,7 +153,7 @@
 						href="/auth/otp"
 						class="text-accent hover:text-accent/80 font-medium transition-colors"
 					>
-						Sign in with magic link instead
+						Sign in with one time code
 					</a>
 				</p>
 			</div>
