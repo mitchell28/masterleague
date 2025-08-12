@@ -82,66 +82,6 @@ export const updateFixtureCountsTask = task({
 });
 
 /**
- * Task to update current week multipliers
- * This updates point multipliers for the current week's fixtures
- */
-export const updateCurrentWeekMultipliersTask = task({
-	id: 'update-current-week-multipliers',
-	run: async (): Promise<TaskResult> => {
-		try {
-			console.log('🔄 Starting current week multipliers update...');
-
-			const currentWeek = await getCurrentWeek();
-			console.log(`Current week: ${currentWeek}`);
-
-			await updateCurrentWeekMultipliers(currentWeek);
-
-			console.log('✅ Current week multipliers updated successfully');
-
-			return {
-				success: true,
-				message: `Current week ${currentWeek} multipliers updated successfully`,
-				details: { currentWeek }
-			};
-		} catch (error) {
-			console.error('❌ Failed to update current week multipliers:', error);
-			return {
-				success: false,
-				message: `Failed to update current week multipliers: ${error instanceof Error ? error.message : 'Unknown error'}`
-			};
-		}
-	}
-});
-
-/**
- * Task to update all multipliers
- * This updates point multipliers for all fixtures across all weeks
- */
-export const updateAllMultipliersTask = task({
-	id: 'update-all-multipliers',
-	run: async (): Promise<TaskResult> => {
-		try {
-			console.log('🔄 Starting all multipliers update...');
-
-			await updateAllWeekMultipliers();
-
-			console.log('✅ All multipliers updated successfully');
-
-			return {
-				success: true,
-				message: 'All multipliers updated successfully'
-			};
-		} catch (error) {
-			console.error('❌ Failed to update all multipliers:', error);
-			return {
-				success: false,
-				message: `Failed to update all multipliers: ${error instanceof Error ? error.message : 'Unknown error'}`
-			};
-		}
-	}
-});
-
-/**
  * Task to recover fixtures with missing scores
  * This finds and fixes fixtures with missing scores or incorrect statuses
  */
@@ -171,32 +111,6 @@ export const recoverFixturesTask = task({
 				message: `Failed to recover fixtures: ${error instanceof Error ? error.message : 'Unknown error'}`
 			};
 		}
-	}
-});
-
-/**
- * Scheduled task to automatically update current week multipliers
- * Runs every Monday at 6:00 AM UTC (before most matches start)
- */
-export const autoUpdateMultipliersTask = schedules.task({
-	id: 'auto-update-multipliers',
-	cron: {
-		pattern: '0 6 * * 1', // Every Monday at 6:00 AM UTC
-		timezone: 'UTC'
-	},
-	run: async (payload) => {
-		console.log(`Scheduled multipliers update running at ${payload.timestamp}`);
-
-		// Trigger the current week multipliers update task
-		const result = await updateCurrentWeekMultipliersTask.trigger();
-
-		console.log(`Multipliers update task triggered with run ID: ${result.id}`);
-
-		return {
-			success: true,
-			triggeredTask: result.id,
-			message: 'Weekly multipliers update triggered successfully'
-		};
 	}
 });
 
