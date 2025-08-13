@@ -20,12 +20,12 @@ export const load: LayoutLoad = ({ url }) => {
 			siteName: 'Master League',
 			images: [
 				{
-					url: new URL('/og-image.jpg', url.origin).href,
+					url: new URL('/ogimage/Master-League-OG.png', url.origin).href,
 					alt: 'Master League - Sports Prediction Platform',
 					width: 1200,
 					height: 630,
-					secureUrl: new URL('/og-image.jpg', url.origin).href,
-					type: 'image/jpeg'
+					secureUrl: new URL('/ogimage/Master-League-OG.png', url.origin).href,
+					type: 'image/png'
 				}
 			]
 		},
@@ -36,7 +36,7 @@ export const load: LayoutLoad = ({ url }) => {
 			title: 'Master League - Sports Prediction Platform',
 			description:
 				'The ultimate prediction league platform for sports enthusiasts. Create groups, make predictions, and compete with friends.',
-			image: new URL('/twitter-image.jpg', url.origin).href,
+			image: new URL('/ogimage/Master-League-OG.png', url.origin).href,
 			imageAlt: 'Master League - Sports Prediction Platform'
 		},
 		additionalMetaTags: [
@@ -46,7 +46,7 @@ export const load: LayoutLoad = ({ url }) => {
 			},
 			{
 				name: 'theme-color',
-				content: '#ffffff'
+				content: '#2EFF9B'
 			},
 			{
 				name: 'author',

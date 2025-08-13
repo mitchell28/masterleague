@@ -68,10 +68,10 @@
 <header class="fixed top-0 left-0 z-50 w-full">
 	<!-- Main navbar container -->
 	<div class="relative min-h-[80px] w-full bg-[#090e1e]">
-		<div class="container mx-auto flex items-center justify-between gap-10 px-6 py-5">
+		<div class=" mx-auto flex max-w-7xl items-center justify-between gap-5 px-4 py-5">
 			<div class="hidden items-center justify-center gap-10 md:flex">
 				<a href="/" class="group flex items-center gap-3">
-					<img src={logo} height="56" alt="Master League Logo" class="h-12" />
+					<img src={logo} height="56" alt="Master League Logo" class="h-14 min-h-14 min-w-14" />
 				</a>
 
 				<div class="flex gap-2">
@@ -99,7 +99,7 @@
 
 			<!-- Desktop Navigation -->
 			<nav class="hidden items-center gap-8 md:flex">
-				<div class="ml-6 flex items-center gap-3">
+				<div class="flex items-center gap-3">
 					{#if $session.data}
 						<div class="relative">
 							<button
@@ -154,7 +154,7 @@
 									{isNavItemActive('/auth/signup') ? 'bg-accent text-black' : 'hover:bg-accent/20 text-white'}"
 								style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
 							>
-								<UserPlus class="size-4" />
+								<UserPlus class="size-4 min-w-4" />
 								Sign Up
 							</a>
 						</div>
