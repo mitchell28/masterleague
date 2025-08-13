@@ -7,8 +7,14 @@ import type { MetaTagsProps } from 'svelte-meta-tags';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const session = locals.session;
+	const user = locals.user;
 
-	if (session) {
+	if (session && user) {
+		// If user has a session but email is not verified, redirect to verify-email
+		if (!user.emailVerified) {
+			throw redirect(302, '/auth/verify-email');
+		}
+		// If user has a session and email is verified, redirect to predictions
 		throw redirect(302, '/predictions');
 	}
 

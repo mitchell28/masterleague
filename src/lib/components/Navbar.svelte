@@ -101,7 +101,7 @@
 			<!-- Desktop Navigation -->
 			<nav class="hidden items-center gap-8 md:flex">
 				<div class="flex items-center gap-3">
-					{#if $session.data}
+					{#if $session.data?.user?.emailVerified}
 						<div class="relative">
 							<button
 								data-dropdown-button
@@ -117,7 +117,7 @@
 							{#if isDropdownOpen}
 								<div
 									data-dropdown
-									class="border-accent/30 absolute top-full right-0 z-[60] mt-2 w-64 rounded-lg border bg-[#0D1326] shadow-xl"
+									class="border-accent/30 absolute top-full right-0 z-[60] mt-2 w-64 border bg-[#0D1326] shadow-xl"
 								>
 									<div class="border-accent/30 border-b p-4">
 										<p class="font-medium text-white">{$session.data.user.name}</p>
@@ -199,7 +199,7 @@
 				{/each}
 
 				<div class="border-accent/30 mt-6 border-t pt-6">
-					{#if $session.data}
+					{#if $session.data?.user?.emailVerified}
 						<div class="flex flex-col gap-4">
 							<div class="flex items-center gap-3 px-4">
 								<div

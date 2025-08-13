@@ -8,9 +8,8 @@
 	import logo from '$lib/assets/logo/masterleague.svg';
 
 	const { data } = $props();
-	const session = authClient.useSession();
 
-	const { form, errors, enhance, submitting, message } = superForm(data.form, {
+	const { form, errors, message } = superForm(data.form, {
 		validators: zod(authSignupSchema)
 	});
 
@@ -120,7 +119,6 @@
 				},
 				{
 					onSuccess: () => {
-						console.log('✅ Signup success callback triggered');
 						// With OTP verification enabled, redirect to verification page
 						isLoading = false;
 						goto(`/auth/verify-email?email=${encodeURIComponent($form.email)}`);

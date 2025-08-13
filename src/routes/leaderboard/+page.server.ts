@@ -12,6 +12,11 @@ export const load = (async ({ locals, url }) => {
 		throw redirect(302, '/auth/login');
 	}
 
+	// Check if email is verified
+	if (!locals.user.emailVerified) {
+		throw redirect(302, '/auth/verify-email');
+	}
+
 	// Get the default organization
 	const defaultOrganization = await db
 		.select()

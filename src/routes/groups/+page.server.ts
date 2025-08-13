@@ -9,6 +9,11 @@ export const load = async ({ locals, url }) => {
 		throw redirect(302, '/auth/login');
 	}
 
+	// Check if email is verified
+	if (!locals.user.emailVerified) {
+		throw redirect(302, '/auth/verify-email');
+	}
+
 	// Server data only - meta tags are in +page.ts
 	return {};
 };
