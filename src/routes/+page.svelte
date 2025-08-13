@@ -42,13 +42,11 @@
 	<div class="container mx-auto flex flex-col items-center justify-center space-y-12 text-center">
 		<!-- Main Title -->
 		<div bind:this={titleRef} class="space-y-6 opacity-0">
-			<h1
-				class="font-display text-4xl font-black tracking-tight sm:text-5xl md:text-7xl lg:text-8xl"
-			>
+			<h1 class="text-4xl font-black tracking-tight sm:text-5xl md:text-7xl lg:text-8xl">
 				<span
 					class="from-accent to-accent bg-gradient-to-r via-white bg-clip-text text-transparent"
 				>
-					Master League
+					MASTER LEAGUE
 				</span>
 			</h1>
 			<div bind:this={subtitleRef} class="opacity-0">

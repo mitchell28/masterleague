@@ -37,10 +37,6 @@
 	}
 
 	h2 {
-		font-weight: 800;
-	}
-
-	.font-display {
-		font-family: var(--font-display);
+		font-weight: 900;
 	}
 }
