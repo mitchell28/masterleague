@@ -49,7 +49,6 @@
 </script>
 
 <MetaTags {...metaTags} />
-
 <Navbar />
 <main class="min-h-screen">
 	{@render children()}
