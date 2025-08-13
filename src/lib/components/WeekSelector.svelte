@@ -110,11 +110,6 @@
 		box-shadow: 0 0 0 2px rgb(from var(--color-accent) r g b / 0.3);
 	}
 
-	/* Style the dropdown arrow rotation on focus */
-	.custom-select:focus + div :global(svg) {
-		transform: rotate(180deg);
-	}
-
 	/* Option styling for supporting browsers */
 	.custom-select option {
 		background: #0d1326;

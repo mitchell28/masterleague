@@ -39,11 +39,9 @@
 </script>
 
 <div bind:this={heroRef} class="relative mt-22 flex min-h-screen items-center justify-center p-4">
-	<div class="container mx-auto flex flex-col gap-8 text-center">
-		<!-- Logo -->
-
+	<div class="container mx-auto flex flex-col items-center justify-center space-y-12 text-center">
 		<!-- Main Title -->
-		<div bind:this={titleRef} class="space-y-4 opacity-0">
+		<div bind:this={titleRef} class="space-y-6 opacity-0">
 			<h1
 				class="font-display text-4xl font-black tracking-tight sm:text-5xl md:text-7xl lg:text-8xl"
 			>
@@ -61,21 +59,37 @@
 		</div>
 
 		<!-- Countdown Timer -->
-		<div class="space-y-6">
+		<div class="space-y-8">
 			<p class="text-accent text-lg font-medium sm:text-xl">Launching in:</p>
 			<div class="inline-block p-6 sm:p-8">
 				<CountdownTimer {targetDate} />
 			</div>
 		</div>
 
+		<!-- Action Buttons -->
+		<div class="flex flex-col gap-4 sm:flex-row sm:justify-center sm:gap-6">
+			<a
+				href="/auth/signup"
+				style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
+				class="bg-accent hover:bg-accent/90 inline-flex items-center gap-2 px-6 py-3 text-base font-semibold text-black transition-all duration-200 hover:scale-105 hover:shadow-lg sm:gap-3 sm:px-8 sm:py-4 sm:text-lg"
+			>
+				Sign Up Now
+			</a>
+			<a
+				href="/blog"
+				style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
+				class="inline-flex items-center gap-2 bg-white/5 px-6 py-3 text-base font-semibold text-white backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white/10 hover:shadow-lg sm:gap-3 sm:px-8 sm:py-4 sm:text-lg"
+			>
+				Read Blog
+			</a>
+		</div>
+
 		<!-- Additional Info -->
-		<div class="pt-8">
-			<div class="mx-auto inline-block max-w-lg p-6">
-				<p class="text-sm leading-relaxed text-white/70 sm:text-base">
-					The ultimate football prediction platform is coming. Get ready for a revolutionary way to
-					compete with friends and climb the leaderboard.
-				</p>
-			</div>
+		<div class="mx-auto max-w-lg">
+			<p class="text-sm leading-relaxed text-white/70 sm:text-base">
+				The ultimate football prediction platform is coming. Get ready for a revolutionary way to
+				compete with friends and climb the leaderboard.
+			</p>
 		</div>
 	</div>
 

@@ -238,9 +238,17 @@
 			<div class="block sm:hidden">
 				{#if sortedData() && sortedData().length > 0}
 					{#each sortedData() as entry, index}
-						<div
-							class="cursor-pointer border-b border-slate-700/60 p-4 transition-colors hover:bg-slate-700/30"
+						<button
+							type="button"
+							class="focus:ring-accent w-full cursor-pointer border-b border-slate-700/60 p-4 text-left transition-colors hover:bg-slate-700/30 focus:bg-slate-700/30 focus:ring-2 focus:outline-none focus:ring-inset"
 							onclick={() => viewUserPredictions(entry.id)}
+							onkeydown={(e) => {
+								if (e.key === 'Enter' || e.key === ' ') {
+									e.preventDefault();
+									viewUserPredictions(entry.id);
+								}
+							}}
+							aria-label="View predictions for {entry.display_name}"
 						>
 							<div class="mb-3 flex items-center justify-between">
 								<div class="flex items-center">
@@ -289,7 +297,7 @@
 								<span>Predictions: {entry.predictedFixtures || 0}</span>
 								<span>Completed: {entry.completedFixtures || 0}</span>
 							</div>
-						</div>
+						</button>
 					{/each}
 				{:else}
 					<div class="py-8 text-center text-sm text-slate-400">
