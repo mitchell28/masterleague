@@ -1,11 +1,10 @@
 import { db } from '$lib/server/db';
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { and, eq, asc, inArray } from 'drizzle-orm';
+import { and, eq, asc, inArray, isNull } from 'drizzle-orm';
 import { fixtures, predictions, leagueTable, teams } from '$lib/server/db/schema';
 import { user } from '$lib/server/db/auth/auth-schema';
 import { checkAndUpdateRecentFixtures } from '$lib/server/football/predictions';
-import type { PgColumn } from 'drizzle-orm/pg-core';
 
 export const load = (async ({ params, locals }) => {
 	// Check if user is authenticated - using session instead of user.id
@@ -16,7 +15,7 @@ export const load = (async ({ params, locals }) => {
 	// Get current user and week from params
 	// If weekId is not a number, redirect to week 1
 	if (isNaN(parseInt(params.weekId))) {
-		return redirect(302, `/leaderboard/user/${params.id}/1`);
+		return redirect(302, `/leaderboard/${params.id}/1`);
 	}
 
 	const userId = params.id;
@@ -366,28 +365,3 @@ export const load = (async ({ params, locals }) => {
 		};
 	}
 }) satisfies PageServerLoad;
-function isNull(
-	points: PgColumn<
-		{
-			name: 'points';
-			tableName: 'predictions';
-			dataType: 'number';
-			columnType: 'PgInteger';
-			data: number;
-			driverParam: string | number;
-			notNull: false;
-			hasDefault: true;
-			isPrimaryKey: false;
-			isAutoincrement: false;
-			hasRuntimeDefault: false;
-			enumValues: undefined;
-			baseColumn: never;
-			identity: undefined;
-			generated: undefined;
-		},
-		{},
-		{}
-	>
-): import('drizzle-orm').SQLWrapper | undefined {
-	throw new Error('Function not implemented.');
-}

@@ -1,68 +1,37 @@
 import { db } from '$lib/server/db';
-import { user as authUser, member, organization } from '$lib/server/db/auth/auth-schema';
+import { user as authUser, organization } from '$lib/server/db/auth/auth-schema';
 import { leagueTable } from '$lib/server/db/schema';
-import { desc, eq, and, inArray } from 'drizzle-orm';
+import { desc, eq, and } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { useRecalculation } from './hooks/recalculateHooks.svelte';
+import type { MetaTagsProps } from 'svelte-meta-tags';
 import { getCurrentWeek } from '$lib/server/football/fixtures';
 
 export const load = (async ({ locals, url }) => {
-	console.log('🔍 Leaderboard load function called');
-	console.log('   Locals user:', locals.user ? `${locals.user.name} (${locals.user.id})` : 'null');
-	console.log('   Locals session:', locals.session ? 'exists' : 'null');
-	console.log('   User ID from locals.user:', locals.user?.id || 'null');
-
 	if (!locals.user?.id) {
-		console.log('❌ No user ID found, redirecting to auth');
 		throw redirect(302, '/auth/login');
 	}
 
-	// Get user's organizations first
-	const userOrganizations = await db
-		.select({
-			id: organization.id,
-			name: organization.name,
-			slug: organization.slug
-		})
-		.from(member)
-		.innerJoin(organization, eq(member.organizationId, organization.id))
-		.where(eq(member.userId, locals.user.id));
+	// Get the default organization
+	const defaultOrganization = await db
+		.select()
+		.from(organization)
+		.where(eq(organization.slug, 'master-league'))
+		.limit(1);
 
-	// Get selected organization from URL parameter, default to first organization
-	const selectedOrganizationId = url.searchParams.get('organization') || userOrganizations[0]?.id;
-
-	// Initialize the recalculation hook with organization context
-	const { processRecentFixtures } = useRecalculation(selectedOrganizationId);
-
-	// Process recent fixtures and await the result to ensure points are calculated
-	try {
-		const result = await processRecentFixtures();
-		if (result.processedPredictions > 0) {
-			console.log(
-				`Processed ${result.processedFixtures} fixtures and ${result.processedPredictions} predictions`
-			);
-		}
-	} catch (err) {
-		console.error('Points calculation error:', err);
-	}
-
-	if (!selectedOrganizationId || userOrganizations.length === 0) {
+	if (!defaultOrganization[0]) {
 		return {
 			currentWeek: await getCurrentWeek(),
 			leaderboard: [],
-			userOrganizations: [],
 			selectedOrganization: null,
 			user: locals.user,
 			currentSeason: '2025-26'
 		};
 	}
 
-	// Find the selected organization
-	const selectedOrganization =
-		userOrganizations.find((org) => org.id === selectedOrganizationId) || userOrganizations[0];
+	const selectedOrganization = defaultOrganization[0];
 
-	// Get the leaderboard data for the selected organization and 2025-26 season
+	// Get leaderboard from league table
 	const leaderboard = await db
 		.select({
 			id: leagueTable.userId,
@@ -80,18 +49,40 @@ export const load = (async ({ locals, url }) => {
 		.from(leagueTable)
 		.innerJoin(authUser, eq(leagueTable.userId, authUser.id))
 		.where(
-			and(eq(leagueTable.season, '2025-26'), eq(leagueTable.organizationId, selectedOrganizationId))
+			and(
+				eq(leagueTable.season, '2025-26'),
+				eq(leagueTable.organizationId, selectedOrganization.id)
+			)
 		)
-		.orderBy(desc(leagueTable.totalPoints), desc(leagueTable.completedFixtures));
+		.orderBy(desc(leagueTable.totalPoints), desc(leagueTable.correctScorelines), authUser.name);
 
 	const currentWeek = await getCurrentWeek();
+
+	// Meta tags for SEO
+	const pageMetaTags = Object.freeze({
+		title: 'Leaderboard',
+		description:
+			'View the current leaderboard standings and see how you rank against other players in your prediction groups.',
+		canonical: new URL(url.pathname, url.origin).href,
+		openGraph: {
+			title: 'Leaderboard - Master League',
+			description:
+				'View the current leaderboard standings and see how you rank against other players in your prediction groups.',
+			url: new URL(url.pathname, url.origin).href
+		},
+		twitter: {
+			title: 'Leaderboard - Master League',
+			description:
+				'View the current leaderboard standings and see how you rank against other players in your prediction groups.'
+		}
+	}) satisfies MetaTagsProps;
 
 	return {
 		currentWeek,
 		leaderboard,
-		userOrganizations,
 		selectedOrganization,
 		user: locals.user,
-		currentSeason: '2025-26'
+		currentSeason: '2025-26',
+		pageMetaTags
 	};
 }) satisfies PageServerLoad;

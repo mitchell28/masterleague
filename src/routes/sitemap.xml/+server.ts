@@ -10,7 +10,7 @@ export const GET: RequestHandler = async () => {
 		excludeRoutePatterns: [
 			'^/auth/(?!login$|signup$).*', // Exclude auth routes except login and signup
 			'^/api/.*',
-			'^/leaderboard/user/.*',
+			'^/leaderboard/.*',
 			'^/predictions/\\[week\\]$',
 			'.*\\(authenticated\\).*'
 		]

@@ -1,23 +1,39 @@
 import { db } from '../server/db';
-import { organization, member, authUser } from '../../../drizzle/schema';
+import { organization, member } from '../server/db/auth/auth-schema';
+import { user as authUser } from '../server/db/auth/auth-schema';
 import { randomUUID } from 'crypto';
+import { eq } from 'drizzle-orm';
 
 async function setupDefaultOrganization() {
 	console.log('🔧 Setting up default organization...');
 
-	// Create a default organization
-	const defaultOrg = {
-		id: randomUUID(),
-		name: 'Master League',
-		slug: 'master-league',
-		logo: null,
-		metadata: JSON.stringify({ isDefault: true }),
-		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString()
-	};
+	// Check if default organization already exists
+	const existingOrg = await db
+		.select()
+		.from(organization)
+		.where(eq(organization.slug, 'master-league'))
+		.limit(1);
 
-	console.log('Creating organization:', defaultOrg.name);
-	await db.insert(organization).values(defaultOrg);
+	let defaultOrg;
+	if (existingOrg.length > 0) {
+		defaultOrg = existingOrg[0];
+		console.log('✅ Default organization already exists:', defaultOrg.name);
+	} else {
+		// Create a default organization
+		defaultOrg = {
+			id: randomUUID(),
+			name: 'Master League',
+			slug: 'master-league',
+			logo: null,
+			metadata: JSON.stringify({ isDefault: true }),
+			createdAt: new Date(),
+			updatedAt: new Date()
+		};
+
+		console.log('Creating organization:', defaultOrg.name);
+		await db.insert(organization).values(defaultOrg);
+		console.log('✅ Organization created');
+	}
 
 	// Get all users
 	const users = await db.select().from(authUser);
@@ -29,7 +45,7 @@ async function setupDefaultOrganization() {
 		userId: user.id,
 		organizationId: defaultOrg.id,
 		role: user.role === 'admin' ? 'owner' : 'member',
-		createdAt: new Date().toISOString()
+		createdAt: new Date() // Use Date object instead of string
 	}));
 
 	if (memberValues.length > 0) {

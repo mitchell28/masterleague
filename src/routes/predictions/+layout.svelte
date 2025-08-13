@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { Info } from '@lucide/svelte';
-	import WeekSelector from './components/WeekSelector.svelte';
+	import WeekSelector from '$lib/components/WeekSelector.svelte';
 
 	// Correct way to handle slots in SvelteKit 5
 	let { children } = $props();

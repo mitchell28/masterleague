@@ -24,9 +24,6 @@ interface FixtureResult {
  * @returns The current week number (1-38)
  */
 export async function getCurrentWeek(): Promise<number> {
-	// Force 2025-26 Premier League season (since we're updating for 2025)
-	const currentDate = new Date();
-
 	// Use 2025-26 season dates (official Premier League dates)
 	const season: SeasonConfig = {
 		startDate: new Date('2025-08-15'), // Friday, 15 Aug 2025

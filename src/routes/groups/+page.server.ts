@@ -5,14 +5,12 @@ import { organization, member } from '$lib/server/db/auth/auth-schema';
 import { eq, and } from 'drizzle-orm';
 
 export const load = async ({ locals, url }) => {
-	if (!locals.user?.id) {
+	if (!locals.user?.id || locals.user.role !== 'admin') {
 		throw redirect(302, '/auth/login');
 	}
 
 	// Server data only - meta tags are in +page.ts
-	return {
-		// Add any server data here if needed
-	};
+	return {};
 };
 
 export const actions: Actions = {

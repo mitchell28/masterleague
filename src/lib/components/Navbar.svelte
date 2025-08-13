@@ -10,7 +10,8 @@
 		{ href: '/', label: 'Home', adminOnly: false },
 		{ href: '/predictions', label: 'Predictions', adminOnly: false },
 		{ href: '/leaderboard', label: 'Leaderboard', adminOnly: false },
-		{ href: '/groups', label: 'Groups', adminOnly: false }
+		{ href: '/groups', label: 'Groups', adminOnly: true },
+		{ href: '/blog', label: 'Blog', adminOnly: false }
 	];
 
 	let isDropdownOpen = $state(false);

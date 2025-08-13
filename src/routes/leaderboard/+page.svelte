@@ -7,7 +7,6 @@
 
 	// Props and state
 	let { data } = $props<{ data: PageData }>();
-	$inspect(data);
 
 	// Update leaderboard when data changes (reactive to server load updates)
 	let leaderboard = $derived(data.leaderboard || []);
@@ -32,39 +31,51 @@
 		if (!searchQuery.trim()) return leaderboard;
 
 		const query = searchQuery.toLowerCase().trim();
-		return leaderboard.filter((entry: any) => {
+		const filtered = leaderboard.filter((entry: any) => {
 			const username = (entry.username || '').toLowerCase();
 			return username.includes(query);
 		});
+
+		return filtered;
 	});
 
 	let sortedData = $derived(() => {
 		const data = filteredData();
 		if (!data) return [];
 
-		return [...data].sort((a: any, b: any) => {
+		const sorted = [...data].sort((a: any, b: any) => {
 			// Special case for totalPoints - include tiebreakers
 			if (sortKey === 'totalPoints') {
-				if (a.totalPoints !== b.totalPoints) {
-					return sortDirection === 'desc'
-						? b.totalPoints - a.totalPoints
-						: a.totalPoints - b.totalPoints;
+				const aPoints = a.totalPoints || 0;
+				const bPoints = b.totalPoints || 0;
+
+				if (aPoints !== bPoints) {
+					return sortDirection === 'desc' ? bPoints - aPoints : aPoints - bPoints;
 				}
+
 				// First tiebreaker: correct scorelines
-				if (a.correctScorelines !== b.correctScorelines) {
-					return sortDirection === 'desc'
-						? b.correctScorelines - a.correctScorelines
-						: a.correctScorelines - b.correctScorelines;
+				const aScorelines = a.correctScorelines || 0;
+				const bScorelines = b.correctScorelines || 0;
+				if (aScorelines !== bScorelines) {
+					return sortDirection === 'desc' ? bScorelines - aScorelines : aScorelines - bScorelines;
 				}
+
 				// Second tiebreaker: correct outcomes
-				return sortDirection === 'desc'
-					? b.correctOutcomes - a.correctOutcomes
-					: a.correctOutcomes - b.correctOutcomes;
+				const aOutcomes = a.correctOutcomes || 0;
+				const bOutcomes = b.correctOutcomes || 0;
+				if (aOutcomes !== bOutcomes) {
+					return sortDirection === 'desc' ? bOutcomes - aOutcomes : aOutcomes - bOutcomes;
+				}
+
+				// Final tiebreaker: alphabetical by username
+				const aName = (a.username || '').toLowerCase();
+				const bName = (b.username || '').toLowerCase();
+				return aName.localeCompare(bName);
 			}
 
 			// For other columns, do standard sorting
-			const valueA = a[sortKey];
-			const valueB = b[sortKey];
+			const valueA = a[sortKey] || (typeof a[sortKey] === 'number' ? 0 : '');
+			const valueB = b[sortKey] || (typeof b[sortKey] === 'number' ? 0 : '');
 
 			// Handle string values
 			if (typeof valueA === 'string' && typeof valueB === 'string') {
@@ -78,6 +89,8 @@
 				? Number(valueB) - Number(valueA)
 				: Number(valueA) - Number(valueB);
 		});
+
+		return sorted;
 	});
 
 	// Handle column sort clicks
@@ -92,59 +105,109 @@
 
 	// View user's predictions
 	function viewUserPredictions(userId: string) {
-		goto(`/leaderboard/user/${userId}/${data.currentWeek}`);
+		goto(`/leaderboard/${userId}/${data.currentWeek}`);
 	}
 </script>
 
 <div class="mx-auto mt-22">
-	<!-- Main Header with clean geometric design -->
-	<div class="relative">
-		<div class="font-display mb-6 w-full overflow-hidden bg-slate-900">
-			<div class="mx-auto my-6 max-w-6xl">
-				<!-- Main content area -->
-				<div class="relative flex h-full items-center justify-between px-4 py-4">
-					<div>
-						<h1 class="text-3xl font-bold text-white">Overall Standings</h1>
-						<div class="mt-2 flex items-center gap-3">
-							<span class="text-sm font-medium text-slate-300">
-								{#if data.selectedOrganization}
-									Organization: {data.selectedOrganization.name}
-								{:else}
-									Global Competition
-								{/if}
+	<!-- Main Header with clean geometric design and mobile responsive layout -->
+	<div class="relative mb-4 sm:mb-6">
+		<div class="font-display w-full overflow-hidden bg-slate-900">
+			<!-- Main Header Content -->
+			<div class="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
+				<!-- Mobile Layout: Stack vertically -->
+				<div class="flex flex-col gap-4 sm:hidden">
+					<div class="text-center">
+						<h1 class="text-2xl font-bold text-white">Overall Standings</h1>
+						<div class="mt-2 flex flex-col items-center gap-2">
+							<span class="text-xs font-medium text-slate-300">
+								{data.selectedOrganization?.name || 'Master League'}
 							</span>
+							<div class="flex items-center gap-3 text-sm text-slate-400">
+								<div>Week <span class="font-semibold text-white">{data.currentWeek}</span></div>
+								<div>
+									Players <span class="font-semibold text-white">{leaderboard.length}</span>
+								</div>
+							</div>
+						</div>
+
+						<!-- Mobile Refresh Button -->
+						<div class="mt-3">
+							<button
+								class="bg-accent hover:bg-accent/80 font-display relative inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold tracking-wide text-black transition disabled:cursor-not-allowed disabled:opacity-50"
+								onclick={autoRefresh.refresh}
+								disabled={autoRefresh.isRefreshing}
+							>
+								<RefreshCcw
+									size={12}
+									class={`mr-1.5 ${autoRefresh.isRefreshing ? 'animate-spin' : ''}`}
+								/>
+								{autoRefresh.isRefreshing ? 'Refreshing...' : 'Refresh'}
+							</button>
 						</div>
 					</div>
-					<div class="flex items-center gap-4 text-base text-slate-400">
-						<div>Week <span class="font-semibold text-white">{data.currentWeek}</span></div>
+				</div>
+
+				<!-- Desktop Layout: Side by side -->
+				<div class="hidden sm:block">
+					<div class="mb-3 flex items-center justify-between">
 						<div>
-							Total Players <span class="font-semibold text-white">{leaderboard.length}</span>
+							<h1 class="text-3xl font-bold text-white lg:text-4xl">Overall Standings</h1>
+							<div class="mt-2 flex items-center gap-3">
+								<span class="text-sm font-medium text-slate-300">
+									{data.selectedOrganization?.name || 'Master League'}
+								</span>
+							</div>
 						</div>
+						<div class="flex items-center gap-4 text-base text-slate-400">
+							<div>Week <span class="font-semibold text-white">{data.currentWeek}</span></div>
+							<div>
+								Total Players <span class="font-semibold text-white">{leaderboard.length}</span>
+							</div>
+						</div>
+					</div>
+
+					<!-- Desktop Refresh Button -->
+					<div class="flex justify-end">
+						<button
+							class="bg-accent hover:bg-accent/80 font-display relative inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold tracking-wide text-black transition disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
+							onclick={autoRefresh.refresh}
+							disabled={autoRefresh.isRefreshing}
+						>
+							<RefreshCcw
+								size={12}
+								class={`mr-1.5 ${autoRefresh.isRefreshing ? 'animate-spin' : ''} sm:h-3.5 sm:w-3.5`}
+							/>
+							{autoRefresh.isRefreshing ? 'Refreshing...' : 'Refresh'}
+						</button>
 					</div>
 				</div>
 			</div>
 		</div>
 	</div>
 
-	<div class="mx-auto max-w-6xl">
-		<!-- Controls and filters (clean layout) -->
-		<div class="mb-8 flex flex-wrap items-center justify-between gap-4 bg-slate-800/50 px-6 py-4">
-			<div class="flex items-center gap-3">
-				<!-- Search input -->
+	<div class="mx-auto max-w-6xl px-4 sm:px-6">
+		<!-- Controls and filters (clean layout with mobile responsive design) -->
+		<div
+			class="mb-6 flex flex-col gap-4 bg-slate-800/50 px-4 py-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+		>
+			<!-- Search input -->
+			<div class="order-1 sm:order-1">
 				<div class="relative">
 					<input
 						type="text"
 						bind:value={searchQuery}
 						placeholder="Search players..."
-						class="w-64 bg-slate-700/80 px-3 py-2 text-sm text-white placeholder-slate-400 transition outline-none focus:bg-slate-700"
+						class="w-full bg-slate-700/80 px-3 py-3 text-sm text-white placeholder-slate-400 transition outline-none focus:bg-slate-700 sm:w-64 sm:py-2"
 					/>
 					<SearchIcon class="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400" size={16} />
 				</div>
 			</div>
 
-			<div class="flex items-center gap-4">
+			<!-- Right side controls -->
+			<div class="order-2 flex flex-col gap-3 sm:order-2 sm:flex-row sm:items-center sm:gap-4">
 				<!-- Last refresh timestamp -->
-				<span class="text-base text-slate-400">
+				<span class="text-xs text-slate-400 sm:text-sm">
 					Last updated: {autoRefresh.lastRefreshTime}
 					{#if autoRefresh.isAutoRefreshEnabled}
 						<span class="ml-1 text-green-400">• Auto</span>
@@ -161,27 +224,82 @@
 							onchange={autoRefresh.toggleAutoRefresh}
 						/>
 						<div
-							class="peer h-5 w-9 bg-slate-700 peer-checked:bg-indigo-600 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full"
+							class="peer h-6 w-11 bg-slate-700 peer-checked:bg-indigo-600 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full"
 						></div>
-						<span class="ml-2 text-base font-medium text-slate-300">Auto refresh</span>
+						<span class="ml-2 text-sm font-medium text-slate-300 sm:text-base">Auto refresh</span>
 					</label>
 				</div>
-
-				<!-- Refresh button -->
-				<button
-					class="bg-accent hover:bg-accent/80 font-display relative inline-flex items-center px-4 py-2 text-base font-semibold tracking-wide text-black transition disabled:cursor-not-allowed disabled:opacity-50"
-					onclick={autoRefresh.refresh}
-					disabled={autoRefresh.isRefreshing}
-				>
-					<RefreshCcw size={16} class={`mr-2 ${autoRefresh.isRefreshing ? 'animate-spin' : ''}`} />
-					{autoRefresh.isRefreshing ? 'Refreshing...' : 'Refresh'}
-				</button>
 			</div>
 		</div>
 
-		<!-- Leaderboard table clean card -->
-		<div class=" overflow-hidden bg-slate-800/50">
-			<div class="overflow-x-auto">
+		<!-- Leaderboard table clean card with mobile responsive design -->
+		<div class="overflow-hidden bg-slate-800/50">
+			<!-- Mobile Card View (visible on small screens) -->
+			<div class="block sm:hidden">
+				{#if sortedData() && sortedData().length > 0}
+					{#each sortedData() as entry, index}
+						<div
+							class="cursor-pointer border-b border-slate-700/60 p-4 transition-colors hover:bg-slate-700/30"
+							onclick={() => viewUserPredictions(entry.id)}
+						>
+							<div class="mb-3 flex items-center justify-between">
+								<div class="flex items-center">
+									<div
+										class="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-slate-700/80 text-sm font-bold text-slate-300"
+									>
+										{index + 1}
+									</div>
+									<div>
+										<div class="text-sm font-medium tracking-wide text-white">
+											{entry?.username || 'Anonymous'}
+										</div>
+									</div>
+								</div>
+								<div class="text-lg font-bold text-indigo-300">
+									{entry.totalPoints || 0} pts
+								</div>
+							</div>
+
+							<div class="grid grid-cols-3 gap-3 text-center">
+								<div>
+									<div class="mb-1 text-xs tracking-wide text-slate-400 uppercase">Perfect</div>
+									<div class="text-sm font-medium text-green-400">
+										{entry.correctScorelines || 0}
+									</div>
+								</div>
+								<div>
+									<div class="mb-1 text-xs tracking-wide text-slate-400 uppercase">Outcome</div>
+									<div class="text-sm font-medium text-blue-400">{entry.correctOutcomes || 0}</div>
+								</div>
+								<div>
+									<div class="mb-1 text-xs tracking-wide text-slate-400 uppercase">Rate</div>
+									{#if (entry.completedFixtures || 0) > 0}
+										<div class="text-sm font-medium text-yellow-400">
+											{metrics.calculateSuccessRate(entry)}%
+										</div>
+									{:else if (entry.predictedFixtures || 0) > 0}
+										<div class="text-xs text-slate-400">Awaiting</div>
+									{:else}
+										<div class="text-xs text-slate-500">-</div>
+									{/if}
+								</div>
+							</div>
+
+							<div class="mt-3 flex justify-between text-xs text-slate-400">
+								<span>Predictions: {entry.predictedFixtures || 0}</span>
+								<span>Completed: {entry.completedFixtures || 0}</span>
+							</div>
+						</div>
+					{/each}
+				{:else}
+					<div class="py-8 text-center text-sm text-slate-400">
+						{searchQuery ? 'No players match your search' : 'No players found in the leaderboard'}
+					</div>
+				{/if}
+			</div>
+
+			<!-- Desktop Table View (hidden on small screens) -->
+			<div class="hidden overflow-x-auto sm:block">
 				<table class="min-w-full divide-y divide-slate-700/70">
 					<thead class="bg-slate-900/50">
 						<tr>
@@ -206,36 +324,56 @@
 							</th>
 							<th
 								class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
+								onclick={() => toggleSort('correctScorelines')}
 							>
 								<div class="flex items-center justify-center">
 									<span>Perfect</span>
+									<ChevronUp
+										size={16}
+										class={`ml-1 text-slate-400 ${sortKey === 'correctScorelines' ? (sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+									/>
 								</div>
 							</th>
 							<th
 								class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
+								onclick={() => toggleSort('correctOutcomes')}
 							>
 								<div class="flex items-center justify-center">
 									<span>Outcome</span>
+									<ChevronUp
+										size={16}
+										class={`ml-1 text-slate-400 ${sortKey === 'correctOutcomes' ? (sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+									/>
 								</div>
 							</th>
 							<th
 								class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
+								onclick={() => toggleSort('predictedFixtures')}
 							>
 								<div class="flex items-center justify-center">
 									<span>Predictions</span>
+									<ChevronUp
+										size={16}
+										class={`ml-1 text-slate-400 ${sortKey === 'predictedFixtures' ? (sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+									/>
 								</div>
 							</th>
 							<th
 								class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
+								onclick={() => toggleSort('completedFixtures')}
 							>
 								<div class="flex items-center justify-center">
 									<span>Completed</span>
+									<ChevronUp
+										size={16}
+										class={`ml-1 text-slate-400 ${sortKey === 'completedFixtures' ? (sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+									/>
 								</div>
 							</th>
 							<th
 								class="px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase"
 							>
-								Success Rate
+								<span>Success Rate</span>
 							</th>
 						</tr>
 					</thead>
@@ -255,35 +393,45 @@
 												{index + 1}
 											</div>
 											<div>
-												<div class="font-medium tracking-wide text-white">
+												<div class="text-sm font-medium tracking-wide text-white">
 													{entry?.username || 'Anonymous'}
 												</div>
 											</div>
 										</div>
 									</td>
 									<!-- Total points -->
-									<td class="px-4 py-3 text-center font-bold whitespace-nowrap text-indigo-300">
+									<td
+										class="px-4 py-3 text-center text-base font-bold whitespace-nowrap text-indigo-300"
+									>
 										{entry.totalPoints || 0}
 									</td>
 									<!-- Perfect score predictions -->
-									<td class="px-4 py-3 text-center font-medium whitespace-nowrap text-green-400">
+									<td
+										class="px-4 py-3 text-center text-base font-medium whitespace-nowrap text-green-400"
+									>
 										{entry.correctScorelines || 0}
 									</td>
 									<!-- Correct outcome predictions -->
-									<td class="px-4 py-3 text-center font-medium whitespace-nowrap text-blue-400">
+									<td
+										class="px-4 py-3 text-center text-base font-medium whitespace-nowrap text-blue-400"
+									>
 										{entry.correctOutcomes || 0}
 									</td>
 									<!-- Total predictions -->
-									<td class="px-4 py-3 text-center font-medium whitespace-nowrap text-purple-300">
+									<td
+										class="px-4 py-3 text-center text-base font-medium whitespace-nowrap text-purple-300"
+									>
 										{entry.predictedFixtures || 0}
 									</td>
 									<!-- Completed fixtures -->
-									<td class="px-4 py-3 text-center font-medium whitespace-nowrap text-slate-400">
+									<td
+										class="px-4 py-3 text-center text-base font-medium whitespace-nowrap text-slate-400"
+									>
 										{entry.completedFixtures || 0}
 									</td>
 									<!-- Success rate -->
 									<td class="px-4 py-3 text-center whitespace-nowrap">
-										{#if (entry.predictedFixtures || 0) > 0}
+										{#if (entry.completedFixtures || 0) > 0}
 											<div class="flex items-center justify-center">
 												<div class="h-2 w-16 overflow-hidden rounded-full bg-slate-700/80">
 													<div
@@ -295,15 +443,17 @@
 													>{metrics.calculateSuccessRate(entry)}%</span
 												>
 											</div>
+										{:else if (entry.predictedFixtures || 0) > 0}
+											<span class="text-xs text-slate-400">Awaiting results</span>
 										{:else}
-											<span class="text-xs text-slate-500">No predictions</span>
+											<span class="text-xs text-slate-500">Season not started</span>
 										{/if}
 									</td>
 								</tr>
 							{/each}
 						{:else}
 							<tr>
-								<td colspan="7" class="py-6 text-center text-slate-400">
+								<td colspan="7" class="py-8 text-center text-sm text-slate-400">
 									{searchQuery
 										? 'No players match your search'
 										: 'No players found in the leaderboard'}
@@ -315,12 +465,12 @@
 			</div>
 		</div>
 
-		<!-- Legend simplified -->
-		<div class="mt-10">
-			<div class="relative overflow-hidden bg-slate-800/50 p-5">
+		<!-- Legend simplified with mobile responsive design -->
+		<div class="mt-6 sm:mt-10">
+			<div class="relative overflow-hidden bg-slate-800/50 p-4 sm:p-5">
 				<div>
-					<h3 class="font-display mb-3 text-lg font-semibold text-white">Scoring</h3>
-					<ul class="grid gap-2 text-base text-slate-300 sm:grid-cols-3">
+					<h3 class="font-display mb-3 text-base font-semibold text-white sm:text-lg">Scoring</h3>
+					<ul class="grid gap-2 text-sm text-slate-300 sm:grid-cols-3 sm:text-base">
 						<li class="flex items-center">
 							<span class="mr-2 inline-block h-2.5 w-2.5 bg-green-500"></span>Perfect Score: 3 pts
 						</li>
@@ -332,7 +482,7 @@
 							scoring predictions
 						</li>
 					</ul>
-					<p class="mt-3 text-[11px] leading-relaxed text-slate-400">
+					<p class="mt-3 text-xs leading-relaxed text-slate-400 sm:text-[11px]">
 						Multipliers (2× / 3×) apply to select fixtures. Success rate = predictions that earned
 						any points.
 					</p>

@@ -29,8 +29,6 @@
 </script>
 
 <div class="week-selector flex items-center gap-2 sm:gap-4">
-	<label for="week-selector" class="hidden font-medium text-white sm:block">Go to week:</label>
-
 	<!-- Previous week button -->
 	<button
 		class="bg-accent hover:bg-accent/80 flex h-8 w-8 items-center justify-center rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10"
