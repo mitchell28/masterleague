@@ -58,7 +58,7 @@
 
 <div class="flex min-h-screen">
 	<!-- Login form - centered -->
-	<div class="mt-22 flex w-full flex-col items-center justify-center p-8">
+	<div class="flex w-full flex-col items-center justify-center p-8 md:mt-22">
 		<div
 			class="w-full max-w-md bg-slate-900 p-8"
 			style="clip-path: polygon(10% 0%, 100% 0%, 100% 94%, 90% 100%, 0% 100%, 0% 6%);"
