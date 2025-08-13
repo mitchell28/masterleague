@@ -28,17 +28,17 @@
 	}
 </script>
 
-<div class="week-selector flex items-center gap-4">
-	<label for="week-selector" class="font-medium text-white">Go to week:</label>
+<div class="week-selector flex items-center gap-2 sm:gap-4">
+	<label for="week-selector" class="hidden font-medium text-white sm:block">Go to week:</label>
 
 	<!-- Previous week button -->
 	<button
-		class="bg-accent hover:bg-accent/80 flex h-10 w-10 items-center justify-center rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+		class="bg-accent hover:bg-accent/80 flex h-8 w-8 items-center justify-center rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10"
 		onclick={() => onNavigate('prev')}
 		disabled={!weeks.includes(week - 1)}
 		aria-label="Previous week"
 	>
-		<ChevronLeft class="text-black" size={18} />
+		<ChevronLeft class="text-black" size={16} />
 	</button>
 
 	<!-- Week Selector -->
@@ -46,7 +46,7 @@
 		<select
 			bind:value={selectedWeek}
 			onchange={handleSelectChange}
-			class="custom-select border-accent w-full appearance-none rounded-md border-2 py-2 pr-10 pl-4 font-medium text-white transition-colors focus:outline-none"
+			class="custom-select border-accent w-full appearance-none rounded-md border-2 py-2 pr-3 pl-3 text-sm font-medium text-white transition-colors focus:outline-none sm:pr-10 sm:pl-4"
 		>
 			{#each weeks as weekNumber}
 				<option value={weekNumber} class=" text-white">
@@ -54,38 +54,52 @@
 				</option>
 			{/each}
 		</select>
-
-		<!-- Custom dropdown arrow -->
-		<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-			<ChevronDown size={16} class="text-accent transition-transform duration-200" />
-		</div>
 	</div>
 	<!-- Next week button -->
 	<button
-		class="bg-accent hover:bg-accent/80 flex h-10 w-10 items-center justify-center rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+		class="bg-accent hover:bg-accent/80 flex h-8 w-8 items-center justify-center rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10"
 		onclick={() => onNavigate('next')}
 		disabled={!weeks.includes(week + 1)}
 		aria-label="Next week"
 	>
-		<ChevronRight class="text-black" size={18} />
+		<ChevronRight class="text-black" size={16} />
 	</button>
 </div>
 
 <style>
-	/* Enhanced select styling with modern approach */
+	/* Enhanced select styling with modern approach and mobile responsive */
 	.custom-select {
-		/* Remove default appearance */
+		/* Remove default appearance - comprehensive approach */
 		appearance: none;
 		-webkit-appearance: none;
 		-moz-appearance: none;
+		-ms-appearance: none;
+
+		/* Remove default background image (dropdown arrow) */
+		background-image: none;
+		-webkit-background-image: none;
+		-moz-background-image: none;
+		-ms-background-image: none;
 
 		/* Custom styling */
 		background: #0d1326;
+		background-color: #0d1326;
 		color: white;
 		border-radius: 0.375rem;
 		font-weight: 500;
 		transition: all 0.2s;
-		min-width: 140px;
+		min-width: 100px;
+	}
+
+	/* Additional browser-specific rules */
+	.custom-select::-ms-expand {
+		display: none; /* Remove IE/Edge dropdown arrow */
+	}
+
+	@media (min-width: 640px) {
+		.custom-select {
+			min-width: 140px;
+		}
 	}
 
 	.custom-select:hover {

@@ -87,15 +87,13 @@
 		}
 	}
 
-	// Helper function for date formatting
+	// Helper function for date formatting - no time, just date
 	function formatDate(dateString: string) {
 		const date = new Date(dateString);
 		return date.toLocaleDateString('en-US', {
 			weekday: 'short',
 			day: 'numeric',
-			month: 'short',
-			hour: 'numeric',
-			minute: '2-digit'
+			month: 'short'
 		});
 	}
 
@@ -202,13 +200,13 @@
 
 <!-- Rectangle 1 - Main Card Container with Custom Shape -->
 <div
-	class="font-display border-b-accent relative min-h-[210px] w-full overflow-clip border-b-6 text-sm"
+	class="font-display border-b-accent relative min-h-[180px] w-full overflow-clip border-b-6 text-sm sm:min-h-[210px]"
 >
 	<!-- Green middle notch - always present for card shape -->
 	<div
 		class="bg-accent absolute top-0 left-[33%] flex h-[26px] w-[34%] items-center justify-center"
 	>
-		<span class="text-black">{statusDisplay.text}</span>
+		<span class="text-xs text-black sm:text-sm">{statusDisplay.text}</span>
 	</div>
 
 	<!-- Main card background -->
@@ -218,33 +216,37 @@
 	>
 		<!-- Prediction outcome badge in top left -->
 		{#if predictionOutcome && isFixtureCompleted}
-			<div class="absolute top-2 left-5">
-				<span class={`text-xs font-medium ${predictionOutcome.class}`}>
+			<div class="absolute top-2 left-3 sm:left-5">
+				<span class={`text-xs font-medium ${predictionOutcome.class} sm:text-sm`}>
 					{predictionOutcome.text}
 				</span>
 			</div>
 		{/if}
 
-		<div class="relative px-6 pt-8 pb-4">
+		<div class="relative px-4 pt-8 pb-4 sm:px-6">
 			<!-- Card content will go here -->
-			<div class="flex h-full items-start justify-between gap-2 text-sm">
+			<div class="flex h-full items-start justify-between gap-2 text-sm sm:gap-3">
 				<!-- Home team -->
 				<div class="flex flex-col items-center gap-3">
 					<!-- Logo -->
 					{#if homeTeam.logo}
-						<img src={homeTeam.logo} alt={homeTeam.name} class=" h-18 w-18 object-contain" />
+						<img
+							src={homeTeam.logo}
+							alt={homeTeam.name}
+							class="h-12 w-12 object-contain sm:h-16 sm:w-16 md:h-18 md:w-18"
+						/>
 					{/if}
-					<span class="text-center text-wrap">{homeTeam.shortName}</span>
+					<span class="text-center text-xs text-wrap sm:text-sm">{homeTeam.shortName}</span>
 
 					<!-- Home Score Controls or Display -->
 					<div class="font-sans">
 						{#if showActualScore || !fixture.canPredict || readOnly}
 							<!-- Show actual score or read-only prediction -->
-							<div class="flex h-8 w-24 items-center justify-center">
+							<div class="flex h-8 w-20 items-center justify-center sm:w-24">
 								{#if showActualScore}
-									<span class="text-lg font-bold text-white">{fixture.homeScore}</span>
+									<span class="text-base font-bold text-white sm:text-lg">{fixture.homeScore}</span>
 								{:else if prediction}
-									<span class="text-lg text-slate-300">{prediction.home}</span>
+									<span class="text-base text-slate-300 sm:text-lg">{prediction.home}</span>
 								{:else}
 									<span class="text-slate-500">-</span>
 								{/if}
@@ -255,17 +257,20 @@
 								<button
 									aria-label="Decrement Home Score"
 									type="button"
-									class="bg-accent hover:bg-accent/80 flex h-8 w-8 cursor-pointer items-center justify-center"
+									class="bg-accent hover:bg-accent/80 flex h-7 w-7 cursor-pointer items-center justify-center sm:h-8 sm:w-8"
 									style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
 									onclick={() => decrementHome()}
 								>
-									<div aria-label="Decrement Home Score" class="h-[4px] w-5 bg-black"></div>
+									<div
+										aria-label="Decrement Home Score"
+										class="h-[3px] w-4 bg-black sm:h-[4px] sm:w-5"
+									></div>
 								</button>
 								<input
 									type="number"
 									min="0"
 									max="20"
-									class="h-8 w-10 text-center text-white"
+									class="h-7 w-8 text-center text-sm text-white sm:h-8 sm:w-10 sm:text-base"
 									value={homeScore}
 									oninput={(e) => {
 										const target = e.target as HTMLInputElement;
@@ -277,14 +282,16 @@
 								<button
 									aria-label="Increment Home Score"
 									type="button"
-									class="bg-accent hover:bg-accent/80 flex h-8 w-8 cursor-pointer items-center justify-center text-black"
+									class="bg-accent hover:bg-accent/80 flex h-7 w-7 cursor-pointer items-center justify-center text-black sm:h-8 sm:w-8"
 									style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
 									onclick={() => incrementHome()}
 								>
-									<div class="relative h-5 w-5">
-										<div class="absolute inset-x-0 top-1/2 h-[4px] -translate-y-1/2 bg-black"></div>
+									<div class="relative h-4 w-4 sm:h-5 sm:w-5">
 										<div
-											class="absolute inset-y-0 left-1/2 w-[4px] -translate-x-1/2 bg-black"
+											class="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 bg-black sm:h-[4px]"
+										></div>
+										<div
+											class="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 bg-black sm:w-[4px]"
 										></div>
 									</div>
 								</button>
@@ -321,14 +328,16 @@
 					{/if}
 				</div>
 
-				<div class="absolute top-20 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2">
+				<div
+					class="absolute top-16 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 md:top-20"
+				>
 					<!-- Date badge - hidden during live matches -->
 					{#if !isFixtureLive && !isFixtureCompleted}
 						<div
 							style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
-							class="bg-accent flex items-center justify-center px-2 pt-[8px] pb-[6px] text-center"
+							class="bg-accent flex items-center justify-center px-2 pt-[6px] pb-[4px] text-center sm:px-3 sm:pt-[8px] sm:pb-[6px]"
 						>
-							<span class="leading-[14px] text-black">
+							<span class="text-xs leading-[12px] text-black sm:text-sm sm:leading-[14px]">
 								{formattedMatchDate}
 							</span>
 						</div>
@@ -338,20 +347,20 @@
 					{#if showActualScore}
 						<div class="absolute top-3 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2">
 							<div class="flex items-center gap-2">
-								<span class="text-lg font-bold text-white">{fixture.homeScore}</span>
-								<span class="text-lg text-slate-400">-</span>
-								<span class="text-lg font-bold text-white">{fixture.awayScore}</span>
+								<span class="text-base font-bold text-white sm:text-lg">{fixture.homeScore}</span>
+								<span class="text-base text-slate-400 sm:text-lg">-</span>
+								<span class="text-base font-bold text-white sm:text-lg">{fixture.awayScore}</span>
 							</div>
 						</div>
 					{:else if !fixture.canPredict && prediction && !isFixtureCompleted}
 						<!-- Show prediction when not editable -->
 						<div class="flex items-center gap-2">
-							<span class="text-lg text-slate-300">{prediction.home}</span>
-							<span class="text-lg text-slate-400">-</span>
-							<span class="text-lg text-slate-300">{prediction.away}</span>
+							<span class="text-base text-slate-300 sm:text-lg">{prediction.home}</span>
+							<span class="text-base text-slate-400 sm:text-lg">-</span>
+							<span class="text-base text-slate-300 sm:text-lg">{prediction.away}</span>
 						</div>
 					{:else if !fixture.canPredict && !prediction}
-						<span class="text-sm text-slate-500 italic">No prediction</span>
+						<span class="text-xs text-slate-500 italic sm:text-sm">No prediction</span>
 					{/if}
 
 					<!-- Prediction close warning -->
@@ -365,19 +374,23 @@
 				<!-- Away team -->
 				<div class="flex flex-col items-center gap-3">
 					{#if awayTeam.logo}
-						<img src={awayTeam.logo} alt={awayTeam.name} class="h-18 w-18 object-contain" />
+						<img
+							src={awayTeam.logo}
+							alt={awayTeam.name}
+							class="h-12 w-12 object-contain sm:h-16 sm:w-16 md:h-18 md:w-18"
+						/>
 					{/if}
-					<span class="text-center text-wrap">{awayTeam.shortName}</span>
+					<span class="text-center text-xs text-wrap sm:text-sm">{awayTeam.shortName}</span>
 
 					<!-- Away Score Controls or Display -->
 					<div class="font-sans">
 						{#if showActualScore || !fixture.canPredict || readOnly}
 							<!-- Show actual score or read-only prediction -->
-							<div class="flex h-8 w-24 items-center justify-center">
+							<div class="flex h-8 w-20 items-center justify-center sm:w-24">
 								{#if showActualScore}
-									<span class="text-lg font-bold text-white">{fixture.awayScore}</span>
+									<span class="text-base font-bold text-white sm:text-lg">{fixture.awayScore}</span>
 								{:else if prediction}
-									<span class="text-lg text-slate-300">{prediction.away}</span>
+									<span class="text-base text-slate-300 sm:text-lg">{prediction.away}</span>
 								{:else}
 									<span class="text-slate-500">-</span>
 								{/if}
@@ -388,17 +401,20 @@
 								<button
 									aria-label="Decrement Away Score"
 									type="button"
-									class="bg-accent hover:bg-accent/80 flex h-8 w-8 cursor-pointer items-center justify-center"
+									class="bg-accent hover:bg-accent/80 flex h-7 w-7 cursor-pointer items-center justify-center sm:h-8 sm:w-8"
 									style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
 									onclick={() => decrementAway()}
 								>
-									<div aria-label="Decrement Away Score" class="h-[4px] w-5 bg-black"></div>
+									<div
+										aria-label="Decrement Away Score"
+										class="h-[3px] w-4 bg-black sm:h-[4px] sm:w-5"
+									></div>
 								</button>
 								<input
 									type="number"
 									min="0"
 									max="20"
-									class="h-8 w-10 text-center text-white"
+									class="h-7 w-8 text-center text-sm text-white sm:h-8 sm:w-10 sm:text-base"
 									value={awayScore}
 									oninput={(e) => {
 										const target = e.target as HTMLInputElement;
@@ -410,14 +426,16 @@
 								<button
 									aria-label="Increment Away Score"
 									type="button"
-									class="bg-accent hover:bg-accent/80 flex h-8 w-8 cursor-pointer items-center justify-center text-black"
+									class="bg-accent hover:bg-accent/80 flex h-7 w-7 cursor-pointer items-center justify-center text-black sm:h-8 sm:w-8"
 									style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
 									onclick={() => incrementAway()}
 								>
-									<div class="relative h-5 w-5">
-										<div class="absolute inset-x-0 top-1/2 h-[4px] -translate-y-1/2 bg-black"></div>
+									<div class="relative h-4 w-4 sm:h-5 sm:w-5">
 										<div
-											class="absolute inset-y-0 left-1/2 w-[4px] -translate-x-1/2 bg-black"
+											class="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 bg-black sm:h-[4px]"
+										></div>
+										<div
+											class="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 bg-black sm:w-[4px]"
 										></div>
 									</div>
 								</button>

@@ -435,12 +435,12 @@
 	</div>
 {:else}
 	<!-- Main predictions form -->
-	<div class="w-full">
+	<div class="my-8 w-full">
 		<form method="POST" action="?/submitPredictions" use:enhance={handleSubmit} class="space-y-6">
 			<input type="hidden" name="week" value={weekParam} />
 
 			<!-- Grid to display match predictions - with optimized keyed each -->
-			<div class="grid grid-cols-1 items-center justify-center gap-10 px-6 md:grid-cols-2">
+			<div class="grid grid-cols-1 items-center justify-center gap-8 lg:grid-cols-2">
 				{#each localFixtures as fixture (fixture.id)}
 					<PredictionCardV2
 						{fixture}
