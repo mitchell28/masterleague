@@ -3,15 +3,36 @@ import { superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
 import { authSignupSchema } from '$lib/validation/auth-schemas';
 import type { PageServerLoad } from './$types';
+import type { MetaTagsProps } from 'svelte-meta-tags';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	const session = locals.session;
 
 	if (session) {
 		throw redirect(302, '/predictions');
 	}
 
+	// Meta tags for signup page
+	const pageMetaTags = Object.freeze({
+		title: 'Sign Up',
+		description:
+			'Join Master League today! Create your free account to start making predictions, join groups, and compete with friends in exciting sports leagues.',
+		canonical: new URL(url.pathname, url.origin).href,
+		openGraph: {
+			title: 'Sign Up - Master League',
+			description:
+				'Join Master League today! Create your free account to start making predictions, join groups, and compete with friends in exciting sports leagues.',
+			url: new URL(url.pathname, url.origin).href
+		},
+		twitter: {
+			title: 'Sign Up - Master League',
+			description:
+				'Join Master League today! Create your free account to start making predictions and compete with friends.'
+		}
+	}) satisfies MetaTagsProps;
+
 	return {
-		form: await superValidate(zod(authSignupSchema))
+		form: await superValidate(zod(authSignupSchema)),
+		pageMetaTags
 	};
 };

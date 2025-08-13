@@ -3,13 +3,15 @@
 	import { invalidate } from '$app/navigation';
 	import { authClient } from '$lib/client/auth-client';
 	import Navbar from '$lib/components/Navbar.svelte';
-
-	// Use reactive session from authClient
-	const session = authClient.useSession();
+	import { page } from '$app/state';
+	import { MetaTags, deepMerge } from 'svelte-meta-tags';
 
 	// Component props
-	let { children } = $props();
+	let { children, data } = $props();
 
+	const session = authClient.useSession();
+
+	let metaTags = $derived(deepMerge(data.baseMetaTags, page.data.pageMetaTags));
 	// Use localStorage to track when we last updated fixtures
 	// This prevents calling updates too frequently across page loads
 	const FIXTURE_UPDATE_INTERVAL = 10 * 60 * 1000; // 10 minutes
@@ -46,8 +48,9 @@
 	}
 </script>
 
-<Navbar />
+<MetaTags {...metaTags} />
 
+<Navbar />
 <main class="min-h-screen">
 	{@render children()}
 </main>

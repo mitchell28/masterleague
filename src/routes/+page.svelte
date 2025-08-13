@@ -1,13 +1,7 @@
 <script lang="ts">
 	import { animate } from 'motion';
-	import logo from '$lib/assets/logo/masterleague.svg';
 	import CountdownTimer from '$lib/components/ui/CountdownTimer.svelte';
 
-	// Get initialized data from the server
-	let { data } = $props();
-	let upcomingFixtures = $state(data.upcomingFixtures);
-
-	// Target date: Friday, Aug 15, 8:00 PM (2025)
 	const targetDate = new Date('2025-08-15T20:00:00');
 
 	let heroRef = $state<HTMLElement>();

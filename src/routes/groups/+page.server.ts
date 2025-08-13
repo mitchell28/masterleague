@@ -8,6 +8,11 @@ export const load = async ({ locals, url }) => {
 	if (!locals.user?.id) {
 		throw redirect(302, '/auth/login');
 	}
+
+	// Server data only - meta tags are in +page.ts
+	return {
+		// Add any server data here if needed
+	};
 };
 
 export const actions: Actions = {

@@ -8,7 +8,6 @@
 	import logo from '$lib/assets/logo/masterleague.svg';
 
 	const { data } = $props();
-	const session = authClient.useSession();
 
 	const { form, errors, enhance, submitting, message } = superForm(data.form, {
 		validators: zod(authLoginSchema)
