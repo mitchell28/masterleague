@@ -87,15 +87,20 @@
 
 <div class="flex min-h-screen">
 	<!-- Verify email form - centered -->
-	<div class="flex w-full flex-col items-center justify-center px-8 py-12">
+	<div class="mt-22 flex w-full flex-col items-center justify-center p-8">
 		<div
-			class="w-full max-w-md bg-slate-900 p-8 backdrop-blur-sm"
+			class="w-full max-w-md bg-slate-900 p-8"
 			style="clip-path: polygon(10% 0%, 100% 0%, 100% 94%, 90% 100%, 0% 100%, 0% 6%);"
 		>
 			<!-- Logo -->
 			<div class="mb-8 text-center">
-				<img src={logo} height="48" alt="Master League Logo" class="mx-auto mb-4 h-12" />
-				<h1 class="font-display text-3xl font-bold tracking-tight text-white">
+				<img
+					src={logo}
+					height="48"
+					alt="Master League Logo"
+					class="mx-auto mb-4 hidden h-12 md:block"
+				/>
+				<h1 class="font-display text-xl font-bold tracking-tight text-white md:text-3xl">
 					{step === 'request' ? 'Verify Your Email' : 'Enter Verification Code'}
 				</h1>
 				<p class="mt-2 text-sm text-slate-400">

@@ -107,30 +107,31 @@
 			const emailAvailable = await checkEmailAvailability($form.email);
 			if (!emailAvailable) {
 				$message = 'An account with this email already exists. Please sign in instead.';
+				isLoading = false;
 				return;
 			}
 
-			const result = await authClient.signUp.email(
+			await authClient.signUp.email(
 				{
 					name: $form.firstName + ' ' + $form.lastName, // Better Auth expects 'name' field
 					username: $form.username,
 					email: $form.email,
-					password: $form.password,
-					callbackURL: '/auth/verify-email'
+					password: $form.password
 				},
 				{
 					onSuccess: () => {
 						console.log('✅ Signup success callback triggered');
 						// With OTP verification enabled, redirect to verification page
+						isLoading = false;
 						goto(`/auth/verify-email?email=${encodeURIComponent($form.email)}`);
 					},
 					onError: (ctx) => {
 						console.error('❌ Signup error:', ctx.error.code, ctx.error.message);
+						isLoading = false;
 
 						// Handle specific Better Auth error codes
 						if (ctx.error.code === 'USERNAME_IS_INVALID') {
-							$message =
-								'Username is invalid. Please use only letters, numbers, underscores, and hyphens. Username must start with a letter.';
+							$message = 'Invalid username format';
 						} else if (ctx.error.status === 429) {
 							// Handle rate limiting
 							const retryAfter = ctx.error.headers?.get('X-Retry-After');
@@ -157,15 +158,9 @@
 					}
 				}
 			);
-
-			// If we get here without an error, the signup was successful
-			// Redirect to verification page with email parameter
-			console.log('✅ Signup completed, redirecting to verification');
-			goto(`/auth/verify-email?email=${encodeURIComponent($form.email)}`);
 		} catch (error) {
 			$message = 'Account creation failed. Please try again.';
 			console.error('Sign up failed:', error);
-		} finally {
 			isLoading = false;
 		}
 	}
@@ -173,15 +168,22 @@
 
 <div class="flex min-h-screen">
 	<!-- Signup form - centered -->
-	<div class="flex w-full flex-col items-center justify-center px-8 py-12">
+	<div class="mt-22 flex w-full flex-col items-center justify-center p-8">
 		<div
-			class="w-full max-w-lg bg-slate-900 p-8 backdrop-blur-sm"
+			class="w-full max-w-md bg-slate-900 p-8"
 			style="clip-path: polygon(10% 0%, 100% 0%, 100% 94%, 90% 100%, 0% 100%, 0% 6%);"
 		>
 			<!-- Logo -->
 			<div class="mb-8 text-center">
-				<img src={logo} height="48" alt="Master League Logo" class="mx-auto mb-4 h-12" />
-				<h1 class="font-display text-3xl font-bold tracking-tight text-white">Create Account</h1>
+				<img
+					src={logo}
+					height="48"
+					alt="Master League Logo"
+					class="mx-auto mb-4 hidden h-12 md:block"
+				/>
+				<h1 class="font-display text-xl font-bold tracking-tight text-white md:text-3xl">
+					Create Account
+				</h1>
 				<p class="mt-2 text-sm text-slate-400">
 					Already have an account?
 					<a
@@ -199,7 +201,7 @@
 				</div>
 			{/if}
 
-			<form onsubmit={handleSignUp} use:enhance class="space-y-5">
+			<form onsubmit={handleSignUp} class="space-y-5">
 				<div>
 					<label for="username" class="block text-sm font-medium text-slate-300">Username</label>
 
@@ -265,13 +267,12 @@
 					{#if usernameTaken && usernameSuggestions.length > 0}
 						<div class="mt-3">
 							<p class="mb-2 text-sm text-slate-400">Try these available usernames:</p>
-							<div class="flex flex-wrap gap-2">
+							<div class="flex flex-wrap gap-3">
 								{#each usernameSuggestions as suggestion}
 									<button
 										type="button"
 										onclick={() => selectSuggestion(suggestion)}
 										class="border-accent/30 bg-accent/20 text-accent hover:bg-accent/30 hover:text-accent focus:ring-accent border px-3 py-1 text-sm transition-colors focus:ring-2 focus:outline-none"
-										style="clip-path: polygon(4% 0%, 100% 0%, 100% 80%, 96% 100%, 0% 100%, 0% 20%);"
 									>
 										{suggestion}
 									</button>

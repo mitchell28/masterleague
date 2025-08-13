@@ -39,7 +39,7 @@
 </script>
 
 <div bind:this={heroRef} class="relative mt-22 flex min-h-screen items-center justify-center p-4">
-	<div class="container mx-auto max-w-4xl space-y-12 text-center">
+	<div class="container mx-auto flex flex-col gap-8 text-center">
 		<!-- Logo -->
 
 		<!-- Main Title -->

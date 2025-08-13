@@ -440,7 +440,7 @@
 			<input type="hidden" name="week" value={weekParam} />
 
 			<!-- Grid to display match predictions - with optimized keyed each -->
-			<div class="grid grid-cols-1 items-center justify-center gap-10 md:grid-cols-2">
+			<div class="grid grid-cols-1 items-center justify-center gap-10 px-6 md:grid-cols-2">
 				{#each localFixtures as fixture (fixture.id)}
 					<PredictionCardV2
 						{fixture}

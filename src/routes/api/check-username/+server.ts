@@ -14,11 +14,34 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Validate username format before checking database
 		const usernameRegex = /^[a-zA-Z0-9_-]+$/;
-		if (!usernameRegex.test(username) || !username.match(/^[a-zA-Z]/)) {
+		const startsWithLetter = /^[a-zA-Z]/.test(username);
+
+		if (username.length < 3) {
 			return json(
 				{
-					error:
-						'Username can only contain letters, numbers, underscores, and hyphens. Must start with a letter.',
+					error: 'Username must be at least 3 characters',
+					taken: false,
+					invalid: true
+				},
+				{ status: 400 }
+			);
+		}
+
+		if (!usernameRegex.test(username)) {
+			return json(
+				{
+					error: 'Username can only contain letters, numbers, underscores, and hyphens',
+					taken: false,
+					invalid: true
+				},
+				{ status: 400 }
+			);
+		}
+
+		if (!startsWithLetter) {
+			return json(
+				{
+					error: 'Username must start with a letter',
 					taken: false,
 					invalid: true
 				},
