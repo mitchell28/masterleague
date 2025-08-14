@@ -23,6 +23,7 @@ export const authClient = createAuthClient({
 	fetchOptions: {
 		onError: async (context) => {
 			const { response } = context;
+
 			console.error(`🚨 [Auth Client] Request failed:`, {
 				status: response.status,
 				statusText: response.statusText,
@@ -33,7 +34,6 @@ export const authClient = createAuthClient({
 			if (response.status === 429) {
 				const retryAfter = response.headers.get('X-Retry-After');
 				console.warn(`🚫 [Auth Client] Rate limit exceeded. Retry after ${retryAfter} seconds`);
-				// You could show a toast notification here
 			}
 
 			// Handle other common errors

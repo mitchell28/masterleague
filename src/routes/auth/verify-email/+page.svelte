@@ -17,10 +17,15 @@
 	let step: 'request' | 'verify' | 'success' = $state(data.email ? 'verify' : 'request');
 	let isLoading = $state(false);
 	let isResending = $state(false);
-	let statusMessage = $state(data.email ? `We've sent a 6-digit code to ${data.email}` : '');
+	let statusMessage = $state(
+		data.email
+			? data.codeSent
+				? `We've sent a 6-digit code to ${data.email}`
+				: `Enter the 6-digit code sent to ${data.email}`
+			: ''
+	);
 
-	// Note: Better Auth automatically sends OTP when requireEmailVerification is true
-	// We only need manual sending for resend functionality
+	// Server-side OTP sending for login redirects - no client-side effects needed
 
 	// Send verification OTP (resend only - Better Auth handles initial send)
 	async function sendVerificationOTP(e?: Event) {
@@ -28,20 +33,20 @@
 
 		isResending = true;
 
-		try {
-			await authClient.emailOtp.sendVerificationOtp({
-				email: $form.email,
-				type: 'email-verification'
-			});
+		const { data, error } = await authClient.emailOtp.sendVerificationOtp({
+			email: $form.email,
+			type: 'email-verification'
+		});
 
-			statusMessage = `Code resent to ${$form.email}`;
+		if (error) {
+			console.error('Failed to send verification OTP:', error);
+			$message = error.message || 'Failed to send verification code. Please try again.';
+		} else {
+			statusMessage = `Code sent to ${$form.email}`;
 			setTimeout(() => (statusMessage = ''), 3000);
-		} catch (error: any) {
-			console.error('Failed to resend verification OTP:', error);
-			$message = error.message || 'Failed to resend verification code. Please try again.';
-		} finally {
-			isResending = false;
 		}
+
+		isResending = false;
 	}
 
 	// Request initial OTP (for users who manually navigate to this page)
@@ -50,20 +55,20 @@
 
 		isLoading = true;
 
-		try {
-			await authClient.emailOtp.sendVerificationOtp({
-				email: $form.email,
-				type: 'email-verification'
-			});
+		const { data, error } = await authClient.emailOtp.sendVerificationOtp({
+			email: $form.email,
+			type: 'email-verification'
+		});
 
-			step = 'verify';
-			statusMessage = `We've sent a 6-digit code to ${$form.email}`;
-		} catch (error: any) {
+		if (error) {
 			console.error('Failed to send verification OTP:', error);
 			$message = error.message || 'Failed to send verification code. Please try again.';
-		} finally {
-			isLoading = false;
+		} else {
+			step = 'verify';
+			statusMessage = `We've sent a 6-digit code to ${$form.email}`;
 		}
+
+		isLoading = false;
 	}
 
 	// Verify email with OTP - optimized flow
@@ -76,30 +81,36 @@
 		statusMessage = 'Verifying email...';
 		$message = '';
 
-		try {
-			// Step 1: Verify the email with OTP
-			await authClient.emailOtp.verifyEmail({
-				email: $form.email,
-				otp: $form.otp
-			});
+		// Step 1: Verify the email with OTP
+		const { data, error } = await authClient.emailOtp.verifyEmail({
+			email: $form.email,
+			otp: $form.otp
+		});
 
+		if (error) {
+			console.error('Email verification failed:', error);
+			$message = error.message || 'Verification failed. Please check your code and try again.';
+		} else {
 			step = 'success';
 			statusMessage = 'Email verified successfully!';
 
-			// Immediate redirect with shorter delay for better UX
+			// Determine flow based on sessionStorage
 			setTimeout(() => {
-				if (data.fromLogin) {
+				const pendingLogin = sessionStorage.getItem('pendingLogin');
+				const signupData = sessionStorage.getItem('signupData');
+
+				if (pendingLogin) {
 					handleLoginFlow();
-				} else {
+				} else if (signupData) {
 					handleSignupFlow();
+				} else {
+					// Default to login page if no stored data
+					goto('/auth/login?verified=true&message=Email verified! Please sign in to continue');
 				}
-			}, 500); // Reduced from implicit longer delay
-		} catch (error: any) {
-			console.error('Email verification failed:', error);
-			$message = error.message || 'Verification failed. Please check your code and try again.';
-		} finally {
-			isLoading = false;
+			}, 500);
 		}
+
+		isLoading = false;
 	}
 
 	// Handle login flow after verification - optimized
@@ -108,23 +119,23 @@
 
 		const pendingLogin = sessionStorage.getItem('pendingLogin');
 		if (pendingLogin) {
-			try {
-				const { email, password } = JSON.parse(pendingLogin);
-				sessionStorage.removeItem('pendingLogin');
+			const { email, password } = JSON.parse(pendingLogin);
+			sessionStorage.removeItem('pendingLogin');
 
-				// Complete sign-in first to ensure session is properly established
-				await authClient.signIn.email({
-					email,
-					password,
-					rememberMe: true
-				});
+			// Complete sign-in first to ensure session is properly established
+			const { data, error } = await authClient.signIn.email({
+				email,
+				password,
+				rememberMe: true
+			});
 
+			if (error) {
+				console.error('Sign-in failed after verification:', error);
+				goto('/auth/login?verified=true');
+			} else {
 				// Show success and redirect after session is established
 				statusMessage = 'Success! Redirecting...';
 				setTimeout(() => goto('/predictions'), 300);
-			} catch (error: any) {
-				console.error('Sign-in failed after verification:', error);
-				goto('/auth/login?verified=true');
 			}
 		} else {
 			goto('/auth/login?verified=true');
@@ -137,24 +148,24 @@
 
 		const signupData = sessionStorage.getItem('signupData');
 		if (signupData) {
-			try {
-				const { email, password } = JSON.parse(signupData);
-				sessionStorage.removeItem('signupData');
+			const { email, password } = JSON.parse(signupData);
+			sessionStorage.removeItem('signupData');
 
-				// Complete sign-in first to ensure session is properly established
-				await authClient.signIn.email({
-					email,
-					password,
-					rememberMe: true
-				});
+			// Complete sign-in first to ensure session is properly established
+			const { data, error } = await authClient.signIn.email({
+				email,
+				password,
+				rememberMe: true
+			});
 
-				// Show success and redirect after session is established
-				statusMessage = 'Perfect! Taking you to your dashboard...';
-				setTimeout(() => goto('/predictions'), 300);
-			} catch (error: any) {
+			if (error) {
 				console.error('Auto sign-in failed after verification:', error);
 				// If auto sign-in fails, they can manually sign in
 				goto('/auth/login?verified=true&message=Please sign in to continue');
+			} else {
+				// Show success and redirect after session is established
+				statusMessage = 'Perfect! Taking you to your dashboard...';
+				setTimeout(() => goto('/predictions'), 300);
 			}
 		} else {
 			// No stored credentials - redirect to login

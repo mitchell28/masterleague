@@ -1,7 +1,9 @@
 import { superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
 import { otpVerifySchema } from '$lib/validation/auth-schemas';
-import type { PageServerLoad } from './$types';
+import { checkEmailStatus } from '$lib/server/utils/auth-checks';
+import { fail } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
 import type { MetaTagsProps } from 'svelte-meta-tags';
 
 export const load: PageServerLoad = async ({ url }) => {
@@ -29,4 +31,31 @@ export const load: PageServerLoad = async ({ url }) => {
 		email,
 		pageMetaTags
 	};
+};
+
+export const actions: Actions = {
+	checkEmail: async ({ request }) => {
+		const formData = await request.formData();
+		const email = formData.get('email') as string;
+
+		if (!email) {
+			return fail(400, { error: 'Email is required' });
+		}
+
+		try {
+			const { exists } = await checkEmailStatus(email);
+
+			if (!exists) {
+				return fail(404, {
+					error: `No account found with email ${email}. Please sign up first or check your email address.`,
+					exists: false
+				});
+			}
+
+			return { email, exists: true };
+		} catch (error) {
+			console.error('Email check failed:', error);
+			return fail(500, { error: 'Failed to verify email' });
+		}
+	}
 };

@@ -6,6 +6,7 @@
 	import { authLoginSchema } from '$lib/validation/auth-schemas';
 	import { Loader2 } from '@lucide/svelte';
 	import logo from '$lib/assets/logo/masterleague.svg';
+	import { cidr } from 'drizzle-orm/pg-core';
 
 	const { data } = $props();
 
@@ -26,21 +27,22 @@
 		isLoading = true;
 		$message = '';
 
-		try {
-			// Attempt sign in with Better Auth
-			await authClient.signIn.email({
-				email: $form.email,
-				password: $form.password,
-				rememberMe: true
-			});
+		// Attempt sign in with Better Auth using recommended error handling
+		const { data, error } = await authClient.signIn.email({
+			email: $form.email,
+			password: $form.password,
+			rememberMe: true
+		});
 
-			// Success - redirect to predictions
-			goto('/predictions');
-		} catch (error: any) {
+		if (error) {
 			console.error('Sign in failed:', error);
 
-			// Handle email verification requirement (403 = unverified email)
-			if (error.status === 403) {
+			// Handle email verification requirement
+			if (
+				error.status === 403 ||
+				error.message?.includes('email') ||
+				error.message?.includes('verify')
+			) {
 				// Store credentials for after verification
 				sessionStorage.setItem(
 					'pendingLogin',
@@ -50,26 +52,24 @@
 					})
 				);
 
-				$message = 'Please verify your email address before signing in. Redirecting...';
-
-				// Redirect to verification (OTP will be auto-sent there)
-				setTimeout(() => {
-					goto(`/auth/verify-email?email=${encodeURIComponent($form.email)}&from=login`);
-				}, 1500);
+				// Redirect to verification
+				goto(`/auth/verify-email?email=${encodeURIComponent($form.email)}&from=login`);
+				isLoading = false;
 				return;
 			}
 
-			// Handle rate limiting
+			// Handle other errors
 			if (error.status === 429) {
-				const retryAfter = error.headers?.get('X-Retry-After');
-				$message = `Too many login attempts. Please wait ${retryAfter || 60} seconds.`;
+				$message = `Too many login attempts. Please wait and try again.`;
 			} else {
-				// Generic error for security
 				$message = 'Invalid email or password. Please check your credentials and try again.';
 			}
-		} finally {
-			isLoading = false;
+		} else {
+			// Success - redirect to predictions
+			goto('/predictions');
 		}
+
+		isLoading = false;
 	}
 </script>
 

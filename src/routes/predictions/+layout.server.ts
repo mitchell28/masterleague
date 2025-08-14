@@ -23,11 +23,6 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		throw redirect(302, '/auth/login');
 	}
 
-	// Check if email is verified
-	if (!locals.user.emailVerified) {
-		throw redirect(302, `/auth/verify-email?email=${encodeURIComponent(locals.user.email)}`);
-	}
-
 	// Start with cached values for faster initial load
 	let currentWeek = cachedCurrentWeek || 1;
 	let weeks = cachedWeeks || [1];
