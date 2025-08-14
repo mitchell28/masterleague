@@ -10,55 +10,48 @@ export const auth = betterAuth({
 
 	hooks: {
 		after: createAuthMiddleware(async (ctx) => {
-			console.log('Auth Path', ctx.path);
-			console.log('Auth Context:', ctx.context.session);
 			// Handle email verification completion - add to organization and league table
 			if (ctx.path.includes('/email-otp/verify-email')) {
-				console.log('Email verification completed, context:', ctx.context.returned.user);
-
 				// Get user from session or newSession
-				const user = ctx.context.newSession?.user || ctx.context?.returned?.user;
+				const user = (ctx.context as any).newSession?.user || (ctx.context as any).returned?.user;
 
-				if (user) {
-					console.log('✅ [Auth] Email verified for user:', {
-						id: user.id,
-						username: user.name,
-						email: user.email,
-						emailVerified: user.emailVerified
-					});
+				if (!user) {
+					return;
+				}
 
-					// Only proceed if email is now verified
-					if (user.emailVerified) {
-						try {
-							await assignUserToDefaultOrganization(user.id);
-							console.log(
-								`✅ [Auth] User ${user.id} assigned to default organization after email verification`
-							);
+				// Only proceed if email is now verified
+				if (!user.emailVerified) {
+					return;
+				}
 
-							// Get the default organization to add user to league table
-							const { db } = await import('../index');
-							const { organization } = await import('./auth-schema');
-							const { eq } = await import('drizzle-orm');
+				try {
+					// Assign user to default organization
+					await assignUserToDefaultOrganization(user.id);
 
-							const defaultOrg = await db
-								.select()
-								.from(organization)
-								.where(eq(organization.slug, 'master-league'))
-								.limit(1);
+					// Get the default organization to add user to league table
+					const { db } = await import('../index');
+					const { organization } = await import('./auth-schema');
+					const { eq } = await import('drizzle-orm');
 
-							if (defaultOrg[0]) {
-								await addUserToLeagueTable(user.id, defaultOrg[0].id);
-								console.log(
-									`✅ [Auth] User ${user.id} added to league table after email verification`
-								);
-							}
-						} catch (error) {
-							console.error(
-								`❌ [Auth] Failed to assign user ${user.id} to default organization after email verification:`,
-								error
-							);
-						}
+					const defaultOrg = await db
+						.select()
+						.from(organization)
+						.where(eq(organization.slug, 'master-league'))
+						.limit(1);
+
+					if (!defaultOrg[0]) {
+						throw new Error('Default organization not found');
 					}
+
+					// Add user to league table
+					await addUserToLeagueTable(user.id, defaultOrg[0].id);
+				} catch (error) {
+					// Re-throw with context for upstream error handling
+					throw new Error(
+						`Failed to complete user setup after email verification for user ${user.id}: ${
+							error instanceof Error ? error.message : 'Unknown error'
+						}`
+					);
 				}
 			}
 		})

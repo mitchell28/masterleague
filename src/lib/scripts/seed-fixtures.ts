@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import { teams, fixtures, predictions } from '../../../drizzle/schema';
+import { teams, fixtures, predictions } from '$lib/server/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -271,7 +271,7 @@ async function seedFixtures() {
 						awayTeamId,
 						homeScore,
 						awayScore,
-						matchDate: match.utcDate, // Keep as string since schema expects string
+						matchDate: new Date(match.utcDate), // Convert string to Date object for timestamp field
 						pointsMultiplier: 1, // Default multiplier, will be updated after insertion
 						status
 					};

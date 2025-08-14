@@ -17,14 +17,6 @@
 	let isLoading = $state(false);
 	let verificationSuccessMessage = $state('');
 
-	// Show success message if user just verified their email
-	$effect(() => {
-		if (data.verified) {
-			verificationSuccessMessage = '✅ Email verified successfully! You can now sign in.';
-			setTimeout(() => (verificationSuccessMessage = ''), 5000);
-		}
-	});
-
 	// Simple, linear login process
 	async function handleSignIn(e: Event) {
 		e.preventDefault();
