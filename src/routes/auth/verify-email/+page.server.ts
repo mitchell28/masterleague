@@ -5,7 +5,6 @@ import auth from '$lib/server/db/auth/auth';
 import { otpRequestSchema, emailVerificationSchema } from '$lib/validation/auth-schemas';
 import type { Actions, PageServerLoad } from './$types';
 import { APIError } from 'better-auth/api';
-import { tspan } from 'motion/react-client';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	// Redirect if user is already logged in and email is verified
