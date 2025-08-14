@@ -44,7 +44,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	return {
 		form: await superValidate(zod(authLoginSchema)),
-		pageMetaTags,
-		verified
+		pageMetaTags
 	};
 };
