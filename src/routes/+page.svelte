@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { animate } from 'motion';
-	import CountdownTimer from '$lib/components/ui/CountdownTimer.svelte';
 
 	const targetDate = new Date('2025-08-15T20:00:00');
 
@@ -55,33 +54,22 @@
 				</p>
 			</div>
 		</div>
-
-		<div class="flex gap-4 sm:gap-6">
+		<div class="flex gap-4">
 			<a
 				href="/auth/signup"
 				style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
-				class="bg-accent hover:bg-accent/90 inline-flex items-center gap-2 px-6 py-3 text-base font-semibold text-black transition-all duration-200 hover:scale-105 hover:shadow-lg sm:gap-3 sm:px-8 sm:py-4 sm:text-lg"
+				class="bg-accent hover:bg-accent/90 inline-flex min-w-[140px] items-center justify-center gap-2 px-6 py-3 text-base font-semibold text-black transition-all duration-200 hover:scale-105 hover:shadow-lg sm:gap-3 sm:px-8 sm:py-4 sm:text-lg"
 			>
 				Sign Up Now
 			</a>
 			<a
 				href="/blog"
 				style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
-				class="inline-flex items-center gap-2 bg-white/5 px-6 py-3 text-base font-semibold text-white backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white/10 hover:shadow-lg sm:gap-3 sm:px-8 sm:py-4 sm:text-lg"
+				class="inline-flex min-w-[140px] items-center justify-center gap-2 bg-white/5 px-6 py-3 text-base font-semibold text-white backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white/10 hover:shadow-lg sm:gap-3 sm:px-8 sm:py-4 sm:text-lg"
 			>
-				Read Blog
+				Read Announcement
 			</a>
 		</div>
-
-		<!-- Countdown Timer -->
-		<div class="space-y-4">
-			<p class="text-accent text-lg font-medium sm:text-xl">Launching in:</p>
-			<div class="inline-block p-6 sm:p-8">
-				<CountdownTimer {targetDate} />
-			</div>
-		</div>
-
-		<!-- Action Buttons -->
 
 		<!-- Additional Info -->
 		<div class="mx-auto max-w-lg">
