@@ -7,7 +7,12 @@ import type { Actions, PageServerLoad } from './$types';
 import { APIError } from 'better-auth/api';
 import { tspan } from 'motion/react-client';
 
-export const load: PageServerLoad = async ({ url, request }) => {
+export const load: PageServerLoad = async ({ url, locals }) => {
+	// Redirect if user is already logged in and email is verified
+	if (locals.user && locals.user.emailVerified) {
+		throw redirect(302, '/predictions');
+	}
+
 	const email = url.searchParams.get('email');
 	const codeSent = url.searchParams.get('codeSent') === 'true';
 
