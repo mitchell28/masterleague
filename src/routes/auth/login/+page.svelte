@@ -9,47 +9,72 @@
 
 	const { data } = $props();
 
-	const { form, errors, enhance, submitting, message } = superForm(data.form, {
+	const { form, errors, message } = superForm(data.form, {
 		validators: zod(authLoginSchema)
 	});
 
+	// Simple state management
 	let isLoading = $state(false);
+	let verificationSuccessMessage = $state('');
 
-	// Handle Better Auth sign-in directly
+	// Show success message if user just verified their email
+	$effect(() => {
+		if (data.verified) {
+			verificationSuccessMessage = '✅ Email verified successfully! You can now sign in.';
+			setTimeout(() => (verificationSuccessMessage = ''), 5000);
+		}
+	});
+
+	// Simple, linear login process
 	async function handleSignIn(e: Event) {
 		e.preventDefault();
 
+		if (isLoading) return;
+
 		isLoading = true;
+		$message = '';
+
 		try {
-			await authClient.signIn.email(
-				{
-					email: $form.email,
-					password: $form.password,
-					rememberMe: true,
-					callbackURL: '/predictions'
-				},
-				{
-					onSuccess: () => {
-						goto('/predictions');
-					},
-					onError: (ctx) => {
-						// Handle rate limiting specifically
-						if (ctx.error.status === 429) {
-							const retryAfter = ctx.error.headers?.get('X-Retry-After');
-							$message = `Too many login attempts. Please wait ${retryAfter || 60} seconds before trying again.`;
-						} else {
-							// Use generic error message for security
-							// Don't reveal if email exists, is unverified, etc.
-							$message = 'Invalid email or password. Please check your credentials and try again.';
-						}
-						console.error('Sign in error:', ctx.error);
-					}
-				}
-			);
-		} catch (error) {
-			// Generic error message for any unexpected errors
-			$message = 'Login failed. Please try again.';
+			// Attempt sign in with Better Auth
+			await authClient.signIn.email({
+				email: $form.email,
+				password: $form.password,
+				rememberMe: true
+			});
+
+			// Success - redirect to predictions
+			goto('/predictions');
+		} catch (error: any) {
 			console.error('Sign in failed:', error);
+
+			// Handle email verification requirement (403 = unverified email)
+			if (error.status === 403) {
+				// Store credentials for after verification
+				sessionStorage.setItem(
+					'pendingLogin',
+					JSON.stringify({
+						email: $form.email,
+						password: $form.password
+					})
+				);
+
+				$message = 'Please verify your email address before signing in. Redirecting...';
+
+				// Redirect to verification (OTP will be auto-sent there)
+				setTimeout(() => {
+					goto(`/auth/verify-email?email=${encodeURIComponent($form.email)}&from=login`);
+				}, 1500);
+				return;
+			}
+
+			// Handle rate limiting
+			if (error.status === 429) {
+				const retryAfter = error.headers?.get('X-Retry-After');
+				$message = `Too many login attempts. Please wait ${retryAfter || 60} seconds.`;
+			} else {
+				// Generic error for security
+				$message = 'Invalid email or password. Please check your credentials and try again.';
+			}
 		} finally {
 			isLoading = false;
 		}
@@ -84,6 +109,13 @@
 					</a>
 				</p>
 			</div>
+
+			<!-- Success message -->
+			{#if verificationSuccessMessage}
+				<div class="mb-6 border border-green-500/30 bg-green-500/10 p-4">
+					<p class="text-sm text-green-400">{verificationSuccessMessage}</p>
+				</div>
+			{/if}
 
 			<!-- Error message -->
 			{#if $message}

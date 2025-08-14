@@ -1,11 +1,18 @@
+import { redirect } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
 import { emailVerificationSchema } from '$lib/validation/auth-schemas';
 import type { PageServerLoad } from './$types';
 import type { MetaTagsProps } from 'svelte-meta-tags';
 
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	const email = url.searchParams.get('email') || '';
+	const fromLogin = url.searchParams.get('from') === 'login';
+
+	// If user is already authenticated and email is verified, redirect to predictions
+	if (locals.session && locals.user?.emailVerified) {
+		throw redirect(302, '/predictions');
+	}
 
 	// Meta tags for email verification page
 	const pageMetaTags = Object.freeze({
@@ -29,6 +36,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	return {
 		form: await superValidate({ email }, zod(emailVerificationSchema)),
 		email,
+		fromLogin,
 		pageMetaTags
 	};
 };

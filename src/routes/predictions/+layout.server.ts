@@ -25,7 +25,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 
 	// Check if email is verified
 	if (!locals.user.emailVerified) {
-		throw redirect(302, '/auth/verify-email');
+		throw redirect(302, `/auth/verify-email?email=${encodeURIComponent(locals.user.email)}`);
 	}
 
 	// Start with cached values for faster initial load

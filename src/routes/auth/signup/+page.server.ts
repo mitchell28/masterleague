@@ -12,7 +12,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	if (session && user) {
 		// If user has a session but email is not verified, redirect to verify-email
 		if (!user.emailVerified) {
-			throw redirect(302, '/auth/verify-email');
+			// Preserve email parameter if it exists in the current URL
+			const emailParam = url.searchParams.get('email');
+			const redirectUrl = emailParam
+				? `/auth/verify-email?email=${encodeURIComponent(emailParam)}`
+				: `/auth/verify-email?email=${encodeURIComponent(user.email)}`;
+			throw redirect(302, redirectUrl);
 		}
 		// If user has a session and email is verified, redirect to predictions
 		throw redirect(302, '/predictions');

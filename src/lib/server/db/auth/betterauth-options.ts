@@ -72,8 +72,9 @@ export const betterAuthOptions: BetterAuthOptions = {
 
 	// Enable email and password authentication
 	emailAndPassword: {
+		requireEmailVerification: true, // Block unverified users from signing in
 		enabled: true,
-		autoSignIn: true
+		autoSignIn: false // We handle sign-in manually after OTP verification
 	},
 
 	// Add user creation debugging
@@ -162,7 +163,7 @@ export const betterAuthOptions: BetterAuthOptions = {
 		}),
 		emailOTP({
 			overrideDefaultEmailVerification: true, // Use OTP instead of email links
-			sendVerificationOnSignUp: true, // Send OTP when user signs up
+			sendVerificationOnSignUp: false, // Don't auto-send on signup - let frontend control this
 			async sendVerificationOTP({ email, otp, type }) {
 				try {
 					const emailResult = await resend.emails.send({

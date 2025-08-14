@@ -51,21 +51,12 @@
 			</h1>
 			<div bind:this={subtitleRef} class="opacity-0">
 				<p class="mx-auto max-w-2xl text-xl font-light text-white/80 sm:text-2xl md:text-3xl">
-					Landing Page Coming Soon
+					The Pitch Is Ready
 				</p>
 			</div>
 		</div>
 
-		<!-- Countdown Timer -->
-		<div class="space-y-8">
-			<p class="text-accent text-lg font-medium sm:text-xl">Launching in:</p>
-			<div class="inline-block p-6 sm:p-8">
-				<CountdownTimer {targetDate} />
-			</div>
-		</div>
-
-		<!-- Action Buttons -->
-		<div class="flex flex-col gap-4 sm:flex-row sm:justify-center sm:gap-6">
+		<div class="flex gap-4 sm:gap-6">
 			<a
 				href="/auth/signup"
 				style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
@@ -82,10 +73,20 @@
 			</a>
 		</div>
 
+		<!-- Countdown Timer -->
+		<div class="space-y-4">
+			<p class="text-accent text-lg font-medium sm:text-xl">Launching in:</p>
+			<div class="inline-block p-6 sm:p-8">
+				<CountdownTimer {targetDate} />
+			</div>
+		</div>
+
+		<!-- Action Buttons -->
+
 		<!-- Additional Info -->
 		<div class="mx-auto max-w-lg">
 			<p class="text-sm leading-relaxed text-white/70 sm:text-base">
-				The ultimate football prediction platform is coming. Get ready for a revolutionary way to
+				The ultimate football prediction platform is here. Get ready for a revolutionary way to
 				compete with friends and climb the leaderboard.
 			</p>
 		</div>

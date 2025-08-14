@@ -11,7 +11,7 @@ export const load = async ({ locals, url }) => {
 
 	// Check if email is verified
 	if (!locals.user.emailVerified) {
-		throw redirect(302, '/auth/verify-email');
+		throw redirect(302, `/auth/verify-email?email=${encodeURIComponent(locals.user.email)}`);
 	}
 
 	// Server data only - meta tags are in +page.ts

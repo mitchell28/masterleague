@@ -13,65 +13,70 @@
 		validators: zod(authSignupSchema)
 	});
 
-	// Username suggestions state
+	// Simple state management
+	let isLoading = $state(false);
 	let usernameTaken = $state(false);
 	let usernameSuggestions = $state<string[]>([]);
 	let checkingUsername = $state(false);
+	let usernameValidationError = $state('');
+
+	// Debounce timer for username check
 	let debounceTimer: NodeJS.Timeout | null = null;
-	let isLoading = $state(false);
 
 	// Generate username suggestions
 	function generateUsernameSuggestions(baseUsername: string): string[] {
-		const suggestions = [];
 		const random = Math.floor(Math.random() * 999) + 1;
-
-		suggestions.push(`${baseUsername}${random}`);
-		suggestions.push(`${baseUsername}_${Math.floor(Math.random() * 99) + 1}`);
-		suggestions.push(`${baseUsername}${new Date().getFullYear()}`);
-
-		return suggestions;
+		return [
+			`${baseUsername}${random}`,
+			`${baseUsername}_${Math.floor(Math.random() * 99) + 1}`,
+			`${baseUsername}${new Date().getFullYear()}`
+		];
 	}
 
-	// Username validation state
-	let usernameValidationError = $state('');
+	// Check username availability with debouncing
+	function handleUsernameInput() {
+		if (debounceTimer) clearTimeout(debounceTimer);
 
-	// Check username availability
-	async function checkUsernameAvailability(username: string) {
-		if (!username || username.length < 3) return;
+		debounceTimer = setTimeout(async () => {
+			const username = $form.username;
+			if (!username || username.length < 3) {
+				usernameTaken = false;
+				usernameSuggestions = [];
+				usernameValidationError = '';
+				return;
+			}
 
-		checkingUsername = true;
-		usernameTaken = false;
-		usernameSuggestions = [];
-		usernameValidationError = '';
+			checkingUsername = true;
+			usernameTaken = false;
+			usernameSuggestions = [];
+			usernameValidationError = '';
 
-		try {
-			const response = await fetch('/api/check-username', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ username })
-			});
+			try {
+				const response = await fetch('/api/check-username', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ username })
+				});
 
-			const result = await response.json();
+				const result = await response.json();
 
-			if (response.ok) {
-				if (result.taken) {
-					usernameTaken = true;
-					usernameSuggestions = generateUsernameSuggestions(username);
-				}
-			} else {
-				// Handle validation errors
-				if (result.invalid) {
+				if (response.ok) {
+					if (result.taken) {
+						usernameTaken = true;
+						usernameSuggestions = generateUsernameSuggestions(username);
+					}
+				} else if (result.invalid) {
 					usernameValidationError = result.error;
 				}
+			} catch (error) {
+				console.error('Username check failed:', error);
+			} finally {
+				checkingUsername = false;
 			}
-		} catch (error) {
-			console.error('❌ Frontend: Username check failed:', error);
-		} finally {
-			checkingUsername = false;
-		}
+		}, 500);
 	}
 
-	// Select suggested username
+	// Select a suggested username
 	function selectSuggestion(suggestion: string) {
 		$form.username = suggestion;
 		usernameTaken = false;
@@ -79,7 +84,7 @@
 		usernameValidationError = '';
 	}
 
-	// Check email availability
+	// Check if email is available
 	async function checkEmailAvailability(email: string): Promise<boolean> {
 		try {
 			const response = await fetch('/api/check-email', {
@@ -87,78 +92,69 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ email })
 			});
-
 			const result = await response.json();
-			return !result.taken; // Return true if email is available (not taken)
+			return !result.taken;
 		} catch (error) {
-			console.error('❌ Email availability check failed:', error);
+			console.error('Email check failed:', error);
 			return true; // Assume available if check fails
 		}
 	}
 
-	// Handle Better Auth sign-up directly
+	// Simple, linear signup process
 	async function handleSignUp(e: Event) {
 		e.preventDefault();
 
+		if (isLoading) return; // Prevent double submission
+
 		isLoading = true;
+		$message = '';
+
 		try {
-			// First, check if email is available (only runs on form submission)
+			// Step 1: Check email availability
+			console.log('Checking email availability...');
 			const emailAvailable = await checkEmailAvailability($form.email);
 			if (!emailAvailable) {
 				$message = 'An account with this email already exists. Please sign in instead.';
-				isLoading = false;
 				return;
 			}
 
-			await authClient.signUp.email(
-				{
-					name: $form.firstName + ' ' + $form.lastName, // Better Auth expects 'name' field
-					username: $form.username,
+			// Step 2: Attempt signup with Better Auth
+			console.log('Creating account...');
+			const signupResult = await authClient.signUp.email({
+				name: `${$form.firstName} ${$form.lastName}`,
+				username: $form.username,
+				email: $form.email,
+				password: $form.password
+			});
+
+			// Step 3: Store credentials for later use after email verification
+			sessionStorage.setItem(
+				'signupData',
+				JSON.stringify({
 					email: $form.email,
 					password: $form.password
-				},
-				{
-					onSuccess: () => {
-						// With OTP verification enabled, redirect to verification page
-						isLoading = false;
-						goto(`/auth/verify-email?email=${encodeURIComponent($form.email)}`);
-					},
-					onError: (ctx) => {
-						console.error('❌ Signup error:', ctx.error.code, ctx.error.message);
-						isLoading = false;
-
-						// Handle specific Better Auth error codes
-						if (ctx.error.code === 'USERNAME_IS_INVALID') {
-							$message = 'Invalid username format';
-						} else if (ctx.error.status === 429) {
-							// Handle rate limiting
-							const retryAfter = ctx.error.headers?.get('X-Retry-After');
-							$message = `Too many signup attempts. Please wait ${retryAfter || 60} seconds before trying again.`;
-						} else if (
-							ctx.error.message?.toLowerCase().includes('username') ||
-							ctx.error.message?.toLowerCase().includes('unique constraint') ||
-							ctx.error.status === 409
-						) {
-							// Username conflict - show suggestions
-							usernameTaken = true;
-							usernameSuggestions = generateUsernameSuggestions($form.username);
-							$message = 'Username is already taken. Try one of the suggestions below.';
-						} else if (
-							ctx.error.message?.toLowerCase().includes('email') &&
-							(ctx.error.message?.toLowerCase().includes('already exists') ||
-								ctx.error.message?.toLowerCase().includes('duplicate'))
-						) {
-							$message = 'An account with this email already exists. Please sign in instead.';
-						} else {
-							// Generic error
-							$message = `Account creation failed: ${ctx.error.message || 'Please try again.'}`;
-						}
-					}
-				}
+				})
 			);
-		} catch (error) {
-			$message = 'Account creation failed. Please try again.';
-			console.error('Sign up failed:', error);
+
+			// Step 4: Redirect to email verification (OTP will be auto-sent there)
+			console.log('Account created successfully, redirecting to email verification...');
+			goto(`/auth/verify-email?email=${encodeURIComponent($form.email)}`);
+		} catch (error: any) {
+			console.error('Signup failed:', error);
+
+			// Handle different error types
+			if (error.status === 429) {
+				$message = 'Too many signup attempts. Please wait a moment and try again.';
+			} else if (error.message?.includes('username') || error.status === 409) {
+				usernameTaken = true;
+				usernameSuggestions = generateUsernameSuggestions($form.username);
+				$message = 'Username is already taken. Try one of the suggestions below.';
+			} else if (error.message?.includes('email')) {
+				$message = 'An account with this email already exists. Please sign in instead.';
+			} else {
+				$message = error.message || 'Account creation failed. Please try again.';
+			}
+		} finally {
 			isLoading = false;
 		}
 	}
@@ -208,29 +204,7 @@
 						id="username"
 						name="username"
 						bind:value={$form.username}
-						oninput={(e) => {
-							const target = e.target as HTMLInputElement;
-							const username = target?.value || '';
-
-							// Clear previous states when user starts typing
-							usernameTaken = false;
-							usernameSuggestions = [];
-							usernameValidationError = '';
-
-							// Clear previous timeout (debouncing)
-							if (debounceTimer) {
-								clearTimeout(debounceTimer);
-							}
-
-							if (username.length >= 3) {
-								// Set new timeout
-								debounceTimer = setTimeout(() => checkUsernameAvailability(username), 500);
-							} else {
-								usernameTaken = false;
-								usernameSuggestions = [];
-								checkingUsername = false;
-							}
-						}}
+						oninput={handleUsernameInput}
 						class="focus:border-accent focus:ring-accent/20 mt-1 block w-full border border-slate-600 bg-slate-800/50 px-3 py-2.5 text-white placeholder-slate-400 transition-colors focus:ring-2 focus:outline-none"
 						class:border-red-500={$errors.username || usernameTaken || usernameValidationError}
 						class:border-green-500={$form.username.length >= 3 &&
