@@ -66,7 +66,7 @@
 		}
 	}
 
-	// Verify email with OTP - simple linear flow
+	// Verify email with OTP - optimized flow
 	async function verifyEmail(e: Event) {
 		e.preventDefault();
 
@@ -86,14 +86,14 @@
 			step = 'success';
 			statusMessage = 'Email verified successfully!';
 
-			// Step 2: Handle different flows
-			if (data.fromLogin) {
-				// User came from login - sign them in with stored credentials
-				await handleLoginFlow();
-			} else {
-				// User came from signup - sign them in with stored signup data
-				await handleSignupFlow();
-			}
+			// Immediate redirect with shorter delay for better UX
+			setTimeout(() => {
+				if (data.fromLogin) {
+					handleLoginFlow();
+				} else {
+					handleSignupFlow();
+				}
+			}, 500); // Reduced from implicit longer delay
 		} catch (error: any) {
 			console.error('Email verification failed:', error);
 			$message = error.message || 'Verification failed. Please check your code and try again.';
@@ -102,7 +102,7 @@
 		}
 	}
 
-	// Handle login flow after verification
+	// Handle login flow after verification - optimized
 	async function handleLoginFlow() {
 		statusMessage = 'Signing you in...';
 
@@ -112,14 +112,16 @@
 				const { email, password } = JSON.parse(pendingLogin);
 				sessionStorage.removeItem('pendingLogin');
 
+				// Complete sign-in first to ensure session is properly established
 				await authClient.signIn.email({
 					email,
 					password,
 					rememberMe: true
 				});
 
+				// Show success and redirect after session is established
 				statusMessage = 'Success! Redirecting...';
-				goto('/predictions');
+				setTimeout(() => goto('/predictions'), 300);
 			} catch (error: any) {
 				console.error('Sign-in failed after verification:', error);
 				goto('/auth/login?verified=true');
@@ -129,7 +131,7 @@
 		}
 	}
 
-	// Handle signup flow after verification
+	// Handle signup flow after verification - optimized
 	async function handleSignupFlow() {
 		statusMessage = 'Setting up your account...';
 
@@ -139,15 +141,16 @@
 				const { email, password } = JSON.parse(signupData);
 				sessionStorage.removeItem('signupData');
 
-				// Sign them in now that email is verified
+				// Complete sign-in first to ensure session is properly established
 				await authClient.signIn.email({
 					email,
 					password,
 					rememberMe: true
 				});
 
+				// Show success and redirect after session is established
 				statusMessage = 'Perfect! Taking you to your dashboard...';
-				goto('/predictions');
+				setTimeout(() => goto('/predictions'), 300);
 			} catch (error: any) {
 				console.error('Auto sign-in failed after verification:', error);
 				// If auto sign-in fails, they can manually sign in

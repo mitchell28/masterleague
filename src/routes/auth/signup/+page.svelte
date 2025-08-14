@@ -111,7 +111,6 @@
 
 		try {
 			// Step 1: Check email availability
-			console.log('Checking email availability...');
 			const emailAvailable = await checkEmailAvailability($form.email);
 			if (!emailAvailable) {
 				$message = 'An account with this email already exists. Please sign in instead.';
@@ -119,7 +118,6 @@
 			}
 
 			// Step 2: Attempt signup with Better Auth
-			console.log('Creating account...');
 			const signupResult = await authClient.signUp.email({
 				name: `${$form.firstName} ${$form.lastName}`,
 				username: $form.username,
@@ -137,7 +135,6 @@
 			);
 
 			// Step 4: Redirect to email verification (OTP will be auto-sent there)
-			console.log('Account created successfully, redirecting to email verification...');
 			goto(`/auth/verify-email?email=${encodeURIComponent($form.email)}`);
 		} catch (error: any) {
 			console.error('Signup failed:', error);
@@ -212,7 +209,7 @@
 							!checkingUsername &&
 							!usernameValidationError &&
 							!$errors.username}
-						autocomplete="username"
+						autocomplete="off"
 						placeholder="Enter your username"
 						required
 					/>

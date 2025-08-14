@@ -138,7 +138,7 @@ export const betterAuthOptions: BetterAuthOptions = {
 						subject: `You've been invited to join ${data.organization.name}`,
 						html: `
 							<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-								<h2 style="color: #4338ca;">Master League</h2>
+								<h2 style="color: #2EFF9B;">MASTER LEAGUE</h2>
 								<p>You've been invited to join <strong>${data.organization.name}</strong> by ${data.inviter.user.name}.</p>
 								<p>Click the link below to accept the invitation:</p>
 								<div style="margin: 20px 0;">
@@ -177,7 +177,7 @@ export const betterAuthOptions: BetterAuthOptions = {
 									: 'Reset your Master League password',
 						html: `
 							<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-								<h2 style="color: #4338ca;">Master League</h2>
+								<h2 style="color: #2EFF9B;">MASTER LEAGUE</h2>
 								<p>Your verification code is:</p>
 								<div style="background: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 2px; margin: 20px 0;">
 									${otp}

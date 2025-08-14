@@ -16,7 +16,7 @@
 		seconds: 0
 	});
 
-	let countdownElements: { [key: string]: HTMLElement } = {};
+	let countdownElements = $state<{ [key: string]: HTMLElement }>({});
 	let previousTimeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0 };
 	let hasAnimatedInitial = false;
 
