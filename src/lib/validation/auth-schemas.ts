@@ -8,15 +8,6 @@ export const authLoginSchema = z.object({
 
 // Signup schema
 export const authSignupSchema = z.object({
-	username: z
-		.string()
-		.min(3, ' Username must be at least 3 characters')
-		.max(20, ' Username must be at most 20 characters')
-		.refine((val) => /^[a-zA-Z]/.test(val), ' Username must start with a letter')
-		.refine(
-			(val) => /^[a-zA-Z0-9_-]+$/.test(val),
-			' Username can only contain letters, numbers, underscores, and hyphens'
-		),
 	email: z.string().email(' Please enter a valid email address'),
 	firstName: z.string().min(2, ' First Name must be at least 2 characters'),
 	lastName: z.string().min(2, ' Last Name must be at least 2 characters'),
@@ -30,13 +21,24 @@ export const otpRequestSchema = z.object({
 
 export const otpVerifySchema = z.object({
 	email: z.string().email('Please enter a valid email address'),
-	otp: z.string().length(6, 'Please enter a 6-digit code')
+	otp: z
+		.string()
+		.trim()
+		.length(6, 'Please enter a 6-digit code')
+		.regex(/^\d{6}$/, 'Code must be exactly 6 digits')
 });
 
 // Email verification schema
 export const emailVerificationSchema = z.object({
 	email: z.string().email('Please enter a valid email address'),
-	otp: z.string().length(6, 'Please enter a 6-digit code')
+	otp: z
+		.string()
+		.trim()
+		.length(6, 'Please enter a 6-digit code')
+		.regex(/^\d{6}$/, 'Code must be exactly 6 digits'),
+	// Optional signup credentials for auto-login
+	signupEmail: z.string().optional(),
+	signupPassword: z.string().optional()
 });
 
 // Export types for TypeScript

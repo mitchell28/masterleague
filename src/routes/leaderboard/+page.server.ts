@@ -40,7 +40,7 @@ export const load = (async ({ locals, url }) => {
 	const leaderboard = await db
 		.select({
 			id: leagueTable.userId,
-			username: authUser.name,
+			name: authUser.name,
 			email: authUser.email,
 			totalPoints: leagueTable.totalPoints,
 			correctScorelines: leagueTable.correctScorelines,

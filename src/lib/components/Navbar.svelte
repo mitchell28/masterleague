@@ -5,7 +5,8 @@
 	import { authClient } from '$lib/client/auth-client';
 	import logo from '$lib/assets/logo/masterleague.svg';
 
-	const session = authClient.useSession();
+	let { user } = $derived(page.data);
+
 	const navItems = [
 		{ href: '/', label: 'Home', adminOnly: false },
 		{ href: '/predictions', label: 'Predictions', adminOnly: false },
@@ -77,7 +78,7 @@
 
 				<div class="flex gap-2">
 					{#each navItems as item}
-						{#if !item.adminOnly || $session.data?.user?.role === 'admin'}
+						{#if !item.adminOnly || user?.role === 'admin'}
 							{@const isActive = isNavItemActive(item.href)}
 							<a
 								data-sveltekit-preload-data="hover"
@@ -101,7 +102,7 @@
 			<!-- Desktop Navigation -->
 			<nav class="hidden items-center gap-8 md:flex">
 				<div class="flex items-center gap-3">
-					{#if $session.data?.user?.emailVerified}
+					{#if user}
 						<div class="relative">
 							<button
 								data-dropdown-button
@@ -109,7 +110,7 @@
 								onclick={() => (isDropdownOpen = !isDropdownOpen)}
 							>
 								<div class="bg-accent flex size-8 items-center justify-center text-black shadow-md">
-									{$session.data.user.name.charAt(0).toUpperCase()}
+									{user?.name.charAt(0).toUpperCase()}
 								</div>
 							</button>
 
@@ -120,8 +121,8 @@
 									class="border-accent/30 absolute top-full right-0 z-[60] mt-2 w-64 border bg-[#0D1326] shadow-xl"
 								>
 									<div class="border-accent/30 border-b p-4">
-										<p class="font-medium text-white">{$session.data.user.name}</p>
-										<p class="text-xs text-slate-400">{$session.data.user.email}</p>
+										<p class="font-medium text-white">{user?.name}</p>
+										<p class="text-xs text-slate-400">{user?.email}</p>
 									</div>
 									<div class="p-2">
 										<button
@@ -185,7 +186,7 @@
 		>
 			<nav class="container mx-auto flex flex-col gap-2 px-4 py-6 text-sm">
 				{#each navItems as item}
-					{#if !item.adminOnly || $session.data?.user?.role === 'admin'}
+					{#if !item.adminOnly || user?.role === 'admin'}
 						{@const isActive = isNavItemActive(item.href)}
 						<a
 							href={item.href}
@@ -199,16 +200,16 @@
 				{/each}
 
 				<div class="border-accent/30 mt-6 border-t pt-6">
-					{#if $session.data?.user?.emailVerified}
+					{#if user?.emailVerified}
 						<div class="flex flex-col gap-4">
 							<div class="flex items-center gap-3 px-4">
 								<div
 									class="bg-accent flex size-10 items-center justify-center text-black shadow-md"
 									style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
 								>
-									{$session.data.user.name.charAt(0).toUpperCase()}
+									{user?.name.charAt(0).toUpperCase()}
 								</div>
-								<p class="font-medium text-white">{$session.data.user.name}</p>
+								<p class="font-medium text-white">{user?.name}</p>
 							</div>
 							<button
 								class="hover:bg-accent/20 border-accent/30 flex w-full items-center justify-center gap-2 border py-3 text-center font-medium text-white transition-all"

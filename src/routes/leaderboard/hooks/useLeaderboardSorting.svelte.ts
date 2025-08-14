@@ -1,6 +1,5 @@
 interface LeaderboardEntry {
 	id: string;
-	username: string;
 	totalPoints: number;
 	correctScorelines: number;
 	correctOutcomes: number;

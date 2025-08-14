@@ -93,8 +93,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				user: {
 					id: authUser.id,
 					name: authUser.name,
-					email: authUser.email,
-					username: authUser.username
+					email: authUser.email
 				}
 			})
 			.from(organization)

@@ -1,5 +1,5 @@
 import type { BetterAuthOptions } from 'better-auth';
-import { admin, username, emailOTP, organization } from 'better-auth/plugins';
+import { admin, emailOTP, organization } from 'better-auth/plugins';
 import { getRequestEvent } from '$app/server';
 import Stripe from 'stripe';
 import { stripe } from '@better-auth/stripe';
@@ -119,7 +119,6 @@ export const betterAuthOptions: BetterAuthOptions = {
 	},
 
 	plugins: [
-		username(),
 		admin({
 			adminRoles: ['admin'] // Roles that have admin access
 		}),
@@ -165,16 +164,19 @@ export const betterAuthOptions: BetterAuthOptions = {
 			overrideDefaultEmailVerification: true, // Use OTP instead of email links
 			sendVerificationOnSignUp: false, // Don't auto-send on signup - let frontend control this
 			async sendVerificationOTP({ email, otp, type }) {
+				// Only allow email verification OTPs, reject sign-in OTPs
+				if (type === 'sign-in') {
+					throw new Error('OTP sign-in is disabled. Please use email and password.');
+				}
+
 				try {
 					const emailResult = await resend.emails.send({
 						from: 'Master League <noreply@mail.masterleague.app>',
 						to: email,
 						subject:
-							type === 'sign-in'
-								? 'Sign in to Master League'
-								: type === 'email-verification'
-									? 'Verify your Master League email'
-									: 'Reset your Master League password',
+							type === 'email-verification'
+								? 'Verify your Master League email'
+								: 'Reset your Master League password',
 						html: `
 							<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
 								<h2 style="color: #2EFF9B;">MASTER LEAGUE</h2>

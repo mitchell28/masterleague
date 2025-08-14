@@ -82,10 +82,9 @@
 				<h2 class="text-primary mb-3 text-xl font-bold sm:mb-4 sm:text-2xl">The Sign-Up Process</h2>
 				<p class="mb-4 text-sm leading-relaxed sm:mb-6 sm:text-base">
 					Secondly, all you have to do is simply open the menu and click sign-up. When you do, you
-					will be greeted with a screen that requires a few details, including your username, first
-					name, last name, email address, and password. Make sure you remember these details, so
-					that you can login each week – if you do forget, there will be an option to reset
-					password.
+					will be greeted with a screen that requires a few details, including your first name, last
+					name, email address, and password. Make sure you remember these details, so that you can
+					login each week – if you do forget, there will be an option to reset password.
 				</p>
 
 				<p class="mb-4 text-sm leading-relaxed sm:mb-6 sm:text-base">

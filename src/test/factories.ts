@@ -32,8 +32,6 @@ export class UserFactory {
 			banned: false,
 			banReason: null,
 			banExpires: null,
-			username: `testuser${id.slice(0, 8)}`,
-			displayUsername: `Test User ${id.slice(0, 8)}`,
 			stripeCustomerId: null,
 			...overrides
 		};

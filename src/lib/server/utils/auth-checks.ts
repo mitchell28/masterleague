@@ -27,20 +27,3 @@ export async function checkEmailStatus(email: string) {
 		throw new Error('Database error while checking email');
 	}
 }
-
-/**
- * Check if a username is taken (assumes username is already validated by Zod schema)
- * This only checks database availability, not format validation
- */
-export async function checkUsernameAvailability(username: string) {
-	const existingUser = await db.query.user.findFirst({
-		where: eq(user.username, username),
-		columns: {
-			id: true
-		}
-	});
-
-	return {
-		available: !existingUser
-	};
-}

@@ -1,10 +1,5 @@
 import { createAuthClient } from 'better-auth/svelte';
-import {
-	adminClient,
-	usernameClient,
-	emailOTPClient,
-	organizationClient
-} from 'better-auth/client/plugins';
+import { adminClient, emailOTPClient, organizationClient } from 'better-auth/client/plugins';
 import { stripeClient } from '@better-auth/stripe/client';
 import { PUBLIC_BETTER_AUTH_URL } from '$env/static/public';
 
@@ -13,7 +8,6 @@ export const authClient = createAuthClient({
 	baseURL: PUBLIC_BETTER_AUTH_URL,
 	plugins: [
 		adminClient(),
-		usernameClient(),
 		emailOTPClient(),
 		organizationClient(),
 		stripeClient({

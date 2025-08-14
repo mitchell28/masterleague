@@ -135,8 +135,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				inviter: {
 					id: authUser.id,
 					name: authUser.name,
-					email: authUser.email,
-					username: authUser.username
+					email: authUser.email
 				}
 			})
 			.from(invitation)

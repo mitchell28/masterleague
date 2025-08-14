@@ -44,7 +44,7 @@
 		<select
 			bind:value={selectedWeek}
 			onchange={handleSelectChange}
-			class="custom-select border-accent w-full appearance-none rounded-md border-2 py-2 pr-3 pl-3 text-sm font-medium text-white transition-colors focus:outline-none sm:pr-10 sm:pl-4"
+			class="custom-select border-accent w-full appearance-none rounded-md border-2 px-3 py-2 text-sm font-medium text-white transition-colors focus:outline-none"
 		>
 			{#each weeks as weekNumber}
 				<option value={weekNumber} class=" text-white">
@@ -65,7 +65,6 @@
 </div>
 
 <style>
-	/* Enhanced select styling with modern approach and mobile responsive */
 	.custom-select {
 		/* Remove default appearance - comprehensive approach */
 		appearance: none;
@@ -92,12 +91,6 @@
 	/* Additional browser-specific rules */
 	.custom-select::-ms-expand {
 		display: none; /* Remove IE/Edge dropdown arrow */
-	}
-
-	@media (min-width: 640px) {
-		.custom-select {
-			min-width: 140px;
-		}
 	}
 
 	.custom-select:hover {

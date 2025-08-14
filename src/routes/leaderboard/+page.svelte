@@ -32,8 +32,8 @@
 
 		const query = searchQuery.toLowerCase().trim();
 		const filtered = leaderboard.filter((entry: any) => {
-			const username = (entry.username || '').toLowerCase();
-			return username.includes(query);
+			const name = (entry.name || '').toLowerCase();
+			return name.includes(query);
 		});
 
 		return filtered;
@@ -67,9 +67,9 @@
 					return sortDirection === 'desc' ? bOutcomes - aOutcomes : aOutcomes - bOutcomes;
 				}
 
-				// Final tiebreaker: alphabetical by username
-				const aName = (a.username || '').toLowerCase();
-				const bName = (b.username || '').toLowerCase();
+				// Final tiebreaker: alphabetical by name
+				const aName = (a.name || '').toLowerCase();
+				const bName = (b.name || '').toLowerCase();
 				return aName.localeCompare(bName);
 			}
 
@@ -259,7 +259,7 @@
 									</div>
 									<div>
 										<div class="text-sm font-medium tracking-wide text-white">
-											{entry?.username || 'Anonymous'}
+											{entry?.name || 'Anonymous'}
 										</div>
 									</div>
 								</div>
@@ -402,7 +402,7 @@
 											</div>
 											<div>
 												<div class="text-sm font-medium tracking-wide text-white">
-													{entry?.username || 'Anonymous'}
+													{entry?.name || 'Anonymous'}
 												</div>
 											</div>
 										</div>

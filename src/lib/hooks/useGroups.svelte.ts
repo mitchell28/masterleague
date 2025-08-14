@@ -14,7 +14,6 @@ export interface OrganizationWithMembers {
 			id: string;
 			name: string;
 			email: string;
-			username?: string;
 		};
 	})[];
 	subscription?: any; // TODO: Add proper subscription type
