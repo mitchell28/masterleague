@@ -1,7 +1,7 @@
 import type { MetaTagsProps } from 'svelte-meta-tags';
-import type { LayoutLoad } from './$types';
+import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutLoad = ({ url }) => {
+export const load: LayoutServerLoad = ({ url, locals }) => {
 	const baseMetaTags = Object.freeze({
 		title: 'Home',
 		titleTemplate: '%s | Master League',
@@ -70,6 +70,7 @@ export const load: LayoutLoad = ({ url }) => {
 	}) satisfies MetaTagsProps;
 
 	return {
+		user: locals.user,
 		baseMetaTags
 	};
 };

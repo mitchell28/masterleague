@@ -82,7 +82,6 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	// Immediately return with available data
 	return {
 		currentWeek,
-		weeks,
-		user: locals.user
+		weeks
 	};
 };

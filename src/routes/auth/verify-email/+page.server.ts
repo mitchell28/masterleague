@@ -5,6 +5,7 @@ import auth from '$lib/server/db/auth/auth';
 import { otpRequestSchema, emailVerificationSchema } from '$lib/validation/auth-schemas';
 import type { Actions, PageServerLoad } from './$types';
 import { APIError } from 'better-auth/api';
+import { tspan } from 'motion/react-client';
 
 export const load: PageServerLoad = async ({ url, request }) => {
 	const email = url.searchParams.get('email');
@@ -98,6 +99,7 @@ export const actions: Actions = {
 
 		try {
 			// Verify the email OTP on the server
+			// @ts-ignore
 			const { error } = await auth.api.verifyEmailOTP({
 				body: {
 					email: form.data.email,
