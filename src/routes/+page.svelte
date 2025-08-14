@@ -63,7 +63,7 @@
 				Sign Up Now
 			</a>
 			<a
-				href="/blog"
+				href="/blog/launch-annoucment"
 				style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
 				class="inline-flex min-w-[140px] items-center justify-center gap-2 bg-white/5 px-6 py-3 text-base font-semibold text-white backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white/10 hover:shadow-lg sm:gap-3 sm:px-8 sm:py-4 sm:text-lg"
 			>
