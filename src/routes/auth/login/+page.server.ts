@@ -72,8 +72,6 @@ export const actions: Actions = {
 			// If we reach here, login was successful - redirect to predictions
 			throw redirect(302, '/predictions');
 		} catch (error: any) {
-			console.error('❌ [Login] Login failed:', error);
-
 			// Handle redirect errors (from redirect calls)
 			if (error?.status === 302) {
 				console.log(`🔄 [Login] Handling redirect`);
