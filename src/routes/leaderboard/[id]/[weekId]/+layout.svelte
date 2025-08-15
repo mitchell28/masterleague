@@ -10,7 +10,7 @@
 	// Access page data
 	let data = $derived(page.data);
 	let userId = $derived(page.params.id);
-	let userName = $derived(data?.user?.name || 'User');
+	let userName = $derived(data?.leaderboardUser?.name || 'User');
 	let weekId = $derived(data?.weekData?.weekId || 1);
 	let availableWeeks = $derived(data?.availableWeeks || []);
 	let stats = $derived(data?.stats);

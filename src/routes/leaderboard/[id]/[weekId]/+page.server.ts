@@ -331,7 +331,7 @@ export const load = (async ({ params, locals }) => {
 		);
 
 		return {
-			user: {
+			leaderboardUser: {
 				id: userResult.id,
 				name: userResult.name,
 				email: userResult.email
@@ -349,7 +349,7 @@ export const load = (async ({ params, locals }) => {
 		console.error('Error fetching prediction data:', err);
 		// Return empty predictions in case of error
 		return {
-			user: {
+			leaderboardUser: {
 				id: userResult.id,
 				name: userResult.name,
 				email: userResult.email

@@ -86,7 +86,6 @@ export const load = (async ({ locals, url }) => {
 		currentWeek,
 		leaderboard,
 		selectedOrganization,
-		user: locals.user,
 		currentSeason: '2025-26',
 		pageMetaTags
 	};

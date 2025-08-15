@@ -4,7 +4,7 @@
 	// Define the data structure
 	let { data } = $props<{
 		data: {
-			user: {
+			leaderboardUser: {
 				id: string;
 				name: string;
 				email: string;
