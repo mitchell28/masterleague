@@ -4,7 +4,7 @@
 	import { Check, AlertTriangle, RefreshCw } from '@lucide/svelte';
 	import type { Team, Prediction } from '$lib/server/db/schema';
 	import type { Fixture as BaseFixture } from '$lib/server/db/schema';
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy } from 'svelte';
 	import { page } from '$app/state';
 	import PredictionCardV2 from '../components/PredictionCardV2.svelte';
 
@@ -40,7 +40,7 @@
 	}>();
 
 	// Get week from page params and data
-	let weekParam = $derived(parseInt(page.params.week) || 1);
+	let weekParam = $derived(page.params.week);
 	let isCurrentWeek = $derived(data.currentWeek === weekParam);
 
 	// Form handling and UI state using $state with memoization
@@ -70,9 +70,7 @@
 	let teams = $derived(data?.teams || {});
 	let predictions = $derived(data?.predictions || {});
 
-	// Initialize fixtures and predictions when component mounts or data changes
 	$effect(() => {
-		// This effect runs when the component mounts or when data.week changes
 		if (data && data.week !== currentDisplayedWeek) {
 			updateComponentData();
 		}
