@@ -65,8 +65,7 @@
 		if (predHome === actualHome && predAway === actualAway) {
 			return {
 				type: 'perfect',
-				text: `Perfect +${3 * fixture.pointsMultiplier} pts`,
-				class: 'text-white'
+				text: `+${3 * fixture.pointsMultiplier} pts`
 			};
 		} else if (
 			(predHome > predAway && actualHome > actualAway) ||
@@ -75,26 +74,32 @@
 		) {
 			return {
 				type: 'correct',
-				text: `Correct +${1 * fixture.pointsMultiplier} pts`,
-				class: 'text-white'
+				text: `+${1 * fixture.pointsMultiplier} pts`
 			};
 		} else {
 			return {
 				type: 'incorrect',
-				text: 'Incorrect +0 pts',
-				class: 'text-white'
+				text: '0 pts'
 			};
 		}
 	}
 
-	// Helper function for date formatting - no time, just date
+	// Helper function for date formatting - includes time
 	function formatDate(dateString: string) {
 		const date = new Date(dateString);
-		return date.toLocaleDateString('en-US', {
-			weekday: 'short',
-			day: 'numeric',
-			month: 'short'
-		});
+		return (
+			date.toLocaleDateString('en-US', {
+				weekday: 'short',
+				day: 'numeric',
+				month: 'short'
+			}) +
+			' ' +
+			date.toLocaleTimeString('en-US', {
+				hour: 'numeric',
+				minute: '2-digit',
+				hour12: true
+			})
+		);
 	}
 
 	// Initialize state with runes
@@ -199,9 +204,7 @@
 </script>
 
 <!-- Rectangle 1 - Main Card Container with Custom Shape -->
-<div
-	class="font-display border-b-accent relative min-h-[180px] w-full overflow-clip border-b-6 text-sm sm:min-h-[210px]"
->
+<div class="font-display relative min-h-[180px] w-full overflow-clip text-sm sm:min-h-[220px]">
 	<!-- Green middle notch - always present for card shape -->
 	<div
 		class="bg-accent absolute top-0 left-[33%] flex h-[26px] w-[34%] items-center justify-center"
@@ -209,44 +212,91 @@
 		<span class="text-xs text-black sm:text-sm">{statusDisplay.text}</span>
 	</div>
 
+	{#if specialBadge}
+		<div
+			class=" absolute bottom-0 left-[33%] flex h-[26px] w-[34%] items-center justify-center {specialBadge.color}"
+		>
+			<span class="pt-[2.5px] text-xs font-medium text-black">{specialBadge.text}</span>
+		</div>
+	{/if}
+
 	<!-- Main card background -->
 	<div
 		class="absolute inset-0 bg-slate-900"
-		style="clip-path: polygon(0% 9%, 5% 0%, 35% 0%, 40% 13%, 60% 13%, 65% 0%, 95% 0%, 100% 9%, 100% 100%, 0% 100%);"
+		style="clip-path: polygon(0% 9%, 5% 0%, 35% 0%, 40% 13%, 60% 13%, 65% 0%, 95% 0%, 100% 9%, 100% 91%, 95% 100%, 65% 100%, 60% 87%, 40% 87%, 35% 100%, 5% 100%, 0% 91%);"
 	>
-		<!-- Prediction outcome badge in top left -->
-		{#if predictionOutcome && isFixtureCompleted}
-			<div class="absolute top-2 left-3 sm:left-5">
-				<span class={`text-xs font-medium ${predictionOutcome.class} sm:text-sm`}>
-					{predictionOutcome.text}
-				</span>
-			</div>
-		{/if}
+		<div class="relative h-full px-4 py-8 sm:px-10">
+			<div
+				class="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2 text-center"
+			>
+				<!-- Date badge - hidden during live matches -->
+				{#if !isFixtureLive && !isFixtureCompleted}
+					<div
+						style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
+						class="bg-accent flex items-center justify-center px-2 pt-[6px] pb-[4px] text-center sm:px-3 sm:pt-[8px] sm:pb-[6px]"
+					>
+						<span class="text-xs leading-[12px] text-black sm:text-sm sm:leading-[14px]">
+							{formattedMatchDate}
+						</span>
+					</div>
+				{/if}
 
-		<div class="relative px-4 pt-8 pb-4 sm:px-6">
+				<!-- Score display for completed and live matches -->
+				{#if showActualScore}
+					<div class="flex flex-col items-center gap-2 text-center">
+						<span class="text-center text-xs font-medium text-slate-400">
+							{isFixtureLive ? 'Live Score' : 'Result'}
+						</span>
+						<div class="flex items-center gap-2">
+							<span class="text-base font-bold text-white sm:text-lg">{fixture.homeScore}</span>
+							<span class="text-base text-slate-400 sm:text-lg">-</span>
+							<span class="text-base font-bold text-white sm:text-lg">{fixture.awayScore}</span>
+						</div>
+					</div>
+				{:else if !fixture.canPredict && !prediction}
+					<span class="text-xs text-slate-500 italic sm:text-sm">No prediction</span>
+				{/if}
+
+				<!-- Prediction outcome bottom middle -->
+				{#if predictionOutcome && isFixtureCompleted}
+					<div class="flex text-center">
+						<span class="text-xs font-medium text-gray-400">
+							{predictionOutcome.text}
+						</span>
+					</div>
+				{/if}
+
+				<!-- Prediction close warning -->
+				{#if !readOnly && !isPastWeek && (fixture.status === 'SCHEDULED' || fixture.status === 'TIMED') && fixture.predictionClosesAt && !fixture.canPredict}
+					<div class="rounded-md bg-amber-900/30 p-1 text-center text-xs text-amber-300">
+						<span>Predictions close {formatDate(fixture.predictionClosesAt)}</span>
+					</div>
+				{/if}
+			</div>
 			<!-- Card content will go here -->
-			<div class="flex h-full items-start justify-between gap-2 text-sm sm:gap-3">
+			<div class="flex h-full items-center justify-between gap-2 text-sm sm:gap-3">
 				<!-- Home team -->
-				<div class="flex flex-col items-center gap-3">
+				<div class="flex flex-col items-center gap-2">
 					<!-- Logo -->
 					{#if homeTeam.logo}
 						<img
 							src={homeTeam.logo}
 							alt={homeTeam.name}
-							class="h-12 w-12 object-contain sm:h-16 sm:w-16 md:h-18 md:w-18"
+							class="h-10 w-10 object-contain sm:h-12 sm:w-12 md:h-14 md:w-14"
 						/>
 					{/if}
 					<span class="text-center text-xs text-wrap sm:text-sm">{homeTeam.shortName}</span>
 
 					<!-- Home Score Controls or Display -->
-					<div class="font-sans">
+					<div>
 						{#if showActualScore || !fixture.canPredict || readOnly}
-							<!-- Show actual score or read-only prediction -->
-							<div class="flex h-8 w-20 items-center justify-center sm:w-24">
-								{#if showActualScore}
-									<span class="text-base font-bold text-white sm:text-lg">{fixture.homeScore}</span>
-								{:else if prediction}
+							<!-- Show predicted score or read-only prediction -->
+							<div class="flex flex-col items-center gap-1">
+								{#if prediction}
 									<span class="text-base text-slate-300 sm:text-lg">{prediction.home}</span>
+									{#if showActualScore || isFixtureLive}
+										<span class="text-xs text-slate-500">Predicted</span>
+									{/if}
 								{:else}
 									<span class="text-slate-500">-</span>
 								{/if}
@@ -305,13 +355,8 @@
 				<div
 					class="absolute inset-x-0 top-13 flex h-[4px] -translate-y-1/2 flex-col items-center gap-3"
 				>
-					<!-- Prediction outcome for completed matches -->
-					{#if prediction !== undefined && prediction !== null && showActualScore}
-						<div class="flex items-center gap-2">
-							<span class="text-xs text-slate-400">Prediction:</span>
-							<span class="text-xs text-slate-300">{prediction.home} - {prediction.away}</span>
-						</div>
-					{:else if showActualScore && !prediction}
+					<!-- Only show "No prediction made" message for completed matches without predictions -->
+					{#if showActualScore && !prediction}
 						<div class="flex items-center gap-2">
 							<span class="text-xs text-slate-400 italic">No prediction made</span>
 							{#if isPastWeek}
@@ -328,69 +373,27 @@
 					{/if}
 				</div>
 
-				<div
-					class="absolute top-16 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 md:top-20"
-				>
-					<!-- Date badge - hidden during live matches -->
-					{#if !isFixtureLive && !isFixtureCompleted}
-						<div
-							style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
-							class="bg-accent flex items-center justify-center px-2 pt-[6px] pb-[4px] text-center sm:px-3 sm:pt-[8px] sm:pb-[6px]"
-						>
-							<span class="text-xs leading-[12px] text-black sm:text-sm sm:leading-[14px]">
-								{formattedMatchDate}
-							</span>
-						</div>
-					{/if}
-
-					<!-- Score display for completed and live matches -->
-					{#if showActualScore}
-						<div class="absolute top-3 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2">
-							<div class="flex items-center gap-2">
-								<span class="text-base font-bold text-white sm:text-lg">{fixture.homeScore}</span>
-								<span class="text-base text-slate-400 sm:text-lg">-</span>
-								<span class="text-base font-bold text-white sm:text-lg">{fixture.awayScore}</span>
-							</div>
-						</div>
-					{:else if !fixture.canPredict && prediction && !isFixtureCompleted}
-						<!-- Show prediction when not editable -->
-						<div class="flex items-center gap-2">
-							<span class="text-base text-slate-300 sm:text-lg">{prediction.home}</span>
-							<span class="text-base text-slate-400 sm:text-lg">-</span>
-							<span class="text-base text-slate-300 sm:text-lg">{prediction.away}</span>
-						</div>
-					{:else if !fixture.canPredict && !prediction}
-						<span class="text-xs text-slate-500 italic sm:text-sm">No prediction</span>
-					{/if}
-
-					<!-- Prediction close warning -->
-					{#if !readOnly && !isPastWeek && (fixture.status === 'SCHEDULED' || fixture.status === 'TIMED') && fixture.predictionClosesAt && !fixture.canPredict}
-						<div class="rounded-md bg-amber-900/30 p-1 text-center text-xs text-amber-300">
-							<span>Predictions close {formatDate(fixture.predictionClosesAt)}</span>
-						</div>
-					{/if}
-				</div>
-
 				<!-- Away team -->
-				<div class="flex flex-col items-center gap-3">
+				<div class="flex flex-col items-center gap-2">
 					{#if awayTeam.logo}
 						<img
 							src={awayTeam.logo}
 							alt={awayTeam.name}
-							class="h-12 w-12 object-contain sm:h-16 sm:w-16 md:h-18 md:w-18"
+							class="h-10 w-10 object-contain sm:h-12 sm:w-12 md:h-14 md:w-14"
 						/>
 					{/if}
 					<span class="text-center text-xs text-wrap sm:text-sm">{awayTeam.shortName}</span>
 
 					<!-- Away Score Controls or Display -->
-					<div class="font-sans">
+					<div>
 						{#if showActualScore || !fixture.canPredict || readOnly}
-							<!-- Show actual score or read-only prediction -->
-							<div class="flex h-8 w-20 items-center justify-center sm:w-24">
-								{#if showActualScore}
-									<span class="text-base font-bold text-white sm:text-lg">{fixture.awayScore}</span>
-								{:else if prediction}
+							<!-- Show predicted score or read-only prediction -->
+							<div class="flex flex-col items-center gap-1">
+								{#if prediction}
 									<span class="text-base text-slate-300 sm:text-lg">{prediction.away}</span>
+									{#if showActualScore || isFixtureLive}
+										<span class="text-xs text-slate-500">Predicted</span>
+									{/if}
 								{:else}
 									<span class="text-slate-500">-</span>
 								{/if}
@@ -444,20 +447,6 @@
 					</div>
 				</div>
 			</div>
-
-			<!-- Bottom section for prediction outcomes and status -->
-
-			<!-- Points multiplier badge at bottom -->
-			{#if specialBadge}
-				<div class="absolute bottom-5 left-1/2 -translate-x-1/2">
-					<div
-						style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
-						class="flex items-center justify-center px-3 pt-[6px] pb-[4px] text-center {specialBadge.color}"
-					>
-						<span class="text-xs leading-[12px] font-medium text-black">{specialBadge.text}</span>
-					</div>
-				</div>
-			{/if}
 		</div>
 	</div>
 </div>
