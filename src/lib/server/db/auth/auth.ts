@@ -61,5 +61,4 @@ export const auth = betterAuth({
 // Export types
 export type Auth = typeof auth;
 
-// Default export for Better Auth auto-discovery
 export default auth;

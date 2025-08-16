@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { animate } from 'motion';
 
-	const targetDate = new Date('2025-08-15T20:00:00');
-
 	let heroRef = $state<HTMLElement>();
 	let logoRef = $state<HTMLElement>();
 	let titleRef = $state<HTMLElement>();
