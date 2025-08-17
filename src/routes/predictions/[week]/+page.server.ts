@@ -1,38 +1,19 @@
 import { error, fail } from '@sveltejs/kit';
-import { updateFixtureStatuses } from '$lib/server/football/fixtures/index';
-import { recoverMissedFixtures, submitPrediction } from '$lib/server/football/predictions/';
+import { updateFixtureStatuses } from '$lib/server/engine/data/fixtures/index';
+import { recoverMissedFixtures, submitPrediction } from '$lib/server/engine/data/predictions/';
 import {
 	getFixturesWithPredictions,
 	isFixtureLive,
 	clearFixtureCache
-} from '$lib/server/football/predictions/userPredictions';
+} from '$lib/server/engine/data/predictions/userPredictions';
+import {
+	intelligentPredictionsProcessing,
+	triggerBackgroundProcessing
+} from '$lib/server/engine/data/processing/';
 import type { PageServerLoad, Actions } from './$types';
 import type { Fixture } from '$lib/server/db/schema';
-import { usePointsCalculation } from '../hooks';
 
-/**
- * Update fixtures with missing scores
- * This will fetch data from the football API
- */
-async function updateMissingScores(): Promise<{ updated: number; processed: number }> {
-	try {
-		// Call recoverMissedFixtures which now returns an object with detailed results
-		const result = await recoverMissedFixtures();
-
-		return {
-			updated: result.updated,
-			processed: result.reprocessedPredictions
-		};
-	} catch (err) {
-		console.error('Error updating fixtures with missing scores:', err);
-		return { updated: 0, processed: 0 };
-	}
-}
-
-export const load: PageServerLoad = async ({ params, locals, parent, depends }) => {
-	// Add dependency for invalidation
-	depends('fixtures:' + params.week);
-
+export const load: PageServerLoad = async ({ params, locals, parent, fetch }) => {
 	// Check if user is authenticated
 	const userId = locals.user?.id;
 	if (!userId) {
@@ -45,27 +26,10 @@ export const load: PageServerLoad = async ({ params, locals, parent, depends }) 
 			weeks: [],
 			isPastWeek: false
 		};
-	}
-
-	// Get week from route parameter
+	} // Get week from route parameter
 	const week = parseInt(params.week);
 	if (isNaN(week)) {
 		throw error(400, 'Invalid week parameter');
-	}
-
-	// Process recent fixtures to ensure points are calculated before displaying the page
-	try {
-		const pointsCalculation = usePointsCalculation();
-		const result = await pointsCalculation.processRecentFixtures();
-		if (result.processedPredictions > 0) {
-			console.log(
-				`Processed ${result.processedFixtures} fixtures and ${result.processedPredictions} predictions`
-			);
-			// Check for and update any fixtures with missing scores
-			await updateMissingScores();
-		}
-	} catch (err) {
-		console.error('Points calculation error:', err);
 	}
 
 	// Get parent data from layout
@@ -76,6 +40,53 @@ export const load: PageServerLoad = async ({ params, locals, parent, depends }) 
 	// Get fixtures with predictions using the extracted function
 	const { fixturesWithPrediction, predictionsMap, teamsMap, lastUpdated } =
 		await getFixturesWithPredictions(userId, week, currentWeek);
+
+	// Intelligent processing decision based on game states, timing, and cron activity
+	const processingDecision = await intelligentPredictionsProcessing(
+		fixturesWithPrediction,
+		lastUpdated ? new Date(lastUpdated) : null,
+		currentWeek,
+		week
+	);
+
+	// Handle processing based on intelligent decision
+	if (processingDecision.shouldProcess) {
+		if (processingDecision.method === 'sync') {
+			// For urgent cases (live games, recently finished), process synchronously
+			const { checkAndUpdateRecentFixtures } = await import('$lib/server/engine/data/predictions/');
+
+			try {
+				console.log(`🔥 Urgent sync processing: ${processingDecision.reason}`);
+				await checkAndUpdateRecentFixtures();
+
+				// Clear cache and get fresh data
+				clearFixtureCache(week, userId);
+				const freshData = await getFixturesWithPredictions(userId, week, currentWeek);
+
+				return {
+					week,
+					weeks,
+					currentWeek,
+					fixtures: freshData.fixturesWithPrediction,
+					predictions: freshData.predictionsMap,
+					teams: freshData.teamsMap,
+					isPastWeek: fixturesWithPrediction.length > 0 && week < currentWeek,
+					lastUpdated: new Date().toISOString(),
+					processingInfo: `⚡ Urgent: ${processingDecision.reason}`
+				};
+			} catch (error) {
+				console.error('Urgent processing failed:', error);
+				// Fall back to background processing
+				triggerBackgroundProcessing('update-predictions', { fetch });
+			}
+		} else if (processingDecision.method === 'background') {
+			// For non-urgent cases, use background processing
+			console.log(`🔄 Background processing: ${processingDecision.reason}`);
+			triggerBackgroundProcessing('update-predictions', { fetch });
+		}
+	} else {
+		console.log(`✅ No processing needed: ${processingDecision.reason}`);
+	}
 
 	// Return processed data
 	return {
@@ -88,7 +99,8 @@ export const load: PageServerLoad = async ({ params, locals, parent, depends }) 
 		// During pre-season (before 2025 fixtures), don't mark weeks as past
 		// This prevents showing "past week" when we're just waiting for new season fixtures
 		isPastWeek: fixturesWithPrediction.length > 0 && week < currentWeek,
-		lastUpdated
+		lastUpdated,
+		processingInfo: `💾 ${processingDecision.reason}`
 	};
 };
 

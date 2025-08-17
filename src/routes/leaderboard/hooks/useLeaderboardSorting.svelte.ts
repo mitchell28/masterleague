@@ -1,5 +1,6 @@
 interface LeaderboardEntry {
 	id: string;
+	name?: string;
 	totalPoints: number;
 	correctScorelines: number;
 	correctOutcomes: number;
@@ -16,40 +17,57 @@ interface UseSortingOptions {
 
 /**
  * Hook for managing leaderboard sorting with tiebreakers
+ * @param getData Reactive getter for data to sort (can be filtered data)
  * @param options Configuration options for sorting
  * @returns Object with sorting state and utilities
  */
-export function useLeaderboardSorting(data: LeaderboardEntry[], options: UseSortingOptions = {}) {
+export function useLeaderboardSorting(
+	getData: () => LeaderboardEntry[],
+	options: UseSortingOptions = {}
+) {
 	const { defaultSortKey = 'totalPoints', defaultSortDirection = 'desc' } = options;
 
 	let sortKey = $state<string>(defaultSortKey);
 	let sortDirection = $state<'asc' | 'desc'>(defaultSortDirection);
 
 	// Sorted data with leaderboard-specific logic
-	let sortedData = $derived(() => {
+	const sortedData = $derived(() => {
+		const data = getData();
+		if (!data || data.length === 0) return [];
+
 		return [...data].sort((a, b) => {
 			// Special case for totalPoints - include tiebreakers
 			if (sortKey === 'totalPoints') {
-				if (a.totalPoints !== b.totalPoints) {
-					return sortDirection === 'desc'
-						? b.totalPoints - a.totalPoints
-						: a.totalPoints - b.totalPoints;
+				const aPoints = a.totalPoints || 0;
+				const bPoints = b.totalPoints || 0;
+
+				if (aPoints !== bPoints) {
+					return sortDirection === 'desc' ? bPoints - aPoints : aPoints - bPoints;
 				}
+
 				// First tiebreaker: correct scorelines
-				if (a.correctScorelines !== b.correctScorelines) {
-					return sortDirection === 'desc'
-						? b.correctScorelines - a.correctScorelines
-						: a.correctScorelines - b.correctScorelines;
+				const aScorelines = a.correctScorelines || 0;
+				const bScorelines = b.correctScorelines || 0;
+				if (aScorelines !== bScorelines) {
+					return sortDirection === 'desc' ? bScorelines - aScorelines : aScorelines - bScorelines;
 				}
+
 				// Second tiebreaker: correct outcomes
-				return sortDirection === 'desc'
-					? b.correctOutcomes - a.correctOutcomes
-					: a.correctOutcomes - b.correctOutcomes;
+				const aOutcomes = a.correctOutcomes || 0;
+				const bOutcomes = b.correctOutcomes || 0;
+				if (aOutcomes !== bOutcomes) {
+					return sortDirection === 'desc' ? bOutcomes - aOutcomes : aOutcomes - bOutcomes;
+				}
+
+				// Final tiebreaker: alphabetical by name
+				const aName = (a.userName || '').toLowerCase();
+				const bName = (b.userName || '').toLowerCase();
+				return aName.localeCompare(bName);
 			}
 
 			// For other columns, do standard sorting
-			const valueA = a[sortKey as keyof typeof a];
-			const valueB = b[sortKey as keyof typeof b];
+			const valueA = a[sortKey] || (typeof a[sortKey] === 'number' ? 0 : '');
+			const valueB = b[sortKey] || (typeof b[sortKey] === 'number' ? 0 : '');
 
 			// Handle string values
 			if (typeof valueA === 'string' && typeof valueB === 'string') {
@@ -88,7 +106,7 @@ export function useLeaderboardSorting(data: LeaderboardEntry[], options: UseSort
 			return sortDirection;
 		},
 		get sortedData() {
-			return sortedData;
+			return sortedData();
 		},
 
 		// Actions

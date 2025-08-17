@@ -4,7 +4,7 @@ import type { PageServerLoad } from './$types';
 import { and, eq, asc, inArray, isNull } from 'drizzle-orm';
 import { fixtures, predictions, leagueTable, teams } from '$lib/server/db/schema';
 import { user } from '$lib/server/db/auth/auth-schema';
-import { checkAndUpdateRecentFixtures } from '$lib/server/football/predictions';
+import { checkAndUpdateRecentFixtures } from '$lib/server/engine/data/predictions';
 
 export const load = (async ({ params, locals }) => {
 	// Check if user is authenticated - using session instead of user.id

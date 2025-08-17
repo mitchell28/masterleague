@@ -1,5 +1,5 @@
-import { getUpcomingFixturesForTeam } from '$lib/server/football/fixtures/fixtureRepository';
-import { initializeTeams } from '$lib/server/football/teams';
+import { getUpcomingFixturesForTeam } from '$lib/server/engine/data/fixtures/fixtureRepository';
+import { initializeTeams } from '$lib/server/engine/data/teams';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {

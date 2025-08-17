@@ -26,6 +26,11 @@ interface UserStats {
 	processedPredictions: number;
 }
 
+import {
+	calculatePredictionPoints as calculatePoints,
+	getMatchOutcome
+} from '$lib/server/engine/shared/utils.js';
+
 interface PointsCalculationResult {
 	points: number;
 	isCorrect: boolean;
@@ -60,51 +65,33 @@ export function usePointsCalculation() {
 		actualAwayScore: number,
 		pointsMultiplier = 1
 	): PointsCalculationResult {
-		// Perfect score: 3 points × multiplier
+		// Use the shared calculation function
+		const basePoints = calculatePoints(
+			predictedHomeScore,
+			predictedAwayScore,
+			actualHomeScore,
+			actualAwayScore,
+			1 // Use 1 for base calculation, apply multiplier separately
+		);
+
+		// Determine the type of prediction
+		let type: 'perfect' | 'outcome' | 'incorrect';
 		if (predictedHomeScore === actualHomeScore && predictedAwayScore === actualAwayScore) {
-			const points = 3 * pointsMultiplier;
-			return {
-				points: 3,
-				multipliedPoints: points,
-				isCorrect: true,
-				type: 'perfect'
-			};
+			type = 'perfect';
+		} else if (basePoints > 0) {
+			type = 'outcome';
+		} else {
+			type = 'incorrect';
 		}
 
-		// Calculate outcomes for comparison
-		const predictedOutcome = getMatchOutcome(predictedHomeScore, predictedAwayScore);
-		const actualOutcome = getMatchOutcome(actualHomeScore, actualAwayScore);
+		const multipliedPoints = basePoints * pointsMultiplier;
 
-		// Correct outcome: 1 point × multiplier
-		if (predictedOutcome === actualOutcome) {
-			const points = 1 * pointsMultiplier;
-			return {
-				points: 1,
-				multipliedPoints: points,
-				isCorrect: true,
-				type: 'outcome'
-			};
-		}
-
-		// Incorrect: 0 points
 		return {
-			points: 0,
-			multipliedPoints: 0,
-			isCorrect: false,
-			type: 'incorrect'
+			points: basePoints,
+			multipliedPoints,
+			isCorrect: basePoints > 0,
+			type
 		};
-	}
-
-	/**
-	 * Get the outcome of a match (home win, away win, or draw)
-	 * @param homeScore Home team score
-	 * @param awayScore Away team score
-	 * @returns Match outcome as string
-	 */
-	function getMatchOutcome(homeScore: number, awayScore: number): 'home' | 'away' | 'draw' {
-		if (homeScore > awayScore) return 'home';
-		if (homeScore < awayScore) return 'away';
-		return 'draw';
 	}
 
 	/**

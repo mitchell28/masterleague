@@ -1,1 +1,0 @@
-ALTER TABLE "fixtures" ADD COLUMN "match_id" varchar NOT NULL;

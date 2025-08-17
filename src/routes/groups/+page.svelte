@@ -1,5 +1,5 @@
 <script lang="ts">
-	import OrganizationsDashboard from '$lib/components/OrganizationsDashboard.svelte';
+	import OrganizationsDashboard from './components/OrganizationsDashboard.svelte';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form } = $props<{ data: PageData; form?: ActionData }>();

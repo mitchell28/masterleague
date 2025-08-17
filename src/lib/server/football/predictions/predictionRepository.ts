@@ -1,9 +1,18 @@
-import { db } from '../../db';
-import { fixtures, predictions, leagueTable, teams } from '../../db/schema';
-import { eq, and, desc, isNull, sql } from 'drizzle-orm';
-import { user } from '../../db/auth/auth-schema';
-import type { Prediction, LeagueTable } from '../../db/schema';
+import { db } from '../../db/index.js';
+import {
+	fixtures,
+	predictions,
+	leagueTable,
+	type Fixture,
+	type Prediction,
+	type LeagueTable
+} from '../../db/schema.js';
+import { eq, and, desc, inArray, isNull, sql } from 'drizzle-orm';
+import { calculatePredictionPoints } from '../utils.js';
+import { user } from '../../db/auth/auth-schema.js';
 import { randomUUID } from 'crypto';
+// Import background functions for automatic leaderboard updates
+import { recalculateLeaderboard } from '../leaderboard.js';
 
 /**
  * Result interface for prediction processing
@@ -21,44 +30,6 @@ interface UserPointsUpdate {
 	correctScore: number;
 	correctOutcome: number;
 	points: number;
-}
-
-/**
- * Calculates points for a prediction
- */
-function calculatePredictionPoints(
-	predictedHomeScore: number,
-	predictedAwayScore: number,
-	actualHomeScore: number,
-	actualAwayScore: number,
-	pointsMultiplier = 1
-): number {
-	// Perfect score: 3 points × multiplier
-	if (predictedHomeScore === actualHomeScore && predictedAwayScore === actualAwayScore) {
-		return 3 * pointsMultiplier;
-	}
-
-	// Correct outcome: 1 point × multiplier
-	const predictedOutcome =
-		predictedHomeScore > predictedAwayScore
-			? 'home'
-			: predictedHomeScore < predictedAwayScore
-				? 'away'
-				: 'draw';
-
-	const actualOutcome =
-		actualHomeScore > actualAwayScore
-			? 'home'
-			: actualHomeScore < actualAwayScore
-				? 'away'
-				: 'draw';
-
-	if (predictedOutcome === actualOutcome) {
-		return 1 * pointsMultiplier;
-	}
-
-	// Incorrect: 0 points
-	return 0;
 }
 
 /**
@@ -135,6 +106,8 @@ export async function processPredictionsForFixture(
 
 	// Update league table entries for affected users, grouped by organization
 	const affectedUsers = Array.from(userUpdateMap.keys());
+	const affectedOrganizations = new Set<string>();
+
 	for (const userId of affectedUsers) {
 		const userData = userUpdateMap.get(userId)!;
 
@@ -144,6 +117,8 @@ export async function processPredictionsForFixture(
 			console.warn(`No organization found for user ${userId} in fixture ${fixtureId}`);
 			continue;
 		}
+
+		affectedOrganizations.add(userPrediction.organizationId);
 
 		// Get existing league table entry for this user and organization
 		const existingEntry: LeagueTable | undefined = await db
@@ -184,6 +159,18 @@ export async function processPredictionsForFixture(
 				lastUpdated: new Date()
 			});
 		}
+	}
+
+	// Trigger leaderboard recalculation for affected organizations
+	// This runs in the background and doesn't block the response
+	for (const organizationId of affectedOrganizations) {
+		// Run asynchronously to avoid blocking
+		recalculateLeaderboard(organizationId, '2025-26').catch((error) => {
+			console.error(
+				`Failed to recalculate leaderboard for organization ${organizationId} after fixture ${fixtureId}:`,
+				error
+			);
+		});
 	}
 
 	return {

@@ -3,6 +3,7 @@ import type { Actions } from './$types';
 import { db } from '$lib/server/db';
 import { organization, member } from '$lib/server/db/auth/auth-schema';
 import { eq, and } from 'drizzle-orm';
+import type { MetaTagsProps } from 'svelte-meta-tags';
 
 export const load = async ({ locals, url }) => {
 	if (!locals.user?.id || locals.user.role !== 'admin') {
@@ -14,8 +15,27 @@ export const load = async ({ locals, url }) => {
 		throw redirect(302, `/auth/verify-email?email=${encodeURIComponent(locals.user.email)}`);
 	}
 
-	// Server data only - meta tags are in +page.ts
-	return {};
+	const pageMetaTags = Object.freeze({
+		title: 'Groups',
+		description:
+			'Join or create prediction groups with your friends. Compete in private leagues and climb the leaderboards.',
+		canonical: new URL(url.pathname, url.origin).href,
+		openGraph: {
+			title: 'Groups - Master League',
+			description:
+				'Join or create prediction groups with your friends. Compete in private leagues and climb the leaderboards.',
+			url: new URL(url.pathname, url.origin).href
+			// Note: openGraph.images, siteName, etc. will inherit from layout.ts
+		},
+		twitter: {
+			title: 'Groups - Master League',
+			description:
+				'Join or create prediction groups with your friends. Compete in private leagues and climb the leaderboards.'
+			// Note: twitter.image, imageAlt, etc. will inherit from layout.ts
+		}
+	}) satisfies MetaTagsProps;
+
+	return { pageMetaTags };
 };
 
 export const actions: Actions = {

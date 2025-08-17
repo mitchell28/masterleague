@@ -1,15 +1,24 @@
 <script lang="ts">
 	import { type PageData } from './$types';
-	import { goto } from '$app/navigation';
-	import { ChevronUp, RefreshCcw, SearchIcon } from '@lucide/svelte';
+	import { ChevronUp, RefreshCcw, SearchIcon, Clock, AlertCircle } from '@lucide/svelte';
 	import { useAutoRefresh } from '$lib/hooks';
-	import { useLeaderboardMetrics } from './hooks';
+	import {
+		useLeaderboardMetrics,
+		useLeaderboardRefresh,
+		useLeaderboardCache,
+		useLeaderboardFilter,
+		useLeaderboardSorting
+	} from './hooks';
 
 	// Props and state
 	let { data } = $props<{ data: PageData }>();
+	$inspect(data);
 
 	// Update leaderboard when data changes (reactive to server load updates)
 	let leaderboard = $derived(data.leaderboard || []);
+	let leaderboardMeta = $derived(data.leaderboardMeta);
+
+	$inspect(leaderboardMeta);
 
 	// Use custom hooks
 	const autoRefresh = useAutoRefresh({
@@ -19,94 +28,19 @@
 
 	const metrics = useLeaderboardMetrics();
 
-	// Local reactive state for search and sorting
-	let searchQuery = $state('');
-	let sortKey = $state<string>('totalPoints');
-	let sortDirection = $state<'asc' | 'desc'>('desc');
+	const refresh = useLeaderboardRefresh(
+		data.selectedOrganization?.id || '',
+		data.currentSeason || '2025'
+	);
 
-	// Filtered and sorted data
-	let filteredData = $derived(() => {
-		if (!leaderboard) return [];
+	const cache = useLeaderboardCache();
 
-		if (!searchQuery.trim()) return leaderboard;
+	const filter = useLeaderboardFilter(() => leaderboard);
 
-		const query = searchQuery.toLowerCase().trim();
-		const filtered = leaderboard.filter((entry: any) => {
-			const name = (entry.name || '').toLowerCase();
-			return name.includes(query);
-		});
-
-		return filtered;
+	const sorting = useLeaderboardSorting(() => filter.filteredData, {
+		defaultSortKey: 'totalPoints',
+		defaultSortDirection: 'desc'
 	});
-
-	let sortedData = $derived(() => {
-		const data = filteredData();
-		if (!data) return [];
-
-		const sorted = [...data].sort((a: any, b: any) => {
-			// Special case for totalPoints - include tiebreakers
-			if (sortKey === 'totalPoints') {
-				const aPoints = a.totalPoints || 0;
-				const bPoints = b.totalPoints || 0;
-
-				if (aPoints !== bPoints) {
-					return sortDirection === 'desc' ? bPoints - aPoints : aPoints - bPoints;
-				}
-
-				// First tiebreaker: correct scorelines
-				const aScorelines = a.correctScorelines || 0;
-				const bScorelines = b.correctScorelines || 0;
-				if (aScorelines !== bScorelines) {
-					return sortDirection === 'desc' ? bScorelines - aScorelines : aScorelines - bScorelines;
-				}
-
-				// Second tiebreaker: correct outcomes
-				const aOutcomes = a.correctOutcomes || 0;
-				const bOutcomes = b.correctOutcomes || 0;
-				if (aOutcomes !== bOutcomes) {
-					return sortDirection === 'desc' ? bOutcomes - aOutcomes : aOutcomes - bOutcomes;
-				}
-
-				// Final tiebreaker: alphabetical by name
-				const aName = (a.name || '').toLowerCase();
-				const bName = (b.name || '').toLowerCase();
-				return aName.localeCompare(bName);
-			}
-
-			// For other columns, do standard sorting
-			const valueA = a[sortKey] || (typeof a[sortKey] === 'number' ? 0 : '');
-			const valueB = b[sortKey] || (typeof b[sortKey] === 'number' ? 0 : '');
-
-			// Handle string values
-			if (typeof valueA === 'string' && typeof valueB === 'string') {
-				return sortDirection === 'desc'
-					? valueB.localeCompare(valueA)
-					: valueA.localeCompare(valueB);
-			}
-
-			// Handle numeric values
-			return sortDirection === 'desc'
-				? Number(valueB) - Number(valueA)
-				: Number(valueA) - Number(valueB);
-		});
-
-		return sorted;
-	});
-
-	// Handle column sort clicks
-	function toggleSort(key: string) {
-		if (sortKey === key) {
-			sortDirection = sortDirection === 'desc' ? 'asc' : 'desc';
-		} else {
-			sortKey = key;
-			sortDirection = 'desc';
-		}
-	}
-
-	// View user's predictions
-	function viewUserPredictions(userId: string) {
-		goto(`/leaderboard/${userId}/${data.currentWeek}`);
-	}
 </script>
 
 <div class="mx-auto mt-22">
@@ -132,18 +66,43 @@
 						</div>
 
 						<!-- Mobile Refresh Button -->
-						<div class="mt-3">
-							<button
-								class="bg-accent hover:bg-accent/80 font-display relative inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold tracking-wide text-black transition disabled:cursor-not-allowed disabled:opacity-50"
-								onclick={autoRefresh.refresh}
-								disabled={autoRefresh.isRefreshing}
-							>
-								<RefreshCcw
-									size={12}
-									class={`mr-1.5 ${autoRefresh.isRefreshing ? 'animate-spin' : ''}`}
-								/>
-								{autoRefresh.isRefreshing ? 'Refreshing...' : 'Refresh'}
-							</button>
+						<div class="mt-3 space-y-2">
+							<!-- Cache Status -->
+							{#if leaderboardMeta}
+								{@const cacheStatus = cache.getCacheStatus(leaderboardMeta)}
+								<div class="flex items-center justify-center gap-2 text-xs text-slate-400">
+									<Clock size={12} class={cacheStatus.color} />
+									<span
+										>Updated {cache.formatLastUpdate(leaderboardMeta.lastLeaderboardUpdate)}</span
+									>
+									{#if leaderboardMeta.isCalculating}
+										<span class="text-yellow-400">(calculating...)</span>
+									{/if}
+								</div>
+							{/if}
+
+							<div class="flex justify-center gap-2">
+								<button
+									class="bg-accent hover:bg-accent/80 font-display relative inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold tracking-wide text-black transition disabled:cursor-not-allowed disabled:opacity-50"
+									onclick={() => refresh.refreshLeaderboard(false)}
+									disabled={refresh.isManualRefreshing || autoRefresh.isRefreshing}
+								>
+									<RefreshCcw
+										size={12}
+										class={`mr-1.5 ${refresh.isManualRefreshing || autoRefresh.isRefreshing ? 'animate-spin' : ''}`}
+									/>
+									{refresh.isManualRefreshing ? 'Updating...' : 'Update'}
+								</button>
+
+								<button
+									class="font-display relative inline-flex items-center justify-center bg-slate-700 px-3 py-1.5 text-xs font-semibold tracking-wide text-white transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+									onclick={() => refresh.refreshLeaderboard(true)}
+									disabled={refresh.isManualRefreshing || autoRefresh.isRefreshing}
+									title="Force complete recalculation"
+								>
+									Force Refresh
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -167,19 +126,59 @@
 						</div>
 					</div>
 
-					<!-- Desktop Refresh Button -->
-					<div class="flex justify-end">
-						<button
-							class="bg-accent hover:bg-accent/80 font-display relative inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold tracking-wide text-black transition disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
-							onclick={autoRefresh.refresh}
-							disabled={autoRefresh.isRefreshing}
-						>
-							<RefreshCcw
-								size={12}
-								class={`mr-1.5 ${autoRefresh.isRefreshing ? 'animate-spin' : ''} sm:h-3.5 sm:w-3.5`}
-							/>
-							{autoRefresh.isRefreshing ? 'Refreshing...' : 'Refresh'}
-						</button>
+					<!-- Desktop Refresh Button and Status -->
+					<div class="flex items-center justify-between">
+						<!-- Cache Status -->
+						{#if leaderboardMeta}
+							{@const cacheStatus = cache.getCacheStatus(leaderboardMeta)}
+							<div class="flex items-center gap-3 text-sm text-slate-400">
+								<div class="flex items-center gap-2">
+									<Clock size={14} class={cacheStatus.color} />
+									<span
+										>Updated {cache.formatLastUpdate(leaderboardMeta.lastLeaderboardUpdate)}</span
+									>
+								</div>
+								{#if leaderboardMeta.isCalculating}
+									<span class="text-yellow-400">(calculating...)</span>
+								{/if}
+								{#if leaderboardMeta.finishedMatches !== undefined && leaderboardMeta.totalMatches !== undefined}
+									{#if leaderboardMeta.totalMatches > 0}
+										<span class="text-slate-300"
+											>Matches {leaderboardMeta.finishedMatches}/{leaderboardMeta.totalMatches}</span
+										>
+									{:else}
+										<span class="text-orange-400">Season starting soon</span>
+									{/if}
+								{:else}
+									<span class="text-blue-400">Loading match data...</span>
+								{/if}
+							</div>
+						{:else}
+							<div></div>
+						{/if}
+
+						<div class="flex gap-2">
+							<button
+								class="bg-accent hover:bg-accent/80 font-display relative inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold tracking-wide text-black transition disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
+								onclick={() => refresh.refreshLeaderboard(false)}
+								disabled={refresh.isManualRefreshing || autoRefresh.isRefreshing}
+							>
+								<RefreshCcw
+									size={12}
+									class={`mr-1.5 ${refresh.isManualRefreshing || autoRefresh.isRefreshing ? 'animate-spin' : ''} sm:h-3.5 sm:w-3.5`}
+								/>
+								{refresh.isManualRefreshing ? 'Updating...' : 'Update'}
+							</button>
+
+							<button
+								class="font-display relative inline-flex items-center justify-center bg-slate-700 px-3 py-1.5 text-xs font-semibold tracking-wide text-white transition hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
+								onclick={() => refresh.refreshLeaderboard(true)}
+								disabled={refresh.isManualRefreshing || autoRefresh.isRefreshing}
+								title="Force complete recalculation"
+							>
+								Force Refresh
+							</button>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -196,7 +195,7 @@
 				<div class="relative">
 					<input
 						type="text"
-						bind:value={searchQuery}
+						bind:value={filter.searchQuery}
 						placeholder="Search players..."
 						class="w-full bg-slate-700/80 px-3 py-3 text-sm text-white placeholder-slate-400 transition outline-none focus:bg-slate-700 sm:w-64 sm:py-2"
 					/>
@@ -236,19 +235,19 @@
 		<div class="overflow-hidden bg-slate-800/50">
 			<!-- Mobile Card View (visible on small screens) -->
 			<div class="block sm:hidden">
-				{#if sortedData() && sortedData().length > 0}
-					{#each sortedData() as entry, index}
+				{#if sorting.sortedData && sorting.sortedData.length > 0}
+					{#each sorting.sortedData as entry, index}
 						<button
 							type="button"
 							class="focus:ring-accent w-full cursor-pointer border-b border-slate-700/60 p-4 text-left transition-colors hover:bg-slate-700/30 focus:bg-slate-700/30 focus:ring-2 focus:outline-none focus:ring-inset"
-							onclick={() => viewUserPredictions(entry.id)}
+							onclick={() => refresh.viewUserPredictions(entry.userId, data.currentWeek)}
 							onkeydown={(e) => {
 								if (e.key === 'Enter' || e.key === ' ') {
 									e.preventDefault();
-									viewUserPredictions(entry.id);
+									refresh.viewUserPredictions(entry.userId, data.currentWeek);
 								}
 							}}
-							aria-label="View predictions for {entry.display_name}"
+							aria-label="View predictions for {entry.userName}"
 						>
 							<div class="mb-3 flex items-center justify-between">
 								<div class="flex items-center">
@@ -259,7 +258,7 @@
 									</div>
 									<div>
 										<div class="text-sm font-medium tracking-wide text-white">
-											{entry?.name || 'Anonymous'}
+											{entry?.userName || 'Anonymous'}
 										</div>
 									</div>
 								</div>
@@ -301,7 +300,9 @@
 					{/each}
 				{:else}
 					<div class="py-8 text-center text-sm text-slate-400">
-						{searchQuery ? 'No players match your search' : 'No players found in the leaderboard'}
+						{filter.searchQuery
+							? 'No players match your search'
+							: 'No players found in the leaderboard'}
 					</div>
 				{/if}
 			</div>
@@ -320,61 +321,61 @@
 							</th>
 							<th
 								class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
-								onclick={() => toggleSort('totalPoints')}
+								onclick={() => sorting.toggleSort('totalPoints')}
 							>
 								<div class="flex items-center justify-center">
 									<span>Points</span>
 									<ChevronUp
 										size={16}
-										class={`ml-1 text-slate-400 ${sortKey === 'totalPoints' ? (sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+										class={`ml-1 text-slate-400 ${sorting.sortKey === 'totalPoints' ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
 									/>
 								</div>
 							</th>
 							<th
 								class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
-								onclick={() => toggleSort('correctScorelines')}
+								onclick={() => sorting.toggleSort('correctScorelines')}
 							>
 								<div class="flex items-center justify-center">
 									<span>Perfect</span>
 									<ChevronUp
 										size={16}
-										class={`ml-1 text-slate-400 ${sortKey === 'correctScorelines' ? (sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+										class={`ml-1 text-slate-400 ${sorting.sortKey === 'correctScorelines' ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
 									/>
 								</div>
 							</th>
 							<th
 								class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
-								onclick={() => toggleSort('correctOutcomes')}
+								onclick={() => sorting.toggleSort('correctOutcomes')}
 							>
 								<div class="flex items-center justify-center">
 									<span>Outcome</span>
 									<ChevronUp
 										size={16}
-										class={`ml-1 text-slate-400 ${sortKey === 'correctOutcomes' ? (sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+										class={`ml-1 text-slate-400 ${sorting.sortKey === 'correctOutcomes' ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
 									/>
 								</div>
 							</th>
 							<th
 								class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
-								onclick={() => toggleSort('predictedFixtures')}
+								onclick={() => sorting.toggleSort('predictedFixtures')}
 							>
 								<div class="flex items-center justify-center">
 									<span>Predictions</span>
 									<ChevronUp
 										size={16}
-										class={`ml-1 text-slate-400 ${sortKey === 'predictedFixtures' ? (sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+										class={`ml-1 text-slate-400 ${sorting.sortKey === 'predictedFixtures' ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
 									/>
 								</div>
 							</th>
 							<th
 								class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
-								onclick={() => toggleSort('completedFixtures')}
+								onclick={() => sorting.toggleSort('completedFixtures')}
 							>
 								<div class="flex items-center justify-center">
 									<span>Completed</span>
 									<ChevronUp
 										size={16}
-										class={`ml-1 text-slate-400 ${sortKey === 'completedFixtures' ? (sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+										class={`ml-1 text-slate-400 ${sorting.sortKey === 'completedFixtures' ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
 									/>
 								</div>
 							</th>
@@ -386,11 +387,11 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-700/60">
-						{#if sortedData() && sortedData().length > 0}
-							{#each sortedData() as entry, index}
+						{#if sorting.sortedData && sorting.sortedData.length > 0}
+							{#each sorting.sortedData as entry, index}
 								<tr
 									class="cursor-pointer transition-colors hover:bg-slate-700/30"
-									onclick={() => viewUserPredictions(entry.id)}
+									onclick={() => refresh.viewUserPredictions(entry.userId, data.currentWeek)}
 								>
 									<!-- Player name and rank -->
 									<td class="px-4 py-3 whitespace-nowrap">
@@ -402,7 +403,7 @@
 											</div>
 											<div>
 												<div class="text-sm font-medium tracking-wide text-white">
-													{entry?.name || 'Anonymous'}
+													{entry?.userName || 'Anonymous'}
 												</div>
 											</div>
 										</div>
@@ -462,7 +463,7 @@
 						{:else}
 							<tr>
 								<td colspan="7" class="py-8 text-center text-sm text-slate-400">
-									{searchQuery
+									{filter.searchQuery
 										? 'No players match your search'
 										: 'No players found in the leaderboard'}
 								</td>
