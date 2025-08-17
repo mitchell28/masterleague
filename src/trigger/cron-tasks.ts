@@ -13,7 +13,7 @@ function getBaseUrl(): string {
 	}
 
 	// Last fallback for development
-	return 'http://localhost:5173';
+	return 'https://masterleague.app';
 }
 
 // Background processing task - replaces /api/background cron (every 5 minutes)
