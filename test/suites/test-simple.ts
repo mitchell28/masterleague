@@ -21,7 +21,7 @@ interface TestResult {
 class SimplifiedTestSuite {
 	private db: any;
 	private testOrgId = '8290a405-bef2-48d0-8b44-e1defdd1ae07';
-	private testSeason = '2025';
+	private testSeason = '2025-26';
 	private results = {
 		passed: 0,
 		failed: 0,

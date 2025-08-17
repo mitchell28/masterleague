@@ -28,11 +28,11 @@ export interface RecalculationResult {
 /**
  * Optimized leaderboard calculation with better caching and performance
  */
-export async function recalculateLeaderboardOptimized(
+export async function calculateLeaderboard(
 	organizationId: string,
-	season: string = '2025', // Match the actual season format in fixtures
+	season: string = '2025-26', // Match the actual season format in fixtures
 	forceRecalculation: boolean = false
-): Promise<RecalculationResult> {
+): Promise<LeaderboardEntry[]> {
 	const startTime = Date.now();
 
 	try {
@@ -246,7 +246,7 @@ export async function recalculateLeaderboardOptimized(
  */
 export async function getLeaderboardOptimized(
 	organizationId: string,
-	season: string = '2025' // Match the actual season format in fixtures
+	season: string = '2025-26' // Match the actual season format in fixtures
 ): Promise<LeaderboardEntry[]> {
 	// Try to get from cache first (includes memory cache)
 	const cached = await LeaderboardCache.get(organizationId, season);

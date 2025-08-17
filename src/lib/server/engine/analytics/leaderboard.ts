@@ -30,9 +30,9 @@ export interface RecalculationResult {
  */
 export async function recalculateLeaderboard(
 	organizationId: string,
-	season: string = '2025', // Match the actual season format in fixtures
+	season: string = '2025-26',
 	forceRecalculation: boolean = false
-): Promise<RecalculationResult> {
+): Promise<LeaderboardEntry[]> {
 	const startTime = Date.now();
 
 	try {
@@ -249,7 +249,7 @@ export async function recalculateLeaderboard(
  */
 export async function getLeaderboard(
 	organizationId: string,
-	season: string = '2025' // Match the actual season format in fixtures
+	season: string = '2025-26' // Default to the most common season format
 ): Promise<LeaderboardEntry[]> {
 	// Try to get from cache first (includes memory cache)
 	const cached = await LeaderboardCache.get(organizationId, season);
@@ -259,7 +259,22 @@ export async function getLeaderboard(
 
 	// For cold starts: First try to get any existing data quickly (database)
 	// Then trigger background processing to populate cache for future requests
-	const quickData = await getLeaderboardFromDatabase(organizationId, season);
+	let quickData = await getLeaderboardFromDatabase(organizationId, season);
+
+	// If no data found with the provided season, try alternative season formats
+	if (quickData.length === 0 && season !== '2025-26') {
+		const alternativeSeasons = ['2025-26', '2025', '24-25', '2024-25'];
+		for (const altSeason of alternativeSeasons) {
+			if (altSeason !== season) {
+				quickData = await getLeaderboardFromDatabase(organizationId, altSeason);
+				if (quickData.length > 0) {
+					console.log(`🔄 Found leaderboard data using season format: ${altSeason} instead of ${season}`);
+					season = altSeason; // Update season for cache operations
+					break;
+				}
+			}
+		}
+	}
 
 	if (quickData.length > 0) {
 		// Trigger background recalculation to populate cache for future requests
@@ -397,7 +412,7 @@ async function updateCacheInBackground(
  * Useful for batch operations and maintenance
  */
 export async function recalculateAllLeaderboards(
-	season: string = '2025',
+	season: string = '2025-26',
 	forceRecalculation: boolean = false
 ): Promise<RecalculationResult[]> {
 	// Get all organizations from the database

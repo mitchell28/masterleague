@@ -8,7 +8,7 @@ import { fixtures } from '../../src/lib/server/db/schema.ts';
 import { eq, and, or } from 'drizzle-orm';
 
 export class FixtureSimulator {
-	constructor(organizationId = '8290a405-bef2-48d0-8b44-e1defdd1ae07', season = '2025') {
+	constructor(organizationId = '8290a405-bef2-48d0-8b44-e1defdd1ae07', season = '2025-26') {
 		this.organizationId = organizationId;
 		this.season = season;
 	}

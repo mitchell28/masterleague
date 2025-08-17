@@ -30,7 +30,7 @@
 
 	const refresh = useLeaderboardRefresh(
 		data.selectedOrganization?.id || '',
-		data.currentSeason || '2025'
+		data.currentSeason || '2025-26'
 	);
 
 	const cache = useLeaderboardCache();

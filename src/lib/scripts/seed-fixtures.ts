@@ -133,7 +133,7 @@ async function seedFixtures() {
 
 	try {
 		// Default to 2025 season, allow override with command line argument
-		const season = process.argv[2] || '2025';
+		const season = process.argv[2] || '2025-26';
 		console.log(`📅 Seeding fixtures for ${season} season...`);
 
 		// Check if API key exists

@@ -1,6 +1,7 @@
 import { db } from '$lib/server/db';
 import { user as authUser, organization } from '$lib/server/db/auth/auth-schema';
-import { eq } from 'drizzle-orm';
+import { leagueTable } from '$lib/server/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { MetaTagsProps } from 'svelte-meta-tags';
@@ -35,13 +36,30 @@ export const load = (async ({ locals, url, fetch }) => {
 			leaderboard: [],
 			selectedOrganization: null,
 			user: locals.user,
-			currentSeason: '2025',
+			currentSeason: '2025-26',
 			leaderboardMeta: null
 		};
 	}
 
 	const selectedOrganization = defaultOrganization[0];
-	const currentSeason = '2025'; // Match the actual season format in fixtures
+	
+	// Try different season formats to match data
+	const possibleSeasons = ['2025-26', '24-25', '2024-25', '2025'];
+	let currentSeason = '2025-26'; // Default to the most likely format
+	
+	// Find which season has data in league_table
+	for (const season of possibleSeasons) {
+		const hasData = await db
+			.select({ count: 1 })
+			.from(leagueTable)
+			.where(and(eq(leagueTable.organizationId, selectedOrganization.id), eq(leagueTable.season, season)))
+			.limit(1);
+		
+		if (hasData.length > 0) {
+			currentSeason = season;
+			break;
+		}
+	}
 
 	try {
 		const startTime = Date.now();

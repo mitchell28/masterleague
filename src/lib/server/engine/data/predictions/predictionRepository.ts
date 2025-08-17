@@ -150,7 +150,7 @@ export async function processPredictionsForFixture(
 				id: randomUUID(),
 				userId: userId,
 				organizationId: userPrediction.organizationId,
-				season: '2025', // TODO: Make this dynamic based on fixture season
+				season: '2025-26', // TODO: Make this dynamic based on fixture season
 				totalPoints: userData.points,
 				correctScorelines: userData.correctScore,
 				correctOutcomes: userData.correctOutcome,
@@ -165,7 +165,7 @@ export async function processPredictionsForFixture(
 	// This runs in the background and doesn't block the response
 	for (const organizationId of affectedOrganizations) {
 		// Run asynchronously to avoid blocking
-		recalculateLeaderboard(organizationId, '2025').catch((error) => {
+		recalculateLeaderboard(organizationId, '2025-26').catch((error) => {
 			console.error(
 				`Failed to recalculate leaderboard for organization ${organizationId} after fixture ${fixtureId}:`,
 				error

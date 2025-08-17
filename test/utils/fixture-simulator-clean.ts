@@ -19,7 +19,7 @@ export class FixtureSimulator {
 	public organizationId: string;
 	public season: string;
 
-	constructor(organizationId = '8290a405-bef2-48d0-8b44-e1defdd1ae07', season = '2025') {
+	constructor(organizationId = '8290a405-bef2-48d0-8b44-e1defdd1ae07', season = '2025-26') {
 		const sqlConnection = neon(process.env.DATABASE_URL!);
 		this.db = drizzle(sqlConnection);
 		this.organizationId = organizationId;

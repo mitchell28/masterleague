@@ -36,7 +36,7 @@ async function initTeams() {
 
 	try {
 		// Get command line argument for season, default to 2025
-		const season = process.argv[2] || '2025';
+		const season = process.argv[2] || '2025-26';
 		console.log(`📅 Fetching teams for ${season} season...`);
 
 		// Check if API key exists

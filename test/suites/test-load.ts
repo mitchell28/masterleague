@@ -8,7 +8,7 @@ import 'dotenv/config';
 class ConcurrentLoadTest {
 	private baseUrl = 'http://localhost:5173';
 	private orgId = '8290a405-bef2-48d0-8b44-e1defdd1ae07';
-	private season = '2025';
+	private season = '2025-26';
 
 	async log(emoji: string, message: string) {
 		console.log(`${emoji} [${new Date().toISOString()}] ${message}`);
