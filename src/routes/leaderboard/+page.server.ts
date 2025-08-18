@@ -7,11 +7,6 @@ import type { PageServerLoad } from './$types';
 import type { MetaTagsProps } from 'svelte-meta-tags';
 import { getCurrentWeek } from '$lib/server/engine/data/fixtures';
 import { getLeaderboard } from '$lib/server/engine/analytics/leaderboard.js';
-import { LeaderboardCache, CurrentWeekCache } from '$lib/server/cache/leaderboard-cache.js';
-import {
-	intelligentLeaderboardProcessing,
-	triggerBackgroundProcessing
-} from '$lib/server/engine/data/processing/';
 
 export const load = (async ({ locals, url, fetch }) => {
 	if (!locals.user?.id) {
@@ -42,58 +37,34 @@ export const load = (async ({ locals, url, fetch }) => {
 	}
 
 	const selectedOrganization = defaultOrganization[0];
-	
-	// Try different season formats to match data
-	const possibleSeasons = ['2025-26', '24-25', '2024-25', '2025'];
-	let currentSeason = '2025-26'; // Default to the most likely format
-	
-	// Find which season has data in league_table
-	for (const season of possibleSeasons) {
-		const hasData = await db
-			.select({ count: 1 })
-			.from(leagueTable)
-			.where(and(eq(leagueTable.organizationId, selectedOrganization.id), eq(leagueTable.season, season)))
-			.limit(1);
-		
-		if (hasData.length > 0) {
-			currentSeason = season;
-			break;
-		}
-	}
 
 	try {
-		const startTime = Date.now();
+		// Simple season detection logic
+		const possibleSeasons = ['2025-26', '24-25', '2024-25', '2025'];
+		let currentSeason = '2025-26'; // Default to the most likely format
 
-		const currentWeek = await CurrentWeekCache.get();
+		// Find which season has data in league_table
+		for (const season of possibleSeasons) {
+			const hasData = await db
+				.select()
+				.from(leagueTable)
+				.where(
+					and(
+						eq(leagueTable.organizationId, selectedOrganization.id),
+						eq(leagueTable.season, season)
+					)
+				)
+				.limit(1);
 
-		// Get leaderboard metadata first using the optimized cache
-		const leaderboardMeta = await LeaderboardCache.getMeta(selectedOrganization.id, currentSeason);
-
-		// Intelligent processing decision
-		const processingDecision = await intelligentLeaderboardProcessing(leaderboardMeta, currentWeek);
-
-		let leaderboard;
-		let actualMeta = leaderboardMeta;
-
-		if (processingDecision.shouldRefresh) {
-			// Always use background refresh for leaderboards since they're not time-critical
-			// and can be expensive to calculate
-			triggerBackgroundProcessing('refresh-leaderboard', {
-				organizationId: selectedOrganization.id,
-				season: currentSeason,
-				fetch: fetch // Pass SvelteKit's fetch function
-			});
-
-			// Get current leaderboard (may be slightly stale but loads fast)
-			leaderboard = await getLeaderboard(selectedOrganization.id, currentSeason);
-
-			// Get fresh metadata after background processing
-			actualMeta =
-				(await LeaderboardCache.getMeta(selectedOrganization.id, currentSeason)) || leaderboardMeta;
-		} else {
-			// Use cached data
-			leaderboard = await getLeaderboard(selectedOrganization.id, currentSeason);
+			if (hasData.length > 0) {
+				currentSeason = season;
+				break;
+			}
 		}
+
+		// Get current week and leaderboard directly from database
+		const currentWeek = await getCurrentWeek();
+		const leaderboard = await getLeaderboard(selectedOrganization.id, currentSeason);
 
 		// Meta tags for SEO
 		const pageMetaTags = Object.freeze({
@@ -119,9 +90,9 @@ export const load = (async ({ locals, url, fetch }) => {
 			leaderboard,
 			selectedOrganization,
 			currentSeason,
-			leaderboardMeta: actualMeta,
+			leaderboardMeta: null, // Simplified - no metadata tracking
 			pageMetaTags,
-			processingInfo: processingDecision.reason
+			processingInfo: 'Direct database query'
 		};
 	} catch (error) {
 		console.error('Failed to load leaderboard:', error);
@@ -131,7 +102,7 @@ export const load = (async ({ locals, url, fetch }) => {
 			currentWeek: await getCurrentWeek(),
 			leaderboard: [],
 			selectedOrganization,
-			currentSeason,
+			currentSeason: '2025-26',
 			leaderboardMeta: null,
 			pageMetaTags: {
 				title: 'Leaderboard',

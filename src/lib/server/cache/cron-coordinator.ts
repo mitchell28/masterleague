@@ -1,8 +1,41 @@
-import { kv } from '$lib/server/cache/cloudflare-kv.js';
-
 /**
  * Cron job coordination system to prevent conflicts and track health
+ * Simplified to use memory-only storage instead of CloudflareKV
  */
+
+// Simple memory storage for cron coordination
+class CronMemoryStore {
+	private data = new Map<string, { value: any; expiry: number }>();
+
+	async get<T>(key: string): Promise<T | null> {
+		const item = this.data.get(key);
+		if (!item) return null;
+
+		if (Date.now() > item.expiry) {
+			this.data.delete(key);
+			return null;
+		}
+
+		return item.value;
+	}
+
+	async set(key: string, value: any, options?: { ttl?: number }): Promise<boolean> {
+		const ttl = options?.ttl ? options.ttl * 1000 : 60 * 60 * 1000; // Default 1 hour
+		this.data.set(key, {
+			value,
+			expiry: Date.now() + ttl
+		});
+		return true;
+	}
+
+	async delete(key: string): Promise<boolean> {
+		this.data.delete(key);
+		return true;
+	}
+}
+
+const cronStore = new CronMemoryStore();
+
 export class CronCoordinator {
 	private static readonly CRON_LOCK_TTL = 300; // 5 minutes
 	private static readonly HEALTH_TTL = 3600; // 1 hour
@@ -57,7 +90,7 @@ export class CronCoordinator {
 			}
 
 			// Check if lock already exists
-			const existingLock = await kv.get<{
+			const existingLock = await cronStore.get<{
 				acquiredBy: string;
 				acquiredAt: string;
 				lockType: string;
@@ -82,7 +115,7 @@ export class CronCoordinator {
 				identifier: identifier || null
 			};
 
-			const success = await kv.set(lockKey, lockData, { ttl: this.CRON_LOCK_TTL });
+			const success = await cronStore.set(lockKey, lockData, { ttl: this.CRON_LOCK_TTL });
 
 			return {
 				acquired: success,
@@ -123,7 +156,7 @@ export class CronCoordinator {
 					return false;
 			}
 
-			return await kv.delete(lockKey);
+			return await cronStore.delete(lockKey);
 		} catch (error) {
 			console.error(`Failed to release ${lockType} lock:`, error);
 			return false;
@@ -146,22 +179,26 @@ export class CronCoordinator {
 			const timestamp = new Date().toISOString();
 
 			// Update last run time
-			await kv.set(this.HEALTH_KEYS.lastRun(jobType), timestamp, { ttl: this.HEALTH_TTL });
+			await cronStore.set(this.HEALTH_KEYS.lastRun(jobType), timestamp, { ttl: this.HEALTH_TTL });
 
 			if (success) {
 				// Update last success time
-				await kv.set(this.HEALTH_KEYS.lastSuccess(jobType), timestamp, { ttl: this.HEALTH_TTL });
+				await cronStore.set(this.HEALTH_KEYS.lastSuccess(jobType), timestamp, {
+					ttl: this.HEALTH_TTL
+				});
 
 				// Reset consecutive failures
-				await kv.delete(this.HEALTH_KEYS.consecutiveFailures(jobType));
+				await cronStore.delete(this.HEALTH_KEYS.consecutiveFailures(jobType));
 
 				console.log(`✅ Cron job ${jobType} completed successfully`, metadata);
 			} else {
 				// Increment consecutive failures
-				const currentFailures = await kv.get<number>(this.HEALTH_KEYS.consecutiveFailures(jobType));
+				const currentFailures = await cronStore.get<number>(
+					this.HEALTH_KEYS.consecutiveFailures(jobType)
+				);
 				const newFailureCount = (currentFailures || 0) + 1;
 
-				await kv.set(this.HEALTH_KEYS.consecutiveFailures(jobType), newFailureCount, {
+				await cronStore.set(this.HEALTH_KEYS.consecutiveFailures(jobType), newFailureCount, {
 					ttl: this.HEALTH_TTL
 				});
 
@@ -204,9 +241,9 @@ export class CronCoordinator {
 		for (const job of jobTypes) {
 			try {
 				const [lastRun, lastSuccess, consecutiveFailures] = await Promise.all([
-					kv.get<string>(this.HEALTH_KEYS.lastRun(job)),
-					kv.get<string>(this.HEALTH_KEYS.lastSuccess(job)),
-					kv.get<number>(this.HEALTH_KEYS.consecutiveFailures(job))
+					cronStore.get<string>(this.HEALTH_KEYS.lastRun(job)),
+					cronStore.get<string>(this.HEALTH_KEYS.lastSuccess(job)),
+					cronStore.get<number>(this.HEALTH_KEYS.consecutiveFailures(job))
 				]);
 
 				const failures = consecutiveFailures || 0;

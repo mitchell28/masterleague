@@ -1,0 +1,1 @@
+ALTER TABLE "league_table" ADD COLUMN "season" varchar NOT NULL;

@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import {
 	getLivePredictionsData,
 	forceRefreshPredictions
-} from '$lib/server/engine/analytics/predictions-realtime.js';
+} from '$lib/server/engine/analytics/predictions-realtime-simple.js';
 import type { RequestHandler } from './$types';
 
 /**
@@ -90,15 +90,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 /**
  * POST endpoint for forcing predictions refresh
- * More restrictive - requires authentication and has additional rate limiting
+ * Mega simplified - no auth required
  */
 export const POST: RequestHandler = async ({ url, locals, request }) => {
 	try {
-		// Require authentication for force refresh
-		if (!locals.user?.id) {
-			return json({ error: 'Authentication required for force refresh' }, { status: 401 });
-		}
-
 		// Check if user has appropriate permissions
 		const organizationId = url.searchParams.get('organizationId');
 

@@ -1,47 +1,22 @@
 import { goto, invalidateAll } from '$app/navigation';
 import { browser } from '$app/environment';
-import { onMount } from 'svelte';
 
 /**
- * Hook for managing leaderboard refresh functionality
- * Handles manual refresh, force refresh, and API calls with cron awareness
+ * Simplified hook for managing leaderboard updates
+ * Combines force refresh and regular refresh into one update function
  */
 export function useLeaderboardRefresh(organizationId: string, season: string) {
-	let isManualRefreshing = $state(false);
-	let lastRefreshTime = $state<Date | null>(null);
-	let cronStatus = $state<'healthy' | 'stale' | 'unknown'>('unknown');
+	let isUpdating = $state(false);
+	let lastUpdateTime = $state<Date | null>(null);
 
-	// Check cron health status (client-side only)
-	async function checkCronHealth() {
-		if (!browser) return;
+	// Simplified update function that always refreshes data
+	async function updateLeaderboard() {
+		if (isUpdating) return;
 
-		try {
-			const response = await fetch(`/api/cron/health?jobType=leaderboard-${organizationId}`);
-			if (response.ok) {
-				const health = await response.json();
-				cronStatus = health.status || 'unknown';
-			}
-		} catch (error) {
-			console.warn('Could not check cron health:', error);
-			cronStatus = 'unknown';
-		}
-	}
-
-	// Manual refresh function with cron coordination
-	async function refreshLeaderboard(force = false) {
-		if (isManualRefreshing) return;
-
-		isManualRefreshing = true;
-		lastRefreshTime = new Date();
+		isUpdating = true;
+		lastUpdateTime = new Date();
 
 		try {
-			// Check if cron recently updated (unless forcing)
-			if (!force && cronStatus === 'healthy') {
-				console.log('⏭️ Skipping manual refresh - cron jobs are healthy');
-				await invalidateAll(); // Still reload the page data
-				return;
-			}
-
 			// Call the API to trigger a refresh
 			const response = await fetch('/api/update-leaderboard', {
 				method: 'POST',
@@ -51,30 +26,24 @@ export function useLeaderboardRefresh(organizationId: string, season: string) {
 				body: JSON.stringify({
 					organizationId,
 					season,
-					force,
+					force: true, // Always force refresh for simplicity
 					triggeredBy: 'manual-ui'
 				})
 			});
 
 			if (!response.ok) {
-				throw new Error('Failed to refresh leaderboard');
+				throw new Error('Failed to update leaderboard');
 			}
 
 			const result = await response.json();
-			console.log('Leaderboard refresh result:', result);
-
-			// Update cron status based on result
-			if (result.success) {
-				cronStatus = 'healthy';
-			}
+			console.log('Leaderboard update result:', result);
 
 			// Invalidate the page data to reload from server
 			await invalidateAll();
 		} catch (error) {
-			console.error('Failed to refresh leaderboard:', error);
-			cronStatus = 'stale'; // Mark as stale if manual refresh fails
+			console.error('Failed to update leaderboard:', error);
 		} finally {
-			isManualRefreshing = false;
+			isUpdating = false;
 		}
 	}
 
@@ -83,23 +52,14 @@ export function useLeaderboardRefresh(organizationId: string, season: string) {
 		goto(`/leaderboard/${userId}/${currentWeek}`);
 	}
 
-	// Initialize cron health check (client-side only)
-	onMount(() => {
-		checkCronHealth();
-	});
-
 	return {
-		get isManualRefreshing() {
-			return isManualRefreshing;
+		get isUpdating() {
+			return isUpdating;
 		},
-		get lastRefreshTime() {
-			return lastRefreshTime;
+		get lastUpdateTime() {
+			return lastUpdateTime;
 		},
-		get cronStatus() {
-			return cronStatus;
-		},
-		refreshLeaderboard,
-		viewUserPredictions,
-		checkCronHealth
+		updateLeaderboard,
+		viewUserPredictions
 	};
 }
