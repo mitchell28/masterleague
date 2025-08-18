@@ -5,9 +5,47 @@ import { eq, and, desc } from 'drizzle-orm';
 import {
 	LeaderboardCache,
 	LeaderboardLock,
-	shouldRecalculateLeaderboard,
-	type LeaderboardEntry
+	type LeaderboardData
 } from '../../cache/leaderboard-cache.js';
+
+/**
+ * Simple function to check if recalculation is needed
+ */
+async function shouldRecalculateLeaderboard(
+	organizationId: string,
+	season: string
+): Promise<boolean> {
+	// If no cache exists, recalculation is needed
+	const cached = await LeaderboardCache.getData(organizationId, season);
+	if (!cached) {
+		console.log(`📊 No cache found, recalculation needed for ${organizationId}:${season}`);
+		return true;
+	}
+
+	// If cache is older than 10 minutes, recalculation may be needed
+	if (!LeaderboardCache.isFresh(organizationId, season, 10)) {
+		console.log(`📊 Cache is stale, recalculation needed for ${organizationId}:${season}`);
+		return true;
+	}
+
+	console.log(`📊 Cache is fresh, no recalculation needed for ${organizationId}:${season}`);
+	return false;
+}
+
+/**
+ * Simple leaderboard entry type
+ */
+export interface LeaderboardEntry {
+	userId: string;
+	username?: string;
+	displayName?: string;
+	score: number;
+	position: number;
+	correctPredictions: number;
+	totalPredictions: number;
+	accuracy: number;
+	points: number;
+}
 
 /**
  * Recalculation result interface
@@ -17,8 +55,6 @@ export interface RecalculationResult {
 	organizationId: string;
 	season: string;
 	usersUpdated: number;
-	totalMatches: number;
-	finishedMatches: number;
 	lastGameTime: Date | null;
 	executionTime: number;
 	fromCache: boolean;
@@ -32,25 +68,23 @@ export async function recalculateLeaderboard(
 	organizationId: string,
 	season: string = '2025-26',
 	forceRecalculation: boolean = false
-): Promise<LeaderboardEntry[]> {
+): Promise<RecalculationResult> {
 	const startTime = Date.now();
 
 	try {
-		// Quick cache check first (unless forced)
+		// Check if we should skip this recalculation
 		if (!forceRecalculation) {
 			const shouldRecalc = await shouldRecalculateLeaderboard(organizationId, season);
 			if (!shouldRecalc) {
-				const cached = await LeaderboardCache.get(organizationId, season);
-				if (cached?.data && cached.data.length > 0) {
-					// Get current metadata for accurate match counts
+				const cached = await LeaderboardCache.getData(organizationId, season);
+				if (cached) {
+					// Get current metadata for response
 					const meta = await LeaderboardCache.getMeta(organizationId, season);
 					return {
 						success: true,
 						organizationId,
 						season,
 						usersUpdated: cached.totalUsers || 0,
-						totalMatches: meta?.totalMatches || 0,
-						finishedMatches: meta?.finishedMatches || 0,
 						lastGameTime: meta?.lastGameTime ? new Date(meta.lastGameTime) : null,
 						executionTime: Date.now() - startTime,
 						fromCache: true,
@@ -60,12 +94,9 @@ export async function recalculateLeaderboard(
 			}
 		}
 
-		// Try to acquire lock
-		const lockAcquired = await LeaderboardLock.acquire(organizationId, season);
-		if (!lockAcquired) {
-			// Wait a bit and try to get cached data
-			await new Promise((resolve) => setTimeout(resolve, 100));
-			const cached = await LeaderboardCache.get(organizationId, season);
+		// Check if another process is already working on this
+		if (!LeaderboardLock.acquire(organizationId, season)) {
+			const cached = await LeaderboardCache.getData(organizationId, season);
 			const meta = await LeaderboardCache.getMeta(organizationId, season);
 
 			return {
@@ -73,8 +104,6 @@ export async function recalculateLeaderboard(
 				organizationId,
 				season,
 				usersUpdated: cached?.totalUsers || 0,
-				totalMatches: meta?.totalMatches || 0,
-				finishedMatches: meta?.finishedMatches || 0,
 				lastGameTime: meta?.lastGameTime ? new Date(meta.lastGameTime) : null,
 				executionTime: Date.now() - startTime,
 				fromCache: !!cached,
@@ -83,10 +112,10 @@ export async function recalculateLeaderboard(
 		}
 
 		try {
-			// Set calculating flag immediately
+			// Mark calculation start in metadata
 			await LeaderboardCache.setMeta(organizationId, season, {
-				isCalculating: true,
-				lastLeaderboardUpdate: new Date().toISOString()
+				lastUpdate: new Date().toISOString(),
+				lastGameTime: null
 			});
 
 			// Get fixtures for stats
@@ -99,10 +128,6 @@ export async function recalculateLeaderboard(
 				.from(fixtures)
 				.where(and(eq(fixtures.season, season)));
 
-			const totalMatches = allFixtures.length;
-			const finishedMatches = allFixtures.filter(
-				(f) => f.status.toLowerCase() === 'finished'
-			).length;
 			const lastGameTime = allFixtures
 				.filter((f) => f.status.toLowerCase() === 'finished')
 				.reduce(
@@ -112,7 +137,7 @@ export async function recalculateLeaderboard(
 					null as Date | null
 				);
 
-			console.log(`📊 Found ${totalMatches} fixtures, ${finishedMatches} finished`);
+			console.log(`📊 Found ${allFixtures.length} fixtures total`);
 
 			// Use the optimized query with indexes we added
 			const leaderboardData = await db
@@ -139,28 +164,36 @@ export async function recalculateLeaderboard(
 			console.log(`📈 Query returned ${leaderboardData.length} users`);
 
 			// Transform to cache format
-			const cacheEntries: LeaderboardEntry[] = leaderboardData.map((row) => ({
+			const cacheEntries: LeaderboardEntry[] = leaderboardData.map((row, index) => ({
 				userId: row.userId,
-				userName: row.userName || 'Unknown User',
-				userEmail: row.userEmail || '',
-				totalPoints: row.totalPoints,
-				correctScorelines: row.correctScorelines,
-				correctOutcomes: row.correctOutcomes,
-				predictedFixtures: row.predictedFixtures || 0,
-				completedFixtures: row.completedFixtures || 0,
-				lastUpdated: row.lastUpdated.toISOString()
+				username: row.userName || 'Unknown User',
+				displayName: row.userName || 'Unknown User',
+				score: row.totalPoints,
+				position: index + 1,
+				correctPredictions: (row.correctScorelines || 0) + (row.correctOutcomes || 0),
+				totalPredictions: row.predictedFixtures || 0,
+				accuracy:
+					(row.predictedFixtures || 0) > 0
+						? (((row.correctScorelines || 0) + (row.correctOutcomes || 0)) /
+								(row.predictedFixtures || 0)) *
+							100
+						: 0,
+				points: row.totalPoints
 			}));
 
-			// Cache the results with optimized cache
-			await LeaderboardCache.set(organizationId, season, cacheEntries);
+			// Cache the transformed data
+			const cacheData: LeaderboardData = {
+				totalUsers: cacheEntries.length,
+				entries: cacheEntries,
+				lastUpdate: new Date().toISOString()
+			};
+
+			await LeaderboardCache.setData(organizationId, season, cacheData);
 
 			// Update metadata cache
 			await LeaderboardCache.setMeta(organizationId, season, {
-				lastLeaderboardUpdate: new Date().toISOString(),
-				lastGameTime: lastGameTime?.toISOString() || null,
-				totalMatches,
-				finishedMatches,
-				isCalculating: false
+				lastUpdate: new Date().toISOString(),
+				lastGameTime: lastGameTime?.toISOString() || null
 			});
 
 			// Update database metadata
@@ -172,8 +205,6 @@ export async function recalculateLeaderboard(
 						organizationId,
 						season,
 						lastLeaderboardUpdate: new Date(),
-						totalMatches,
-						finishedMatches,
 						lastGameTime,
 						isLocked: false,
 						createdAt: new Date(),
@@ -183,8 +214,6 @@ export async function recalculateLeaderboard(
 						target: leaderboardMeta.id,
 						set: {
 							lastLeaderboardUpdate: new Date(),
-							totalMatches,
-							finishedMatches,
 							lastGameTime,
 							isLocked: false,
 							updatedAt: new Date()
@@ -204,8 +233,6 @@ export async function recalculateLeaderboard(
 				organizationId,
 				season,
 				usersUpdated: cacheEntries.length,
-				totalMatches,
-				finishedMatches,
 				lastGameTime,
 				executionTime,
 				fromCache: false,
@@ -222,8 +249,8 @@ export async function recalculateLeaderboard(
 		// Try to clean up metadata on error
 		try {
 			await LeaderboardCache.setMeta(organizationId, season, {
-				isCalculating: false,
-				lastLeaderboardUpdate: new Date().toISOString()
+				lastUpdate: new Date().toISOString(),
+				lastGameTime: null
 			});
 		} catch (cleanupError) {
 			console.error(`❌ Error cleaning up metadata:`, cleanupError);
@@ -234,8 +261,6 @@ export async function recalculateLeaderboard(
 			organizationId,
 			season,
 			usersUpdated: 0,
-			totalMatches: 0,
-			finishedMatches: 0,
 			lastGameTime: null,
 			executionTime: Date.now() - startTime,
 			fromCache: false,
@@ -252,9 +277,9 @@ export async function getLeaderboard(
 	season: string = '2025-26' // Default to the most common season format
 ): Promise<LeaderboardEntry[]> {
 	// Try to get from cache first (includes memory cache)
-	const cached = await LeaderboardCache.get(organizationId, season);
-	if (cached && cached.data.length > 0) {
-		return cached.data;
+	const cached = await LeaderboardCache.getData(organizationId, season);
+	if (cached && cached.entries.length > 0) {
+		return cached.entries;
 	}
 
 	// For cold starts: First try to get any existing data quickly (database)
@@ -268,7 +293,9 @@ export async function getLeaderboard(
 			if (altSeason !== season) {
 				quickData = await getLeaderboardFromDatabase(organizationId, altSeason);
 				if (quickData.length > 0) {
-					console.log(`🔄 Found leaderboard data using season format: ${altSeason} instead of ${season}`);
+					console.log(
+						`🔄 Found leaderboard data using season format: ${altSeason} instead of ${season}`
+					);
 					season = altSeason; // Update season for cache operations
 					break;
 				}
@@ -298,9 +325,9 @@ export async function getLeaderboard(
 
 	if (result.success) {
 		// Try to get fresh cache data
-		const fresh = await LeaderboardCache.get(organizationId, season);
-		if (fresh?.data && fresh.data.length > 0) {
-			return fresh.data;
+		const fresh = await LeaderboardCache.getData(organizationId, season);
+		if (fresh?.entries && fresh.entries.length > 0) {
+			return fresh.entries;
 		}
 	}
 
@@ -336,17 +363,21 @@ async function getLeaderboardFromDatabase(
 			desc(leagueTable.correctOutcomes)
 		);
 
-	const result = dbResult.map((row, index) => ({
+	const result: LeaderboardEntry[] = dbResult.map((row, index) => ({
 		userId: row.userId,
-		userName: row.userName || 'Unknown User',
-		userEmail: row.userEmail || '',
-		totalPoints: row.totalPoints,
-		correctScorelines: row.correctScorelines,
-		correctOutcomes: row.correctOutcomes,
-		predictedFixtures: row.predictedFixtures || 0,
-		completedFixtures: row.completedFixtures || 0,
-		lastUpdated: row.lastUpdated.toISOString(),
-		rank: index + 1
+		username: row.userName || 'Unknown User',
+		displayName: row.userName || 'Unknown User',
+		score: row.totalPoints,
+		position: index + 1,
+		correctPredictions: (row.correctScorelines || 0) + (row.correctOutcomes || 0),
+		totalPredictions: row.predictedFixtures || 0,
+		accuracy:
+			(row.predictedFixtures || 0) > 0
+				? (((row.correctScorelines || 0) + (row.correctOutcomes || 0)) /
+						(row.predictedFixtures || 0)) *
+					100
+				: 0,
+		points: row.totalPoints
 	}));
 
 	// Background cache update with the database result
@@ -368,7 +399,13 @@ async function updateCacheInBackground(
 	leaderboardData: LeaderboardEntry[]
 ): Promise<void> {
 	try {
-		await LeaderboardCache.set(organizationId, season, leaderboardData);
+		const cacheData: LeaderboardData = {
+			totalUsers: leaderboardData.length,
+			entries: leaderboardData,
+			lastUpdate: new Date().toISOString()
+		};
+
+		await LeaderboardCache.setData(organizationId, season, cacheData);
 
 		// Get fixture stats for proper metadata
 		const { db } = await import('$lib/server/db');
@@ -396,11 +433,8 @@ async function updateCacheInBackground(
 			);
 
 		await LeaderboardCache.setMeta(organizationId, season, {
-			lastLeaderboardUpdate: new Date().toISOString(),
-			lastGameTime: lastGameTime?.toISOString() || null,
-			totalMatches,
-			finishedMatches,
-			isCalculating: false
+			lastUpdate: new Date().toISOString(),
+			lastGameTime: lastGameTime?.toISOString() || null
 		});
 	} catch (error) {
 		console.error(`Background cache update failed for org: ${organizationId}:`, error);

@@ -84,9 +84,7 @@ export const load = (async ({ params, locals }) => {
 		correctScorelines: leagueEntry?.correctScorelines || 0,
 		correctOutcomes: leagueEntry?.correctOutcomes || 0,
 		incorrectPredictions:
-			(leagueEntry?.completedFixtures || 0) -
-			(leagueEntry?.correctScorelines || 0) -
-			(leagueEntry?.correctOutcomes || 0)
+			(leagueEntry?.completedFixtures || 0) - (leagueEntry?.correctOutcomes || 0)
 	};
 
 	// Get all weeks that have fixtures

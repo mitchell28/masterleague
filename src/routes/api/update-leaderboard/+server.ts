@@ -3,6 +3,7 @@ import {
 	recalculateLeaderboard,
 	recalculateAllLeaderboards
 } from '$lib/server/engine/shared/index.js';
+import { cache, CacheKeys } from '$lib/server/cache/simple-cache.js';
 import type { RequestHandler } from './$types.js';
 
 /**
@@ -13,17 +14,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const body = await request.json().catch(() => ({}));
 		const { organizationId, season = '2025-26', force = false, all = false } = body;
-
-		// Check authentication
-		if (!locals.user) {
-			return json(
-				{
-					error: 'Authentication required',
-					results: []
-				},
-				{ status: 401 }
-			);
-		}
 
 		let results;
 

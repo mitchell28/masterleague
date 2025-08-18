@@ -357,7 +357,7 @@ export async function triggerBackgroundProcessing(
 		const fetchFn = options?.fetch || fetch;
 
 		// Make the background API call
-		fetchFn('/api/background', {
+		fetchFn('/api/cron/background', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'

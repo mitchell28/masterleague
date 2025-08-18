@@ -1,0 +1,1 @@
+ALTER TABLE "rateLimit" ALTER COLUMN "lastRequest" SET DEFAULT 0;

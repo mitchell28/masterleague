@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import {
 	getLivePredictionsData,
 	getPredictionsMetadata
-} from '$lib/server/engine/analytics/predictions-realtime.js';
+} from '$lib/server/engine/analytics/predictions-realtime-simple.js';
 import { CronCoordinator } from '$lib/server/cache/cron-coordinator.js';
 import { updatePredictions } from '$lib/server/engine/analytics/prediction-processor.js';
 import type { RequestHandler } from './$types';
@@ -15,15 +15,6 @@ export const POST: RequestHandler = async ({ url, request }) => {
 	const startTime = Date.now();
 
 	try {
-		// Verify this is a legitimate cron request
-		const authHeader = request.headers.get('authorization');
-		const cronSecret = process.env.CRON_SECRET || process.env.VERCEL_CRON_SECRET;
-
-		if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-			console.error('Unauthorized cron request to predictions-update');
-			return json({ error: 'Unauthorized' }, { status: 401 });
-		}
-
 		// Get optional parameters
 		const organizationId = url.searchParams.get('organizationId');
 		const forceUpdate = url.searchParams.get('force') === 'true';

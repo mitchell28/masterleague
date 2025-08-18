@@ -293,7 +293,7 @@ export function usePointsCalculation() {
 			totalPoints,
 			perfectScores,
 			correctOutcomes,
-			incorrectPredictions: withPoints.length - perfectScores - correctOutcomes,
+			incorrectPredictions: withPoints.length - correctOutcomes,
 			averagePoints: withPoints.length > 0 ? totalPoints / withPoints.length : 0
 		};
 	}

@@ -1,9 +1,9 @@
 /**
- * Hook for managing leaderboard cache status and time formatting
- * Provides cache status indicators and time formatting utilities
+ * Hook for managing leaderboard time formatting
+ * Simplified to remove cache status indicators
  */
 export function useLeaderboardCache() {
-	// Helper functions for time formatting
+	// Helper function for time formatting
 	function formatLastUpdate(dateString: string | null) {
 		if (!dateString) return 'Never';
 		const date = new Date(dateString);
@@ -20,26 +20,9 @@ export function useLeaderboardCache() {
 		return date.toLocaleDateString();
 	}
 
+	// Simplified - always show as fresh since we use direct DB queries
 	function getCacheStatus(leaderboardMeta: any) {
-		if (!leaderboardMeta) return { status: 'unknown', color: 'text-slate-400' };
-
-		if (leaderboardMeta.isCalculating) {
-			return { status: 'calculating', color: 'text-yellow-400' };
-		}
-
-		const lastUpdate = leaderboardMeta.lastLeaderboardUpdate
-			? new Date(leaderboardMeta.lastLeaderboardUpdate)
-			: null;
-		if (!lastUpdate) {
-			return { status: 'no data', color: 'text-red-400' };
-		}
-
-		const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-		if (lastUpdate < fiveMinutesAgo) {
-			return { status: 'stale', color: 'text-orange-400' };
-		}
-
-		return { status: 'fresh', color: 'text-green-400' };
+		return { status: 'live', color: 'text-green-400' };
 	}
 
 	return {
