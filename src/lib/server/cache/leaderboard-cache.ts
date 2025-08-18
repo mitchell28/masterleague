@@ -32,7 +32,11 @@ export class LeaderboardCache {
 	}
 
 	// Cache leaderboard data
-	static async setData(organizationId: string, season: string, data: LeaderboardData): Promise<void> {
+	static async setData(
+		organizationId: string,
+		season: string,
+		data: LeaderboardData
+	): Promise<void> {
 		cache.set(SimpleCacheKeys.leaderboard(organizationId, season), data, 15); // 15 minutes TTL
 	}
 
@@ -47,7 +51,11 @@ export class LeaderboardCache {
 		return cache.get<LeaderboardMeta>(metaKey);
 	}
 
-	static async setMeta(organizationId: string, season: string, meta: LeaderboardMeta): Promise<void> {
+	static async setMeta(
+		organizationId: string,
+		season: string,
+		meta: LeaderboardMeta
+	): Promise<void> {
 		const metaKey = `${SimpleCacheKeys.leaderboard(organizationId, season)}:meta`;
 		cache.set(metaKey, meta, 60); // 1 hour TTL for metadata
 	}
@@ -69,7 +77,7 @@ export class LeaderboardLock {
 	static acquire(organizationId: string, season: string): boolean {
 		const lockKey = `lock:${organizationId}:${season}`;
 		const existingLock = this.locks.get(lockKey);
-		
+
 		// Check if lock is expired
 		if (existingLock && Date.now() - existingLock > this.LOCK_TTL) {
 			this.locks.delete(lockKey);
@@ -92,15 +100,15 @@ export class LeaderboardLock {
 	static isLocked(organizationId: string, season: string): boolean {
 		const lockKey = `lock:${organizationId}:${season}`;
 		const existingLock = this.locks.get(lockKey);
-		
+
 		if (!existingLock) return false;
-		
+
 		// Check if lock is expired
 		if (Date.now() - existingLock > this.LOCK_TTL) {
 			this.locks.delete(lockKey);
 			return false;
 		}
-		
+
 		return true;
 	}
 }
