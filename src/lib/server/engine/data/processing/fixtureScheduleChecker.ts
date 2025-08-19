@@ -82,6 +82,9 @@ export async function checkFixtureScheduleChanges(options: {
 }): Promise<FixtureScheduleResult> {
 	const { apiKey, recentLimit = 15, batchSize = 50, delayMs = 6500 } = options;
 
+	const startTime = Date.now();
+	const maxDuration = 150000; // 2.5 minutes max (leave buffer for trigger timeout)
+
 	try {
 		console.log('🔍 Starting fixture schedule check...');
 
@@ -92,26 +95,37 @@ export async function checkFixtureScheduleChanges(options: {
 
 		// Step 1: Check recent matches (limit to prevent overwhelming)
 		console.log('\n=== Checking Recent Matches ===');
-		const recentResult = await checkRecentMatches(apiKey, recentLimit, batchSize, delayMs);
-		totalChecked += recentResult.checked;
-		totalUpdated += recentResult.updated;
-		if (recentResult.changes.length > 0) {
-			allChanges.push(...recentResult.changes);
+
+		// Check if we have time for recent matches
+		if (Date.now() - startTime < maxDuration * 0.6) {
+			const recentResult = await checkRecentMatches(apiKey, recentLimit, batchSize, delayMs);
+			totalChecked += recentResult.checked;
+			totalUpdated += recentResult.updated;
+			if (recentResult.changes.length > 0) {
+				allChanges.push(...recentResult.changes);
+			}
+		} else {
+			console.log('⏰ Skipping recent matches check - time limit approaching');
 		}
 
-		// Step 2: Check upcoming matches
-		console.log('\n=== Checking Upcoming Matches ===');
-		const upcomingResult = await checkUpcomingMatches(apiKey, batchSize, delayMs);
-		totalChecked += upcomingResult.checked;
-		totalUpdated += upcomingResult.updated;
-		if (upcomingResult.changes.length > 0) {
-			allChanges.push(...upcomingResult.changes);
+		// Step 2: Check upcoming matches (only if we have time)
+		if (Date.now() - startTime < maxDuration * 0.8) {
+			console.log('\n=== Checking Upcoming Matches ===');
+			const upcomingResult = await checkUpcomingMatches(apiKey, batchSize, delayMs);
+			totalChecked += upcomingResult.checked;
+			totalUpdated += upcomingResult.updated;
+			if (upcomingResult.changes.length > 0) {
+				allChanges.push(...upcomingResult.changes);
+			}
+		} else {
+			console.log('⏰ Skipping upcoming matches check - time limit reached');
 		}
 
 		// Print overall summary
 		console.log(`\n=== Overall Summary ===`);
 		console.log(`📊 Total fixtures checked: ${totalChecked}`);
 		console.log(`🔄 Total fixtures updated: ${totalUpdated}`);
+		console.log(`⏱️ Processing time: ${Math.round((Date.now() - startTime) / 1000)}s`);
 
 		// Summarize changes if any were made
 		if (allChanges.length > 0) {

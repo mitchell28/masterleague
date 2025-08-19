@@ -13,5 +13,5 @@ export default defineConfig({
 			randomize: true
 		}
 	},
-	maxDuration: 3600 // 1 hour max duration
+	maxDuration: 300 // 5 minutes global default (individual tasks can override)
 });

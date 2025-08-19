@@ -29,12 +29,12 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		console.log('🔍 Starting fixture schedule check...');
 
-		// Run the fixture schedule checker with AGGRESSIVE batching for maximum speed
+		// Run the fixture schedule checker with FAST settings for 3-minute timeout
 		const result = await checkFixtureScheduleChanges({
 			apiKey,
-			recentLimit: 15, // Check more recent matches
-			batchSize: 50, // 50 fixtures per API call (much faster!)
-			delayMs: 6500 // 6.5 second delay = 9.2 calls/minute (safely under 10/min)
+			recentLimit: 8, // Reduced from 15 - fewer recent matches to check
+			batchSize: 30, // Reduced from 50 - smaller batches process faster
+			delayMs: 3000 // Reduced from 6500ms - 3 second delay for faster execution
 		});
 
 		// Mark job as completed

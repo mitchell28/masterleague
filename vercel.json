@@ -1,0 +1,29 @@
+{
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"functions": {
+		"src/routes/api/cron/fixture-schedule/+server.js": {
+			"maxDuration": 180
+		},
+		"src/routes/api/cron/finished-fixtures-checker/+server.js": {
+			"maxDuration": 240
+		},
+		"src/routes/api/cron/live-scores-updater/+server.js": {
+			"maxDuration": 300
+		},
+		"src/routes/api/cron/intelligent-processor/+server.js": {
+			"maxDuration": 120
+		},
+		"src/routes/api/cron/simple-coordinate/+server.js": {
+			"maxDuration": 60
+		},
+		"src/routes/api/cron/health/+server.js": {
+			"maxDuration": 30
+		},
+		"src/routes/api/cron/*.js": {
+			"maxDuration": 60
+		},
+		"src/routes/api/*.js": {
+			"maxDuration": 30
+		}
+	}
+}

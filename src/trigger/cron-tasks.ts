@@ -19,6 +19,7 @@ function getBaseUrl(): string {
 // Intelligent processor task - replaces old background processing (every 30 seconds)
 export const intelligentProcessor = task({
 	id: 'intelligent-processor',
+	maxDuration: 120, // 2 minutes - quick background processing
 	run: async (payload: { job?: string; force?: boolean }) => {
 		console.log('Running intelligent processor task');
 
@@ -56,6 +57,7 @@ export const intelligentProcessor = task({
 // Fixture schedule task - replaces predictions update (every 2 minutes)
 export const fixtureSchedule = task({
 	id: 'fixture-schedule',
+	maxDuration: 180, // 3 minutes - allows for API calls with delays
 	run: async (payload: {
 		organization?: string;
 		force?: boolean;
@@ -100,6 +102,7 @@ export const fixtureSchedule = task({
 // Simple coordinate task - replaces cron coordination (every 10 minutes)
 export const simpleCoordinate = task({
 	id: 'simple-coordinate',
+	maxDuration: 60, // 1 minute - coordination should be fast
 	run: async (payload: { action?: string; jobName?: string; intervalMinutes?: number }) => {
 		console.log('Running simple coordinate task');
 
@@ -138,6 +141,7 @@ export const simpleCoordinate = task({
 // Health check task - monitors system health (every 5 minutes)
 export const healthCheck = task({
 	id: 'health-check',
+	maxDuration: 30, // 30 seconds - health checks should be fast
 	run: async (payload: { jobType?: string; detailed?: boolean }) => {
 		console.log('Running health check task');
 
@@ -199,6 +203,7 @@ export const healthCheck = task({
 // Finished fixtures checker task - checks finished fixtures missing scores (every 30 minutes)
 export const finishedFixturesChecker = task({
 	id: 'finished-fixtures-checker',
+	maxDuration: 240, // 4 minutes - allows for multiple API calls
 	run: async (payload: {
 		hoursBack?: number;
 		maxFixtures?: number;
@@ -243,6 +248,7 @@ export const finishedFixturesChecker = task({
 // Live scores updater task - smart cron-optimized live game score updates
 export const liveScoresUpdater = task({
 	id: 'live-scores-updater',
+	maxDuration: 300, // 5 minutes - longest running task for live updates
 	run: async (payload: {
 		priority?: 'urgent' | 'normal';
 		force?: boolean;
