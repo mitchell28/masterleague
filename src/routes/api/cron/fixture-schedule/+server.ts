@@ -33,7 +33,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const result = await checkFixtureScheduleChanges({
 			apiKey,
 			recentLimit: 8, // Reduced from 15 - fewer recent matches to check
-			batchSize: 30, // Reduced from 50 - smaller batches process faster
+			batchSize: 50, // Back to 50 - larger batches for efficiency
 			delayMs: 3000 // Reduced from 6500ms - 3 second delay for faster execution
 		});
 

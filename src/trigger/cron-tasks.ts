@@ -1,4 +1,4 @@
-import { task } from '@trigger.dev/sdk';
+import { schedules } from '@trigger.dev/sdk';
 
 // Helper function to get the base URL
 function getBaseUrl(): string {
@@ -17,18 +17,20 @@ function getBaseUrl(): string {
 }
 
 // Intelligent processor task - replaces old background processing (every 30 seconds)
-export const intelligentProcessor = task({
+export const intelligentProcessor = schedules.task({
 	id: 'intelligent-processor',
-	maxDuration: 120, // 2 minutes - quick background processing
-	run: async (payload: { job?: string; force?: boolean }) => {
-		console.log('Running intelligent processor task');
+	cron: '*/30 * * * * *', // Every 30 seconds
+	run: async (payload) => {
+		console.log('Running scheduled intelligent processor task');
+		console.log('Scheduled for:', payload.timestamp);
+		console.log('Last run:', payload.lastTimestamp);
 
 		const baseUrl = getBaseUrl();
 		console.log('Using base URL:', baseUrl);
 
 		const requestPayload = {
-			job: payload.job || 'auto',
-			force: payload.force || false
+			job: 'auto',
+			force: false
 		};
 
 		const response = await fetch(`${baseUrl}/api/cron/intelligent-processor`, {
@@ -49,31 +51,29 @@ export const intelligentProcessor = task({
 		return {
 			success: true,
 			timestamp: new Date().toISOString(),
+			scheduleId: payload.scheduleId,
 			result
 		};
 	}
 });
 
 // Fixture schedule task - replaces predictions update (every 2 minutes)
-export const fixtureSchedule = task({
+export const fixtureSchedule = schedules.task({
 	id: 'fixture-schedule',
-	maxDuration: 180, // 3 minutes - allows for API calls with delays
-	run: async (payload: {
-		organization?: string;
-		force?: boolean;
-		priority?: string;
-		action?: string;
-	}) => {
-		console.log('Running fixture schedule task');
+	cron: '*/2 * * * *', // Every 2 minutes
+	run: async (payload) => {
+		console.log('Running scheduled fixture schedule task');
+		console.log('Scheduled for:', payload.timestamp);
+		console.log('Last run:', payload.lastTimestamp);
 
 		const baseUrl = getBaseUrl();
 		console.log('Using base URL:', baseUrl);
 
 		const requestPayload = {
-			organization: payload.organization || 'premierleague',
-			force: payload.force || false,
-			priority: payload.priority || 'normal',
-			action: payload.action || 'update_fixtures'
+			organization: 'premierleague',
+			force: false,
+			priority: 'normal',
+			action: 'update_fixtures'
 		};
 
 		const response = await fetch(`${baseUrl}/api/cron/fixture-schedule`, {
@@ -94,25 +94,27 @@ export const fixtureSchedule = task({
 		return {
 			success: true,
 			timestamp: new Date().toISOString(),
+			scheduleId: payload.scheduleId,
 			result
 		};
 	}
 });
 
 // Simple coordinate task - replaces cron coordination (every 10 minutes)
-export const simpleCoordinate = task({
+export const simpleCoordinate = schedules.task({
 	id: 'simple-coordinate',
-	maxDuration: 60, // 1 minute - coordination should be fast
-	run: async (payload: { action?: string; jobName?: string; intervalMinutes?: number }) => {
-		console.log('Running simple coordinate task');
+	cron: '*/10 * * * *', // Every 10 minutes
+	run: async (payload) => {
+		console.log('Running scheduled simple coordinate task');
+		console.log('Scheduled for:', payload.timestamp);
 
 		const baseUrl = getBaseUrl();
 		console.log('Using base URL:', baseUrl);
 
 		const requestPayload = {
-			action: payload.action || 'status',
-			jobName: payload.jobName || 'background-maintenance',
-			intervalMinutes: payload.intervalMinutes || 10
+			action: 'status',
+			jobName: 'background-maintenance',
+			intervalMinutes: 10
 		};
 
 		const response = await fetch(`${baseUrl}/api/cron/simple-coordinate`, {
@@ -133,56 +135,26 @@ export const simpleCoordinate = task({
 		return {
 			success: true,
 			timestamp: new Date().toISOString(),
+			scheduleId: payload.scheduleId,
 			result
 		};
 	}
 });
 
 // Health check task - monitors system health (every 5 minutes)
-export const healthCheck = task({
+export const healthCheck = schedules.task({
 	id: 'health-check',
-	maxDuration: 30, // 30 seconds - health checks should be fast
-	run: async (payload: { jobType?: string; detailed?: boolean }) => {
-		console.log('Running health check task');
+	cron: '*/5 * * * *', // Every 5 minutes
+	run: async (payload) => {
+		console.log('Running scheduled health check task');
+		console.log('Scheduled for:', payload.timestamp);
 
 		const baseUrl = getBaseUrl();
 		console.log('Using base URL:', baseUrl);
 
-		// If no specific jobType provided, just get the health status via GET
-		if (!payload.jobType) {
-			const response = await fetch(`${baseUrl}/api/cron/health`, {
-				method: 'GET'
-			});
-
-			if (!response.ok) {
-				throw new Error(`Health check failed: ${response.statusText}`);
-			}
-
-			const result = await response.json();
-			console.log('Health check completed:', result);
-
-			return {
-				success: true,
-				timestamp: new Date().toISOString(),
-				result
-			};
-		}
-
-		// If specific jobType provided, update its health status
-		const requestPayload = {
-			jobType: payload.jobType,
-			success: true, // Health check task itself succeeded
-			duration: 100, // Minimal duration for health check
-			itemsProcessed: 1,
-			errors: []
-		};
-
+		// For scheduled health checks, just get the health status via GET
 		const response = await fetch(`${baseUrl}/api/cron/health`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify(requestPayload)
+			method: 'GET'
 		});
 
 		if (!response.ok) {
@@ -195,31 +167,28 @@ export const healthCheck = task({
 		return {
 			success: true,
 			timestamp: new Date().toISOString(),
+			scheduleId: payload.scheduleId,
 			result
 		};
 	}
 });
 
 // Finished fixtures checker task - checks finished fixtures missing scores (every 30 minutes)
-export const finishedFixturesChecker = task({
+export const finishedFixturesChecker = schedules.task({
 	id: 'finished-fixtures-checker',
-	maxDuration: 240, // 4 minutes - allows for multiple API calls
-	run: async (payload: {
-		hoursBack?: number;
-		maxFixtures?: number;
-		force?: boolean;
-		priority?: string;
-	}) => {
-		console.log('Running finished fixtures checker task');
+	cron: '*/30 * * * *', // Every 30 minutes
+	run: async (payload) => {
+		console.log('Running scheduled finished fixtures checker task');
+		console.log('Scheduled for:', payload.timestamp);
 
 		const baseUrl = getBaseUrl();
 		console.log('Using base URL:', baseUrl);
 
 		const requestPayload = {
-			hoursBack: payload.hoursBack || 6,
-			maxFixtures: payload.maxFixtures || 20,
-			force: payload.force || false,
-			priority: payload.priority || 'normal'
+			hoursBack: 6,
+			maxFixtures: 20,
+			force: false,
+			priority: 'normal'
 		};
 
 		const response = await fetch(`${baseUrl}/api/cron/finished-fixtures-checker`, {
@@ -240,31 +209,30 @@ export const finishedFixturesChecker = task({
 		return {
 			success: true,
 			timestamp: new Date().toISOString(),
+			scheduleId: payload.scheduleId,
 			result
 		};
 	}
 });
 
 // Live scores updater task - smart cron-optimized live game score updates
-export const liveScoresUpdater = task({
+export const liveScoresUpdater = schedules.task({
 	id: 'live-scores-updater',
-	maxDuration: 300, // 5 minutes - longest running task for live updates
-	run: async (payload: {
-		priority?: 'urgent' | 'normal';
-		force?: boolean;
-		cronFrequencyMinutes?: number;
-	}) => {
-		console.log('🚀 Running smart live scores updater task');
+	cron: '0 * * * *', // Every hour (top of the hour)
+	run: async (payload) => {
+		console.log('🚀 Running scheduled live scores updater task');
+		console.log('Scheduled for:', payload.timestamp);
+		console.log('Last run:', payload.lastTimestamp);
 
 		const baseUrl = getBaseUrl();
 		console.log('Using base URL:', baseUrl);
 
 		// Smart payload - let the API handle time window calculations
 		const requestPayload = {
-			priority: payload.priority || 'normal',
-			force: payload.force || false,
+			priority: 'normal',
+			force: false,
 			// Optional: tell API how frequently this cron runs for optimal time windows
-			cronFrequency: payload.cronFrequencyMinutes || 60 // Default 60 minutes (hourly)
+			cronFrequency: 60 // Default 60 minutes (hourly)
 		};
 
 		const response = await fetch(`${baseUrl}/api/cron/live-scores-updater`, {
@@ -292,6 +260,7 @@ export const liveScoresUpdater = task({
 		return {
 			success: true,
 			timestamp: new Date().toISOString(),
+			scheduleId: payload.scheduleId,
 			result
 		};
 	}
