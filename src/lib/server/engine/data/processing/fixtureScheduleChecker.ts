@@ -80,7 +80,7 @@ export async function checkFixtureScheduleChanges(options: {
 	batchSize?: number;
 	delayMs?: number;
 }): Promise<FixtureScheduleResult> {
-	const { apiKey, recentLimit = 10, batchSize = 15, delayMs = 1500 } = options;
+	const { apiKey, recentLimit = 15, batchSize = 50, delayMs = 6500 } = options;
 
 	try {
 		console.log('🔍 Starting fixture schedule check...');
@@ -254,12 +254,18 @@ async function processFixturesForUpdates(
 	let updatedCount = 0;
 	const changes: FixtureChange[] = [];
 
+	// Add initial delay to prevent immediate rate limiting
+	if (matchIds.length > 0) {
+		console.log(`⏳ Initial delay of ${delayMs}ms before starting batch processing...`);
+		await delay(delayMs);
+	}
+
 	for (let i = 0; i < matchIds.length; i += batchSize) {
 		const batchIds = matchIds.slice(i, i + batchSize);
 		const matchIdsParam = batchIds.join(',');
 
 		console.log(
-			`🔄 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(matchIds.length / batchSize)} (${batchIds.length} fixtures)`
+			`🔄 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(matchIds.length / batchSize)} (${batchIds.length} fixtures) - delay: ${delayMs}ms`
 		);
 
 		try {
@@ -273,9 +279,11 @@ async function processFixturesForUpdates(
 
 			if (!response.ok) {
 				if (response.status === 429) {
-					console.warn('⚠️ Rate limited, waiting longer...');
-					await delay(delayMs * 2); // Double delay on rate limit
-					continue; // Try this batch again
+					console.warn('⚠️ Rate limited, waiting much longer...');
+					await delay(delayMs * 4); // Quadruple delay on rate limit
+					// Don't continue - retry this exact batch
+					i -= batchSize; // Reset to retry this batch
+					continue;
 				}
 				throw new Error(`API request failed with status ${response.status}`);
 			}

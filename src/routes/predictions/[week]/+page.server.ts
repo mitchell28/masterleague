@@ -10,6 +10,10 @@ import {
 	intelligentPredictionsProcessing,
 	triggerBackgroundProcessing
 } from '$lib/server/engine/data/processing/';
+import {
+	checkForLiveGamesOnPageVisit,
+	triggerLiveScoreUpdate
+} from '$lib/server/engine/data/fixtures';
 import type { PageServerLoad, Actions } from './$types';
 import type { Fixture } from '$lib/server/db/schema';
 
@@ -49,6 +53,16 @@ export const load: PageServerLoad = async ({ params, locals, parent, fetch }) =>
 		week
 	);
 
+	// Simple live game check - only triggers if needed and doesn't conflict with cron
+	const liveGameCheck = await checkForLiveGamesOnPageVisit(fixturesWithPrediction);
+
+	// If live games detected and we should trigger an update (respects cron timing)
+	if (liveGameCheck.shouldTriggerUpdate) {
+		console.log(`🎮 Live game trigger: ${liveGameCheck.reason}`);
+		// Fire and forget - don't wait for response to avoid slowing page load
+		triggerLiveScoreUpdate().catch((err) => console.warn('Live score trigger failed:', err));
+	}
+
 	// Handle processing based on intelligent decision
 	if (processingDecision.shouldProcess) {
 		if (processingDecision.method === 'sync') {
@@ -72,7 +86,13 @@ export const load: PageServerLoad = async ({ params, locals, parent, fetch }) =>
 					teams: freshData.teamsMap,
 					isPastWeek: fixturesWithPrediction.length > 0 && week < currentWeek,
 					lastUpdated: new Date().toISOString(),
-					processingInfo: `⚡ Urgent: ${processingDecision.reason}`
+					processingInfo: `⚡ Urgent: ${processingDecision.reason}`,
+					// Live game info for frontend smart polling
+					liveGameInfo: {
+						hasLiveGames: liveGameCheck.hasLiveGames,
+						nextCheckIn: liveGameCheck.nextCheckIn,
+						liveCount: liveGameCheck.liveFixtureIds.length
+					}
 				};
 			} catch (error) {
 				console.error('Urgent processing failed:', error);
@@ -100,7 +120,13 @@ export const load: PageServerLoad = async ({ params, locals, parent, fetch }) =>
 		// This prevents showing "past week" when we're just waiting for new season fixtures
 		isPastWeek: fixturesWithPrediction.length > 0 && week < currentWeek,
 		lastUpdated,
-		processingInfo: `💾 ${processingDecision.reason}`
+		processingInfo: `💾 ${processingDecision.reason}`,
+		// Live game info for frontend smart polling
+		liveGameInfo: {
+			hasLiveGames: liveGameCheck.hasLiveGames,
+			nextCheckIn: liveGameCheck.nextCheckIn,
+			liveCount: liveGameCheck.liveFixtureIds.length
+		}
 	};
 };
 
@@ -258,6 +284,54 @@ export const actions = {
 				message: 'Failed to update fixtures',
 				fixtures: []
 			});
+		}
+	},
+
+	// Check for past week updates (for automatic checking)
+	checkPastWeekUpdates: async ({ params }) => {
+		try {
+			const week = parseInt(params.week);
+			if (isNaN(week)) {
+				return { hasUpdates: false };
+			}
+
+			// Get current fixtures from cache/DB
+			const { fixturesWithPrediction, lastUpdated } = await getFixturesWithPredictions(
+				'system',
+				week,
+				0
+			);
+
+			// If no fixtures or last update is very recent (within 1 minute), no need to check
+			if (
+				!fixturesWithPrediction.length ||
+				(lastUpdated && Date.now() - new Date(lastUpdated).getTime() < 60000)
+			) {
+				return { hasUpdates: false };
+			}
+
+			// Check for finished games that might have updated scores
+			const finishedGames = fixturesWithPrediction.filter((f) => f.status === 'FINISHED');
+
+			// If no finished games, no updates possible
+			if (finishedGames.length === 0) {
+				return { hasUpdates: false };
+			}
+
+			// Simple heuristic: if we have finished games and last update was > 5 minutes ago,
+			// there might be updates (final scores, late results, etc.)
+			const lastUpdateTime = lastUpdated ? new Date(lastUpdated) : new Date(0);
+			const timeSinceUpdate = Date.now() - lastUpdateTime.getTime();
+			const fiveMinutes = 5 * 60 * 1000;
+
+			return {
+				hasUpdates: timeSinceUpdate > fiveMinutes,
+				lastUpdated: lastUpdated,
+				finishedGames: finishedGames.length
+			};
+		} catch (error) {
+			console.error('Error checking past week updates:', error);
+			return { hasUpdates: false };
 		}
 	}
 } satisfies Actions;

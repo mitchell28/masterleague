@@ -21,6 +21,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	// Check if user is authenticated
 	if (!locals.user?.id) {
 		throw redirect(302, '/auth/login');
+	} else if (!locals.user.emailVerified) {
+		throw redirect(302, '/auth/verify-email');
 	}
 
 	// Start with cached values for faster initial load

@@ -1,7 +1,7 @@
 import type { PageLoad } from './$types';
 import type { MetaTagsProps } from 'svelte-meta-tags';
 
-export const load: PageLoad = ({ url }) => {
+export const load: PageLoad = ({ url, data }) => {
 	// Only override specific meta tags - layout defaults will be used for the rest
 	const pageMetaTags = Object.freeze({
 		title: 'Groups',
@@ -24,6 +24,7 @@ export const load: PageLoad = ({ url }) => {
 	}) satisfies MetaTagsProps;
 
 	return {
+		data,
 		pageMetaTags
 	};
 };

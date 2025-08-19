@@ -1,10 +1,9 @@
 <script lang="ts">
 	import '../app.css';
-	import { invalidate } from '$app/navigation';
-	import { authClient } from '$lib/client/auth-client';
 	import Navbar from '$lib/components/Navbar.svelte';
 	import { page } from '$app/state';
 	import { MetaTags, deepMerge } from 'svelte-meta-tags';
+	import { Toaster } from 'svelte-sonner';
 
 	// Component props
 	let { children, data } = $props();
@@ -13,6 +12,7 @@
 </script>
 
 <MetaTags {...metaTags} />
+<Toaster />
 <Navbar />
 <main class="min-h-screen">
 	{@render children()}

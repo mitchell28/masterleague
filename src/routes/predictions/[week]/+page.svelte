@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import { Check, AlertTriangle, RefreshCw } from '@lucide/svelte';
+	import { toast } from 'svelte-sonner';
 	import type { Team, Prediction } from '$lib/server/db/schema';
 	import type { Fixture as BaseFixture } from '$lib/server/db/schema';
 	import PredictionCardV2 from '../components/PredictionCardV2.svelte';
@@ -60,6 +61,98 @@
 			updatePredictionsData(data);
 		}
 	});
+
+	// Effect to show toast notifications for form results
+	$effect(() => {
+		if (form?.success) {
+			toast.success('Predictions saved successfully!', {
+				duration: 3000
+			});
+		} else if (form && !form.success && form.message) {
+			toast.error(form.message, {
+				duration: 4000
+			});
+		}
+	});
+
+	// Effect to show toast for rate limiting
+	$effect(() => {
+		if (form?.rateLimited) {
+			toast.warning('Football API rate limit reached. Using cached data.', {
+				duration: 5000
+			});
+		}
+	});
+
+	// Effect to handle success/error states from predictions hook
+	$effect(() => {
+		if (predictionsState.showSuccess) {
+			toast.success('Predictions saved successfully!', {
+				duration: 3000
+			});
+		}
+	});
+
+	$effect(() => {
+		if (predictionsState.showError && predictionsState.errorMessage) {
+			toast.error(predictionsState.errorMessage, {
+				duration: 4000
+			});
+		}
+	});
+
+	// Auto-check for past week updates (not just on reload)
+	let pastWeekCheckTimer: number | null = null;
+
+	$effect(() => {
+		// Clear existing timer
+		if (pastWeekCheckTimer) {
+			clearTimeout(pastWeekCheckTimer);
+		}
+
+		// Only check past weeks automatically
+		if (predictionsInfo.isPastWeek) {
+			// Check immediately, then every 2 minutes for past week updates
+			const checkForUpdates = async () => {
+				try {
+					const response = await fetch(`?/checkPastWeekUpdates`, {
+						method: 'POST',
+						body: new FormData()
+					});
+
+					if (response.ok) {
+						const result = await response.json();
+						if (result.hasUpdates) {
+							toast.info('New scores available for this week', {
+								duration: 4000,
+								action: {
+									label: 'Refresh',
+									onClick: () => window.location.reload()
+								}
+							});
+						}
+					}
+				} catch (error) {
+					// Silently fail - don't spam user with errors
+					console.log('Past week check failed:', error);
+				}
+			};
+
+			// Check immediately
+			checkForUpdates();
+
+			// Then check every 2 minutes
+			pastWeekCheckTimer = setInterval(checkForUpdates, 120000) as any;
+		}
+
+		// Cleanup function
+		return () => {
+			if (pastWeekCheckTimer) {
+				clearTimeout(pastWeekCheckTimer);
+				pastWeekCheckTimer = null;
+			}
+		};
+	});
 </script>
 
 <!-- Live matches indicator with clean design -->
@@ -100,63 +193,6 @@
 					<RefreshCw size={14} class={predictionsState.isUpdating ? 'animate-spin' : ''} />
 					<span>Refresh</span>
 				</button>
-			</div>
-		</div>
-	</div>
-{/if}
-
-{#if predictionsState.showSuccess}
-	<div class="relative mb-6">
-		<div
-			class="relative h-[80px] w-full overflow-hidden border-b-4 border-green-500 bg-green-500/20"
-		>
-			<!-- Success top bar -->
-			<div class="flex h-[16px] w-full items-center justify-center bg-green-500">
-				<span class="text-xs font-bold text-black">SUCCESS</span>
-			</div>
-
-			<!-- Content -->
-			<div class="relative flex h-full items-center gap-3 px-6 pt-3 pb-4">
-				<Check size={20} class="text-green-200" />
-				<span class="text-sm text-green-100">Predictions saved successfully!</span>
-			</div>
-		</div>
-	</div>
-{/if}
-
-{#if predictionsState.showError}
-	<div class="relative mb-6">
-		<div class="relative h-[80px] w-full overflow-hidden border-b-4 border-red-500 bg-red-600/20">
-			<!-- Error top bar -->
-			<div class="flex h-[16px] w-full items-center justify-center bg-red-500">
-				<span class="text-xs font-bold text-black">ERROR</span>
-			</div>
-
-			<!-- Content -->
-			<div class="relative flex h-full items-center gap-3 px-6 pt-3 pb-4">
-				<AlertTriangle size={16} class="text-red-200" />
-				<span class="text-sm text-red-100">{predictionsState.errorMessage}</span>
-			</div>
-		</div>
-	</div>
-{/if}
-
-{#if form?.rateLimited}
-	<div class="relative mb-6">
-		<div
-			class="relative h-[80px] w-full overflow-hidden border-b-4 border-amber-500 bg-amber-600/20"
-		>
-			<!-- Rate limit top bar -->
-			<div class="flex h-[16px] w-full items-center justify-center bg-amber-500">
-				<span class="text-xs font-bold text-black">RATE LIMITED</span>
-			</div>
-
-			<!-- Content -->
-			<div class="relative flex h-full items-center gap-3 px-6 pt-3 pb-4">
-				<AlertTriangle size={16} class="text-amber-200" />
-				<span class="text-sm text-amber-100"
-					>Football API rate limit reached. Using cached data.</span
-				>
 			</div>
 		</div>
 	</div>

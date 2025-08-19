@@ -76,15 +76,11 @@ export const load = (async ({ params, locals }) => {
 		where: eq(leagueTable.userId, userId)
 	});
 
-	// Check for valid stats
-	const stats = {
-		totalPredictions: leagueEntry?.predictedFixtures || 0,
-		completedPredictions: leagueEntry?.completedFixtures || 0,
-		totalPoints: leagueEntry?.totalPoints || 0,
-		correctScorelines: leagueEntry?.correctScorelines || 0,
-		correctOutcomes: leagueEntry?.correctOutcomes || 0,
-		incorrectPredictions:
-			(leagueEntry?.completedFixtures || 0) - (leagueEntry?.correctOutcomes || 0)
+	// We'll calculate real-time stats from actual predictions data later
+	// Initialize with placeholder stats that will be replaced
+	let stats = {
+		correctScorelines: 0,
+		incorrectPredictions: 0
 	};
 
 	// Get all weeks that have fixtures
@@ -300,6 +296,44 @@ export const load = (async ({ params, locals }) => {
 			{} as Record<string, any>
 		);
 
+		// Calculate real-time stats from THIS WEEK's prediction data only
+		const weeklyPredictions = userPredictions; // These are already filtered for this week
+
+		// Get fixture data for this week to understand point multipliers
+		const weeklyFixtures = weekFixturesData; // These are already the week's fixtures
+
+		const fixtureMultiplierMap = new Map();
+		weeklyFixtures.forEach((fixture) => {
+			fixtureMultiplierMap.set(fixture.id, fixture.pointsMultiplier || 1);
+		});
+
+		const completedWeeklyPredictions = weeklyPredictions.filter((pred) => pred.points !== null);
+
+		// Categorize predictions based on points and multipliers for THIS WEEK ONLY
+		let correctScorelines = 0;
+		let incorrectPredictions = 0;
+
+		completedWeeklyPredictions.forEach((pred) => {
+			const points = pred.points || 0;
+			const multiplier = fixtureMultiplierMap.get(pred.fixtureId) || 1;
+
+			if (points === 0) {
+				incorrectPredictions++;
+			} else if (points === 3 * multiplier) {
+				correctScorelines++; // Perfect score
+			} else if (points === 1 * multiplier) {
+				// Correct outcome only - not tracked anymore
+			}
+		});
+
+		// Update stats with weekly data (only 3 stats needed)
+		stats = {
+			correctScorelines,
+			incorrectPredictions
+		};
+
+		console.log(`Weekly stats for user ${userId}, week ${weekId}:`, stats);
+
 		// Log summary of data processing with more detail
 		const finishedCount = processedPredictions.filter(
 			(p) => p.fixture.status === 'FINISHED' && p.prediction && p.prediction.totalPoints !== null
@@ -345,6 +379,74 @@ export const load = (async ({ params, locals }) => {
 		};
 	} catch (err) {
 		console.error('Error fetching prediction data:', err);
+
+		// Still calculate weekly stats even if main prediction loading fails
+		try {
+			// Get predictions for this specific week only
+			const weeklyPredictions = await db
+				.select({
+					id: predictions.id,
+					fixtureId: predictions.fixtureId,
+					points: predictions.points
+				})
+				.from(predictions)
+				.where(
+					and(
+						eq(predictions.userId, userId),
+						inArray(
+							predictions.fixtureId,
+							// Get fixture IDs for this week
+							await db
+								.select({ id: fixtures.id })
+								.from(fixtures)
+								.where(eq(fixtures.weekId, weekId))
+								.then((rows) => rows.map((r) => r.id))
+						)
+					)
+				);
+
+			const weekFixtures = await db
+				.select({
+					id: fixtures.id,
+					pointsMultiplier: fixtures.pointsMultiplier
+				})
+				.from(fixtures)
+				.where(eq(fixtures.weekId, weekId));
+
+			const fixtureMultiplierMap = new Map();
+			weekFixtures.forEach((fixture) => {
+				fixtureMultiplierMap.set(fixture.id, fixture.pointsMultiplier || 1);
+			});
+
+			const completedPredictions = weeklyPredictions.filter((pred) => pred.points !== null);
+
+			let correctScorelines = 0;
+			let incorrectPredictions = 0;
+
+			completedPredictions.forEach((pred) => {
+				const points = pred.points || 0;
+				const multiplier = fixtureMultiplierMap.get(pred.fixtureId) || 1;
+
+				if (points === 0) {
+					incorrectPredictions++;
+				} else if (points === 3 * multiplier) {
+					correctScorelines++;
+				} else if (points === 1 * multiplier) {
+					// Correct outcome only - not tracked anymore
+				}
+			});
+
+			stats = {
+				correctScorelines,
+				incorrectPredictions
+			};
+
+			console.log(`Fallback weekly stats for user ${userId}, week ${weekId}:`, stats);
+		} catch (statsErr) {
+			console.error('Error calculating fallback stats:', statsErr);
+			// Keep the default stats if even this fails
+		}
+
 		// Return empty predictions in case of error
 		return {
 			leaderboardUser: {

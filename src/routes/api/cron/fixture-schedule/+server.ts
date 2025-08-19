@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { checkFixtureScheduleChanges } from '$lib/server/engine/data/processing/fixtureScheduleChecker.js';
-import { CacheHelpers } from '$lib/server/cache/simple-cache.js';
+import { cache, CacheKeys, CacheHelpers } from '$lib/server/cache/simple-cache.js';
 import type { RequestHandler } from './$types.js';
 
 /**
@@ -9,12 +9,15 @@ import type { RequestHandler } from './$types.js';
  */
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		// Check if we ran recently (30 minutes default to prevent spam)
-		if (CacheHelpers.cronRanRecently('fixture-schedule', 30)) {
+		const { force } = await request.json().catch(() => ({}));
+
+		// Check if we ran recently (30 minutes default to prevent spam) - unless forced
+		if (!force && CacheHelpers.cronRanRecently('fixture-schedule', 30)) {
+			const lastRunMinutesAgo = cache.getAge(CacheKeys.cronJob('fixture-schedule'));
 			return json({
 				success: true,
 				message: 'Fixture schedule check ran recently, skipping',
-				last_run_minutes_ago: CacheHelpers.getLastRunMinutesAgo('fixture-schedule')
+				last_run_minutes_ago: lastRunMinutesAgo
 			});
 		}
 
@@ -26,12 +29,12 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		console.log('🔍 Starting fixture schedule check...');
 
-		// Run the fixture schedule checker
+		// Run the fixture schedule checker with AGGRESSIVE batching for maximum speed
 		const result = await checkFixtureScheduleChanges({
 			apiKey,
-			recentLimit: 15, // Check last 15 recent matches
-			batchSize: 10, // Smaller batches for better rate limiting
-			delayMs: 2000 // 2 second delay between batches
+			recentLimit: 15, // Check more recent matches
+			batchSize: 50, // 50 fixtures per API call (much faster!)
+			delayMs: 6500 // 6.5 second delay = 9.2 calls/minute (safely under 10/min)
 		});
 
 		// Mark job as completed

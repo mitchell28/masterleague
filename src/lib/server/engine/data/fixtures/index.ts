@@ -16,6 +16,13 @@ import {
 	type ApiMatch,
 	type ApiMatchTeam
 } from './fixtureApi';
+import {
+	checkForLiveGamesOnPageVisit,
+	triggerLiveScoreUpdate,
+	getSmartPollingInterval,
+	cacheLiveGameStatus,
+	getCachedLiveGameStatus
+} from './liveGameTriggers';
 
 // Export everything
 export {
@@ -34,7 +41,14 @@ export {
 
 	// API operations
 	seedFixturesWithSeasonYear,
-	updateFixtureStatuses
+	updateFixtureStatuses,
+
+	// Live game triggers
+	checkForLiveGamesOnPageVisit,
+	triggerLiveScoreUpdate,
+	getSmartPollingInterval,
+	cacheLiveGameStatus,
+	getCachedLiveGameStatus
 };
 
 // Re-export types using 'export type' syntax for verbatimModuleSyntax compliance

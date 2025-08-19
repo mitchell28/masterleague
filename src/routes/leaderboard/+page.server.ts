@@ -11,10 +11,7 @@ import { getLeaderboard } from '$lib/server/engine/analytics/leaderboard.js';
 export const load = (async ({ locals, url, fetch }) => {
 	if (!locals.user?.id) {
 		throw redirect(302, '/auth/login');
-	}
-
-	// Check if email is verified
-	if (!locals.user.emailVerified) {
+	} else if (!locals.user.emailVerified) {
 		throw redirect(302, '/auth/verify-email');
 	}
 

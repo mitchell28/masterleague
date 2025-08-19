@@ -41,9 +41,7 @@ export interface LeaderboardEntry {
 	displayName?: string;
 	score: number;
 	position: number;
-	correctPredictions: number;
-	totalPredictions: number;
-	accuracy: number;
+	correctScorelines: number;
 	points: number;
 }
 
@@ -170,14 +168,7 @@ export async function recalculateLeaderboard(
 				displayName: row.userName || 'Unknown User',
 				score: row.totalPoints,
 				position: index + 1,
-				correctPredictions: (row.correctScorelines || 0) + (row.correctOutcomes || 0),
-				totalPredictions: row.predictedFixtures || 0,
-				accuracy:
-					(row.predictedFixtures || 0) > 0
-						? (((row.correctScorelines || 0) + (row.correctOutcomes || 0)) /
-								(row.predictedFixtures || 0)) *
-							100
-						: 0,
+				correctScorelines: row.correctScorelines || 0, // Only perfect scores now
 				points: row.totalPoints
 			}));
 
@@ -369,16 +360,11 @@ async function getLeaderboardFromDatabase(
 		displayName: row.userName || 'Unknown User',
 		score: row.totalPoints,
 		position: index + 1,
-		correctPredictions: (row.correctScorelines || 0) + (row.correctOutcomes || 0),
-		totalPredictions: row.predictedFixtures || 0,
-		accuracy:
-			(row.predictedFixtures || 0) > 0
-				? (((row.correctScorelines || 0) + (row.correctOutcomes || 0)) /
-						(row.predictedFixtures || 0)) *
-					100
-				: 0,
+		correctScorelines: row.correctScorelines || 0, // Only perfect scores now
 		points: row.totalPoints
 	}));
+
+	console.log(result);
 
 	// Background cache update with the database result
 	if (result.length > 0) {

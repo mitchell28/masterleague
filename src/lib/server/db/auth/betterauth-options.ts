@@ -14,7 +14,7 @@ const resend = new Resend(getEnvVar('RESEND_API_KEY'));
 
 // Initialize Stripe client
 const stripeClient = new Stripe(getEnvVar('STRIPE_SECRET_KEY')!, {
-	apiVersion: '2025-06-30.basil'
+	apiVersion: '2025-07-30.basil'
 });
 
 // Subscription plans configuration

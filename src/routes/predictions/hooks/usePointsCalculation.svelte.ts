@@ -104,6 +104,7 @@ export function usePointsCalculation() {
 		prediction: Pick<Prediction, 'predictedHomeScore' | 'predictedAwayScore'>,
 		fixture: Pick<Fixture, 'homeScore' | 'awayScore' | 'pointsMultiplier'>
 	): PointsCalculationResult | null {
+		// For finished fixtures with NULL scores, void the prediction (don't calculate points)
 		if (fixture.homeScore === null || fixture.awayScore === null) {
 			return null;
 		}
@@ -115,9 +116,7 @@ export function usePointsCalculation() {
 			fixture.awayScore,
 			fixture.pointsMultiplier
 		);
-	}
-
-	/**
+	} /**
 	 * Validate if scores are valid for predictions
 	 * @param homeScore Home team score
 	 * @param awayScore Away team score

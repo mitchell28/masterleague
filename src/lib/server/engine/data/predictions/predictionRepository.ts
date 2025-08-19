@@ -35,12 +35,19 @@ interface UserPointsUpdate {
 /**
  * Process all predictions for a specific fixture once it's finished
  * and calculate points based on the final score
+ * NOTE: Only processes predictions if the fixture has valid scores
  */
 export async function processPredictionsForFixture(
 	fixtureId: string,
 	homeScore: number,
 	awayScore: number
 ): Promise<PredictionProcessResult> {
+	// Validate that scores are not null - if they are, don't process predictions
+	if (homeScore === null || awayScore === null) {
+		console.log(`Skipping prediction processing for fixture ${fixtureId} - NULL scores detected`);
+		return { processed: 0, pointsAllocated: 0, usersUpdated: 0 };
+	}
+
 	// Get fixture to check multiplier
 	const fixture = await db
 		.select({
