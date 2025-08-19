@@ -2,13 +2,18 @@ import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db/index.js';
 import { fixtures } from '$lib/server/db/schema.js';
 import { cache, CacheKeys, CacheHelpers } from '$lib/server/cache/simple-cache.js';
-import { eq, and, inArray, gt, lt } from 'drizzle-orm';
+import { eq, and, or, inArray, gt, lt, gte, lte } from 'drizzle-orm';
 import type { RequestHandler } from './$types.js';
 
 /**
  * POST /api/cron/live-scores-updater
  * Smart updater for live fixture scores
- * Triggered from page visits and scheduled runs
+ *
+ * IMPROVED LOGIC: Checks matches by BOTH status AND time:
+ * 1. Matches already marked as live (IN_PLAY, PAUSED)
+ * 2. Matches that SHOULD be live based on matchDate/time (even if status is stale)
+ *
+ * This catches matches that started but the API status hasn't updated yet.
  */
 export const POST: RequestHandler = async ({ request }) => {
 	try {
@@ -36,23 +41,55 @@ export const POST: RequestHandler = async ({ request }) => {
 		console.log(`⚽ Starting live scores update (${priority} priority)...`);
 		const startTime = Date.now();
 
-		// Smart time window - check games that started in the last 3 hours
+		// SMART CRON-OPTIMIZED TIME WINDOWS
 		const now = new Date();
-		const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
 
-		// Find live fixtures (IN_PLAY, PAUSED) that need score updates
-		const liveFixtures = await db
+		// Adaptive time windows based on when we last ran (cron-friendly)
+		const lastRunMinutes = cache.getAge(CacheKeys.cronJob('live-scores-updater')) || 60; // Default 1 hour
+		const cronWindow = Math.max(lastRunMinutes + 10, 30); // Buffer: last run + 10 mins, minimum 30 mins
+
+		// Multi-layered time windows to ensure we never miss anything
+		const longWindow = new Date(now.getTime() - 4 * 60 * 60 * 1000); // 4 hours (for ongoing matches)
+		const cronCatchupWindow = new Date(now.getTime() - cronWindow * 60 * 1000); // Adaptive to cron frequency
+		const liveWindow = new Date(now.getTime() - 30 * 60 * 1000); // 30 mins (for recently started)
+		const upcomingWindow = new Date(now.getTime() + 30 * 60 * 1000); // 30 mins future (early kickoffs)
+
+		console.log(`🕐 Cron window: ${cronWindow} minutes (last run was ${lastRunMinutes} mins ago)`);
+		console.log(
+			`📅 Time windows: 4hr=${longWindow.toLocaleTimeString()}, cron=${cronCatchupWindow.toLocaleTimeString()}, live=${liveWindow.toLocaleTimeString()}, upcoming=${upcomingWindow.toLocaleTimeString()}`
+		);
+
+		// COMPREHENSIVE QUERY: Never miss a match with overlapping time windows
+		const potentialLiveFixtures = await db
 			.select()
 			.from(fixtures)
 			.where(
-				and(
-					inArray(fixtures.status, ['IN_PLAY', 'PAUSED']),
-					gt(fixtures.matchDate, threeHoursAgo) // Only recent starts
+				or(
+					// Layer 1: Matches currently marked as live (up to 4 hours)
+					and(inArray(fixtures.status, ['IN_PLAY', 'PAUSED']), gt(fixtures.matchDate, longWindow)),
+					// Layer 2: Cron catchup - matches that could have started since last run
+					and(
+						inArray(fixtures.status, ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED']),
+						gte(fixtures.matchDate, cronCatchupWindow),
+						lte(fixtures.matchDate, upcomingWindow)
+					),
+					// Layer 3: Live window - matches that should definitely be live now
+					and(
+						inArray(fixtures.status, ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED', 'AWARDED']),
+						gte(fixtures.matchDate, liveWindow),
+						lte(fixtures.matchDate, now)
+					),
+					// Layer 4: Safety net - any match in last 2 hours with non-finished status
+					and(
+						inArray(fixtures.status, ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED']),
+						gt(fixtures.matchDate, new Date(now.getTime() - 2 * 60 * 60 * 1000)),
+						lt(fixtures.matchDate, now)
+					)
 				)
 			)
-			.limit(15); // Conservative limit for live games
+			.limit(30); // Higher limit for comprehensive cron coverage
 
-		if (liveFixtures.length === 0) {
+		if (potentialLiveFixtures.length === 0) {
 			console.log('✅ No live fixtures to update');
 			CacheHelpers.markCronCompleted('live-scores-updater');
 			return json({
@@ -65,10 +102,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			});
 		}
 
-		console.log(`📋 Found ${liveFixtures.length} live fixtures to check`);
+		console.log(`📋 Found ${potentialLiveFixtures.length} potential live fixtures to check`);
 
 		// Get matchIds for API call
-		const matchIds = liveFixtures.map((f) => f.matchId).filter(Boolean);
+		const matchIds = potentialLiveFixtures.map((f) => f.matchId).filter(Boolean);
 
 		if (matchIds.length === 0) {
 			console.log('❌ No valid matchIds found for live fixtures');
@@ -112,7 +149,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Update fixtures with live scores from API
 		for (const apiMatch of apiMatches) {
-			const dbFixture = liveFixtures.find((f) => f.matchId === apiMatch.id.toString());
+			const dbFixture = potentialLiveFixtures.find((f) => f.matchId === apiMatch.id.toString());
 			if (!dbFixture) continue;
 
 			// Check if update is needed (status change or score change)
@@ -165,17 +202,17 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		const executionTime = Date.now() - startTime;
 		console.log(
-			`⚽ Live scores update completed: ${liveFixtures.length} checked, ${updatedCount} updated in ${executionTime}ms`
+			`⚽ Live scores update completed: ${potentialLiveFixtures.length} checked, ${updatedCount} updated in ${executionTime}ms`
 		);
 
 		return json({
 			success: true,
-			checked: liveFixtures.length,
+			checked: potentialLiveFixtures.length,
 			updated: updatedCount,
 			updates,
 			priority,
 			execution_time: executionTime,
-			message: `Checked ${liveFixtures.length} live fixtures, updated ${updatedCount} with new scores/status`
+			message: `Checked ${potentialLiveFixtures.length} potential live fixtures, updated ${updatedCount} with new scores/status`
 		});
 	} catch (error) {
 		console.error('❌ Live scores update failed:', error);
