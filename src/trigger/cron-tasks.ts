@@ -240,25 +240,25 @@ export const finishedFixturesChecker = task({
 	}
 });
 
-// Live scores updater task - updates live game scores (triggered by page visits)
+// Live scores updater task - smart cron-optimized live game score updates
 export const liveScoresUpdater = task({
 	id: 'live-scores-updater',
 	run: async (payload: {
 		priority?: 'urgent' | 'normal';
-		hoursWindow?: number;
 		force?: boolean;
-		maxFixtures?: number;
+		cronFrequencyMinutes?: number;
 	}) => {
-		console.log('Running live scores updater task');
+		console.log('🚀 Running smart live scores updater task');
 
 		const baseUrl = getBaseUrl();
 		console.log('Using base URL:', baseUrl);
 
+		// Smart payload - let the API handle time window calculations
 		const requestPayload = {
 			priority: payload.priority || 'normal',
-			hoursWindow: payload.hoursWindow || 3,
 			force: payload.force || false,
-			maxFixtures: payload.maxFixtures || 10
+			// Optional: tell API how frequently this cron runs for optimal time windows
+			cronFrequency: payload.cronFrequencyMinutes || 60 // Default 60 minutes (hourly)
 		};
 
 		const response = await fetch(`${baseUrl}/api/cron/live-scores-updater`, {
@@ -274,7 +274,14 @@ export const liveScoresUpdater = task({
 		}
 
 		const result = await response.json();
-		console.log('Live scores updater completed:', result);
+		console.log('⚽ Live scores updater completed:', result);
+
+		// Enhanced logging for smart system
+		if (result.checked !== undefined) {
+			console.log(
+				`📊 Smart update: checked ${result.checked} fixtures, updated ${result.updated || 0}`
+			);
+		}
 
 		return {
 			success: true,
