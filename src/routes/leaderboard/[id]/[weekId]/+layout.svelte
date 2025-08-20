@@ -83,7 +83,7 @@
 				</div>
 
 				<div class="border-b-4 border-b-blue-500 bg-slate-900 p-4">
-					<div class="text-lg font-bold text-blue-400 sm:text-2xl">{stats.correctScorelines}</div>
+					<div class="text-lg font-bold text-blue-400 sm:text-2xl">{stats.correctOutcomes}</div>
 					<div class="text-xs text-slate-400 sm:text-sm">Correct</div>
 				</div>
 

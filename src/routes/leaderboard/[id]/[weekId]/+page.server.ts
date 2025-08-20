@@ -20,6 +20,8 @@ export const load = (async ({ params, locals }) => {
 
 	const userId = params.id;
 	const weekId = parseInt(params.weekId);
+	const currentUserId = locals.session.userId;
+	const isViewingOwnProfile = currentUserId === userId;
 
 	// Check if any fixtures for this week need updates
 	try {
@@ -79,7 +81,11 @@ export const load = (async ({ params, locals }) => {
 	// We'll calculate real-time stats from actual predictions data later
 	// Initialize with placeholder stats that will be replaced
 	let stats = {
+		totalPredictions: 0,
+		completedPredictions: 0,
+		totalPoints: 0,
 		correctScorelines: 0,
+		correctOutcomes: 0,
 		incorrectPredictions: 0
 	};
 
@@ -273,15 +279,35 @@ export const load = (async ({ params, locals }) => {
 			{} as Record<string, any>
 		);
 
-		// Step 4: Combine the data
+		// Step 4: Combine the data and apply prediction hiding logic
 		const processedPredictions = weekFixturesData.map((fixture) => {
 			const prediction = predictionsByFixture[fixture.id] || null;
 			const homeTeam = teamsById[fixture.homeTeamId] || null;
 
+			// Hide predictions for unstarted games when viewing other players
+			let displayPrediction = prediction;
+			if (!isViewingOwnProfile && prediction) {
+				// Check if the game has started (status is not 'SCHEDULED' or 'TIMED')
+				const gameHasStarted = !['SCHEDULED', 'TIMED'].includes(fixture.status);
+
+				// Also check if the match date has passed (additional safety check)
+				const matchDate = new Date(fixture.matchDate);
+				const now = new Date();
+				const matchHasStarted = now >= matchDate;
+
+				// Hide prediction if the game hasn't started yet
+				if (!gameHasStarted && !matchHasStarted) {
+					displayPrediction = null;
+				}
+			}
+
 			return {
 				fixture,
-				prediction,
-				homeTeam
+				prediction: displayPrediction,
+				homeTeam,
+				// Add metadata for the frontend to show appropriate messages
+				originalPrediction: prediction, // Keep track if there was a prediction
+				isHidden: !isViewingOwnProfile && prediction && displayPrediction === null
 			};
 		});
 
@@ -311,24 +337,33 @@ export const load = (async ({ params, locals }) => {
 
 		// Categorize predictions based on points and multipliers for THIS WEEK ONLY
 		let correctScorelines = 0;
+		let correctOutcomes = 0;
 		let incorrectPredictions = 0;
+		let totalPoints = 0;
 
 		completedWeeklyPredictions.forEach((pred) => {
 			const points = pred.points || 0;
 			const multiplier = fixtureMultiplierMap.get(pred.fixtureId) || 1;
+
+			// Add to total points
+			totalPoints += points;
 
 			if (points === 0) {
 				incorrectPredictions++;
 			} else if (points === 3 * multiplier) {
 				correctScorelines++; // Perfect score
 			} else if (points === 1 * multiplier) {
-				// Correct outcome only - not tracked anymore
+				correctOutcomes++; // Correct outcome but wrong score
 			}
 		});
 
-		// Update stats with weekly data (only 3 stats needed)
+		// Update stats with weekly data (all 6 stats needed for frontend)
 		stats = {
+			totalPredictions: weeklyPredictions.length,
+			completedPredictions: completedWeeklyPredictions.length,
+			totalPoints,
 			correctScorelines,
+			correctOutcomes,
 			incorrectPredictions
 		};
 
@@ -375,7 +410,9 @@ export const load = (async ({ params, locals }) => {
 			},
 			availableWeeks: allWeeks,
 			awayTeams: awayTeamsMap,
-			leagueEntry
+			leagueEntry,
+			isViewingOwnProfile,
+			currentUserId
 		};
 	} catch (err) {
 		console.error('Error fetching prediction data:', err);
@@ -421,23 +458,32 @@ export const load = (async ({ params, locals }) => {
 			const completedPredictions = weeklyPredictions.filter((pred) => pred.points !== null);
 
 			let correctScorelines = 0;
+			let correctOutcomes = 0;
 			let incorrectPredictions = 0;
+			let totalPoints = 0;
 
 			completedPredictions.forEach((pred) => {
 				const points = pred.points || 0;
 				const multiplier = fixtureMultiplierMap.get(pred.fixtureId) || 1;
+
+				// Add to total points
+				totalPoints += points;
 
 				if (points === 0) {
 					incorrectPredictions++;
 				} else if (points === 3 * multiplier) {
 					correctScorelines++;
 				} else if (points === 1 * multiplier) {
-					// Correct outcome only - not tracked anymore
+					correctOutcomes++; // Correct outcome but wrong score
 				}
 			});
 
 			stats = {
+				totalPredictions: weeklyPredictions.length,
+				completedPredictions: completedPredictions.length,
+				totalPoints,
 				correctScorelines,
+				correctOutcomes,
 				incorrectPredictions
 			};
 
@@ -461,7 +507,9 @@ export const load = (async ({ params, locals }) => {
 			},
 			availableWeeks: allWeeks,
 			awayTeams: {},
-			leagueEntry
+			leagueEntry,
+			isViewingOwnProfile,
+			currentUserId
 		};
 	}
 }) satisfies PageServerLoad;

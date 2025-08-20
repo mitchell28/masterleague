@@ -16,10 +16,10 @@ function getBaseUrl(): string {
 	return 'https://masterleague.app';
 }
 
-// Intelligent processor task - replaces old background processing (every 30 seconds)
+// Intelligent processor task - replaces old background processing (every minute)
 export const intelligentProcessor = schedules.task({
 	id: 'intelligent-processor',
-	cron: '*/30 * * * * *', // Every 30 seconds
+	cron: '* * * * *', // Every minute (changed from every 30 seconds)
 	run: async (payload) => {
 		console.log('Running scheduled intelligent processor task');
 		console.log('Scheduled for:', payload.timestamp);

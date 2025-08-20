@@ -40,6 +40,14 @@
 						name: string;
 						shortName: string;
 					};
+					originalPrediction?: {
+						id: string;
+						predictedHomeScore: number;
+						predictedAwayScore: number;
+						totalPoints: number | null;
+						updatedAt: string;
+					} | null;
+					isHidden?: boolean;
 				}>;
 			};
 			availableWeeks: number[];
@@ -51,6 +59,8 @@
 					shortName: string;
 				}
 			>;
+			isViewingOwnProfile: boolean;
+			currentUserId: string;
 		};
 	}>();
 
@@ -95,8 +105,12 @@
 		points: number | null,
 		status: string,
 		multiplier: number,
-		hasPrediction: boolean
+		hasPrediction: boolean,
+		isHidden: boolean = false
 	) {
+		// Hidden prediction case
+		if (isHidden) return 'Prediction Hidden';
+
 		// No prediction case
 		if (!hasPrediction && status === 'FINISHED') return 'No Prediction';
 
@@ -116,6 +130,18 @@
 		if (['POSTPONED', 'CANCELLED', 'SUSPENDED'].includes(status)) return status;
 
 		return 'Pending';
+	}
+
+	// Format date and time for match display
+	function formatMatchDateTime(dateString: string) {
+		const date = new Date(dateString);
+		return date.toLocaleString('en-US', {
+			weekday: 'short',
+			day: 'numeric',
+			month: 'short',
+			hour: '2-digit',
+			minute: '2-digit'
+		});
 	}
 
 	// Format date function - without time to match predictions page
@@ -155,7 +181,7 @@
 	<div class="overflow-hidden border-b-4 border-b-slate-600 bg-slate-900">
 		<!-- Mobile Card View (visible on small screens) -->
 		<div class="block sm:hidden">
-			{#each data.weekData.predictions as { prediction, fixture, homeTeam }}
+			{#each data.weekData.predictions as { prediction, fixture, homeTeam, originalPrediction, isHidden }}
 				<div class="border-b border-slate-700 p-4 transition-colors hover:bg-slate-800/50">
 					<!-- Match Header -->
 					<div class="mb-3 flex items-center justify-between">
@@ -179,7 +205,14 @@
 						<div class="text-center">
 							<div class="mb-1 text-xs tracking-wide text-slate-400 uppercase">Prediction</div>
 							<div class="text-sm font-bold text-white">
-								{#if prediction}
+								{#if isHidden}
+									<div class="text-slate-500">
+										<div class="text-xs">Prediction Hidden</div>
+										<div class="text-xs text-slate-400">
+											{formatMatchDateTime(fixture.matchDate)}
+										</div>
+									</div>
+								{:else if prediction}
 									{prediction.predictedHomeScore}-{prediction.predictedAwayScore}
 								{:else}
 									<span class="text-slate-500">No prediction</span>
@@ -203,20 +236,23 @@
 								prediction?.totalPoints ?? null,
 								fixture.status,
 								fixture.pointsMultiplier,
-								prediction !== null
+								prediction !== null || isHidden
 							)}"
 						>
 							{getResultText(
 								prediction?.totalPoints ?? null,
 								fixture.status,
 								fixture.pointsMultiplier,
-								prediction !== null
+								prediction !== null || isHidden,
+								isHidden
 							)}
 						</span>
 						<div class="text-right">
 							<div class="text-xs tracking-wide text-slate-400 uppercase">Points</div>
 							<div class="text-sm font-bold">
-								{#if prediction}
+								{#if isHidden}
+									<span class="text-slate-500">-</span>
+								{:else if prediction}
 									{#if prediction.totalPoints !== null && prediction.totalPoints !== undefined}
 										<span class={prediction.totalPoints > 0 ? 'text-green-400' : 'text-red-400'}>
 											{prediction.totalPoints}
@@ -274,7 +310,7 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-slate-700">
-					{#each data.weekData.predictions as { prediction, fixture, homeTeam }}
+					{#each data.weekData.predictions as { prediction, fixture, homeTeam, isHidden }}
 						<tr class="transition-colors hover:bg-slate-800/50">
 							<td class="px-6 py-4 text-sm font-medium text-white">
 								<div class="flex items-center gap-2">
@@ -294,7 +330,9 @@
 								{formatDate(fixture.matchDate)}
 							</td>
 							<td class="px-3 py-4 text-center text-sm font-bold text-white">
-								{#if prediction}
+								{#if isHidden}
+									<span class="text-slate-400">Prediction Hidden</span>
+								{:else if prediction}
 									{prediction.predictedHomeScore}-{prediction.predictedAwayScore}
 								{:else}
 									<span class="text-slate-500">No prediction</span>
@@ -311,19 +349,22 @@
 										prediction?.totalPoints ?? null,
 										fixture.status,
 										fixture.pointsMultiplier,
-										prediction !== null
+										prediction !== null || isHidden
 									)}"
 								>
 									{getResultText(
 										prediction?.totalPoints ?? null,
 										fixture.status,
 										fixture.pointsMultiplier,
-										prediction !== null
+										prediction !== null || isHidden,
+										isHidden
 									)}
 								</span>
 							</td>
 							<td class="px-3 py-4 text-center text-sm font-bold">
-								{#if prediction}
+								{#if isHidden}
+									<span class="text-slate-500">-</span>
+								{:else if prediction}
 									{#if prediction.totalPoints !== null && prediction.totalPoints !== undefined}
 										<span class={prediction.totalPoints > 0 ? 'text-green-400' : 'text-red-400'}>
 											{prediction.totalPoints}
