@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { animate } from 'motion';
+	import { urlFor } from '$lib/sanity/lib/image';
+	import type { PageData } from './$types';
 
-	let { data } = $props();
+	let { data }: { data: PageData } = $props();
 
 	let headerRef = $state<HTMLElement>();
-	let blogListRef = $state<HTMLElement>();
+	let postsListRef = $state<HTMLElement>();
 
 	// Effect for animations
 	$effect(() => {
@@ -13,9 +15,9 @@
 			animate(headerRef, { opacity: [0, 1], y: [30, 0] }, { duration: 0.8, ease: 'easeOut' });
 		}
 
-		// Animate blog cards with staggered delay
-		if (blogListRef) {
-			const cards = blogListRef.querySelectorAll('.blog-card');
+		// Animate post cards with staggered delay
+		if (postsListRef) {
+			const cards = postsListRef.querySelectorAll('.post-card');
 			cards.forEach((card, index) => {
 				animate(
 					card,
@@ -25,9 +27,35 @@
 			});
 		}
 	});
+
+	const formatDate = function (date: string) {
+		return new Date(date).toLocaleDateString('en-GB', {
+			month: 'long',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	};
 </script>
 
 <main class="relative mx-auto mt-22 max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
+	<!-- Back Button -->
+	<div class="mb-8">
+		<a
+			href="/"
+			class="text-accent hover:text-accent/80 group inline-flex items-center gap-2 transition-colors duration-200"
+		>
+			<svg
+				class="h-5 w-5 transition-transform duration-200 group-hover:-translate-x-1"
+				fill="none"
+				stroke="currentColor"
+				viewBox="0 0 24 24"
+			>
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+			</svg>
+			Back to Home
+		</a>
+	</div>
+
 	<!-- Header Section -->
 	<div bind:this={headerRef} class="mb-16 text-center opacity-0">
 		<div class="mb-6">
@@ -39,17 +67,17 @@
 			</span>
 		</div>
 		<h1 class="mb-4 text-4xl leading-tight font-bold sm:text-5xl lg:text-6xl">
-			Latest News & Updates
+			Latest Stories & Updates
 		</h1>
 		<p class="mx-auto max-w-2xl text-lg text-white/80 sm:text-xl">
-			Stay up to date with the latest Master League news, guides, and announcements
+			Explore all the latest posts, guides, and insights from the Master League community
 		</p>
 	</div>
 
-	<!-- Blog Posts Grid -->
-	<div bind:this={blogListRef} class="grid gap-8 sm:gap-12 lg:gap-16">
-		{#each data.blogPosts as post, index (post.id)}
-			<article class="blog-card opacity-0">
+	<!-- Posts List -->
+	<div bind:this={postsListRef} class="grid gap-8 sm:gap-12 lg:gap-16">
+		{#each data.posts || [] as post, index (post._id || index)}
+			<article class="post-card opacity-0">
 				<div
 					class="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-12 {index % 2 === 1
 						? 'lg:grid-flow-col-dense'
@@ -62,31 +90,31 @@
 								class="bg-accent font-display relative mb-4 inline-block px-3 pt-2 pb-1.5 text-xs font-medium text-black sm:px-4 sm:text-sm"
 								style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
 							>
-								{post.category}
-								<span class="ml-2 text-xs opacity-75">• {post.date}</span>
+								{post.category?.toUpperCase() || 'BLOG POST'}
+								<span class="ml-2 text-xs opacity-75"
+									>• {formatDate(post.publishedAt || post._createdAt)}</span
+								>
 							</span>
 						</div>
 
 						<div>
 							<h2 class="mb-3 text-2xl leading-tight font-bold sm:text-3xl lg:text-4xl">
 								<a
-									href="/blog/{post.slug}"
+									href="/blog/{post.slug?.current}"
 									class="text-primary hover:text-accent transition-colors duration-200"
 								>
-									{post.title}
+									{post.title || 'Untitled Post'}
 								</a>
 							</h2>
-							<p class="mb-4 text-lg text-white/80 sm:text-xl">
-								{post.subtitle}
-							</p>
 							<p class="mb-6 text-sm leading-relaxed text-white/70 sm:text-base">
-								{post.excerpt}
+								{post.excerpt ||
+									'Read this interesting blog post about Master League and our community.'}
 							</p>
 						</div>
 
 						<div>
 							<a
-								href="/blog/{post.slug}"
+								href="/blog/{post.slug?.current}"
 								class="bg-accent hover:bg-accent/90 inline-flex items-center px-6 py-3 font-semibold text-black transition-all duration-200 hover:scale-105 hover:shadow-lg"
 							>
 								Read More
@@ -104,22 +132,85 @@
 
 					<!-- Image -->
 					<div class="flex flex-col gap-3 {index % 2 === 1 ? 'lg:col-start-1' : ''}">
-						<a href="/blog/{post.slug}" class="group">
-							<img
-								src={post.image}
-								alt={post.title}
-								class="group-hover:shadow-3xl mx-auto h-auto w-full max-w-lg rounded-lg object-cover shadow-2xl transition-all duration-300 group-hover:scale-105 lg:max-w-none"
-							/>
+						<a href="/blog/{post.slug?.current}" class="group">
+							{#if post.mainImage}
+								<img
+									src={urlFor(post.mainImage).width(800).height(500).url()}
+									alt={post.title}
+									class="group-hover:shadow-3xl mx-auto h-auto w-full max-w-lg rounded-lg object-cover shadow-2xl transition-all duration-300 group-hover:scale-105 lg:max-w-none"
+								/>
+							{:else}
+								<div
+									class="group-hover:shadow-3xl mx-auto flex h-auto w-full max-w-lg items-center justify-center rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 shadow-2xl transition-all duration-300 group-hover:scale-105 lg:max-w-none"
+									style="aspect-ratio: 4/3;"
+								>
+									<div class="text-6xl text-slate-400">📝</div>
+								</div>
+							{/if}
 						</a>
 					</div>
 				</div>
 
 				<!-- Divider (except for last post) -->
-				{#if index < data.blogPosts.length - 1}
+				{#if index < (data.posts?.length || 0) - 1}
 					<div class="mt-12 border-t border-white/10 pt-0 sm:mt-16"></div>
 				{/if}
 			</article>
 		{/each}
+	</div>
+
+	<!-- Pagination -->
+	<div class="mt-16 flex items-center justify-center gap-4 sm:mt-20">
+		{#if data.pagination?.hasPrevPage}
+			<a
+				href="/blog?page={data.pagination?.prevPage}"
+				class="bg-accent hover:bg-accent/90 inline-flex items-center px-6 py-3 font-semibold text-black transition-all duration-200 hover:scale-105 hover:shadow-lg"
+				style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
+			>
+				<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"
+					></path>
+				</svg>
+				Previous
+			</a>
+		{/if}
+
+		<div class="flex items-center gap-2">
+			{#each Array(data.pagination?.totalPages || 0) as _, i}
+				{@const pageNum = i + 1}
+				<a
+					href="/blog?page={pageNum}"
+					class="flex h-10 w-10 items-center justify-center rounded text-sm font-medium transition-all duration-200 {pageNum ===
+					data.pagination?.currentPage
+						? 'bg-accent text-black'
+						: 'bg-white/10 text-white hover:bg-white/20'}"
+				>
+					{pageNum}
+				</a>
+			{/each}
+		</div>
+
+		{#if data.pagination?.hasNextPage}
+			<a
+				href="/blog?page={data.pagination?.nextPage}"
+				class="bg-accent hover:bg-accent/90 inline-flex items-center px-6 py-3 font-semibold text-black transition-all duration-200 hover:scale-105 hover:shadow-lg"
+				style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
+			>
+				Next
+				<svg class="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"
+					></path>
+				</svg>
+			</a>
+		{/if}
+	</div>
+
+	<!-- Page Info -->
+	<div class="mt-8 text-center">
+		<p class="text-sm text-white/60">
+			Showing page {data.pagination?.currentPage || 1} of {data.pagination?.totalPages || 1}
+			({data.pagination?.totalPosts || 0} total posts)
+		</p>
 	</div>
 
 	<!-- Call to Action -->

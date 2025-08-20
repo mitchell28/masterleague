@@ -38,11 +38,17 @@ export default defineConfig(() => {
 						return;
 					}
 					// Suppress false positive renderStudio warning - it is actually used
-					if (warning.code === 'UNUSED_EXTERNAL_IMPORT' && warning.message?.includes('renderStudio')) {
+					if (
+						warning.code === 'UNUSED_EXTERNAL_IMPORT' &&
+						warning.message?.includes('renderStudio')
+					) {
 						return;
 					}
 					// Suppress "use client" directive warnings from React libraries in SSR builds
-					if (warning.code === 'MODULE_LEVEL_DIRECTIVE' && warning.message?.includes('use client')) {
+					if (
+						warning.code === 'MODULE_LEVEL_DIRECTIVE' &&
+						warning.message?.includes('use client')
+					) {
 						return;
 					}
 					warn(warning);
@@ -50,7 +56,7 @@ export default defineConfig(() => {
 			}
 		},
 		ssr: {
-			noExternal: ['@vinejs/vine', 'motion'],
+			noExternal: ['@vinejs/vine', 'motion', 'react-dropzone', 'sanity-plugin-media', 'date-fns'],
 			external: ['node:dns/promises', 'node:dns']
 		}
 	};

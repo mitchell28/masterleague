@@ -5,24 +5,31 @@ import { presentationTool } from 'sanity/presentation';
 import {
 	PUBLIC_SANITY_STUDIO_PROJECT_ID,
 	PUBLIC_SANITY_STUDIO_DATASET,
-	PUBLIC_SANITY_STUDIO_PREVIEW_URL
+	PUBLIC_SANITY_STUDIO_PREVIEW_URL,
+	PUBLIC_SANITY_STUDIO_URL
 } from '$env/static/public';
 
 import { schemaTypes } from './schemas';
+import { media } from 'sanity-plugin-media';
+import { assist } from '@sanity/assist';
 
 const projectId = PUBLIC_SANITY_STUDIO_PROJECT_ID!;
 const dataset = PUBLIC_SANITY_STUDIO_DATASET!;
 
 export default defineConfig({
-	name: 'sanity-template-sveltekit-clean',
-	title: 'Clean SvelteKit + Sanity app',
+	name: 'masterleague',
+	title: 'Masterleague',
 	projectId,
 	dataset,
+	// Set the base path for the studio
+	basePath: '/studio',
 	plugins: [
+		media(),
+		assist(),
 		structureTool(),
 		presentationTool({
 			previewUrl: {
-				origin: PUBLIC_SANITY_STUDIO_PREVIEW_URL || 'http://localhost:5173',
+				origin: PUBLIC_SANITY_STUDIO_URL || PUBLIC_SANITY_STUDIO_PREVIEW_URL,
 				previewMode: {
 					enable: '/preview/enable',
 					disable: '/preview/disable'
