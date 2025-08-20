@@ -12,7 +12,9 @@ export const GET: RequestHandler = async () => {
 			'^/api/.*',
 			'^/leaderboard/.*',
 			'^/predictions/\\[week\\]$',
-			'.*\\(authenticated\\).*'
+			'.*\\(authenticated\\).*',
+			'.*studio.*', // Exclude Sanity studio routes (simple pattern)
+			'.*/studio/\\[\\.\\.\\.*\\].*' // Exclude Sanity studio catchall routes (specific pattern)
 		]
 	});
 };
