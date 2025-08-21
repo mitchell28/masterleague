@@ -12,16 +12,25 @@
 		{ href: '/', label: 'Home', adminOnly: false },
 		{ href: '/predictions', label: 'Predictions', adminOnly: false },
 		{ href: '/leaderboard', label: 'Leaderboard', adminOnly: false },
-		{ href: '/blog', label: 'Blog', adminOnly: false },
-		{ href: '/groups', label: 'Groups', adminOnly: true },
-		{ href: '/admin', label: 'Admin', adminOnly: true }
+		{ href: '/blog', label: 'Blog', adminOnly: false }
+	];
+
+	const adminItems = [
+		{ href: '/groups', label: 'Groups' },
+		{ href: '/studio', label: 'Studio' },
+		{ href: '/admin', label: 'Admin' }
 	];
 
 	let isDropdownOpen = $state(false);
+	let isAdminDropdownOpen = $state(false);
 	let isMobileMenuOpen = $state(false);
 
 	function isNavItemActive(href: string): boolean {
 		return href === '/' ? page.url.pathname === href : page.url.pathname.startsWith(href);
+	}
+
+	function isAnyAdminItemActive(): boolean {
+		return adminItems.some((item) => isNavItemActive(item.href));
 	}
 
 	async function handleSignOut() {
@@ -44,6 +53,20 @@
 				!dropdownButton.contains(target)
 			) {
 				isDropdownOpen = false;
+			}
+		}
+
+		// Close admin dropdown if clicked outside
+		if (isAdminDropdownOpen) {
+			const adminDropdown = document.querySelector('[data-admin-dropdown]');
+			const adminDropdownButton = document.querySelector('[data-admin-dropdown-button]');
+			if (
+				adminDropdown &&
+				adminDropdownButton &&
+				!adminDropdown.contains(target) &&
+				!adminDropdownButton.contains(target)
+			) {
+				isAdminDropdownOpen = false;
 			}
 		}
 
@@ -81,18 +104,16 @@
 
 					<div class="flex gap-2">
 						{#each navItems as item}
-							{#if !item.adminOnly || user?.role === 'admin'}
-								{@const isActive = isNavItemActive(item.href)}
-								<a
-									data-sveltekit-preload-data="hover"
-									href={item.href}
-									class="text- relative flex items-center justify-center px-4 py-2 font-medium transition-all duration-200
-									{isActive ? 'bg-accent text-black' : 'hover:bg-accent/20'}"
-									style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
-								>
-									{item.label}
-								</a>
-							{/if}
+							{@const isActive = isNavItemActive(item.href)}
+							<a
+								data-sveltekit-preload-data="hover"
+								href={item.href}
+								class="text- relative flex items-center justify-center px-4 py-2 font-medium transition-all duration-200
+								{isActive ? 'bg-accent text-black' : 'hover:bg-accent/20'}"
+								style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
+							>
+								{item.label}
+							</a>
 						{/each}
 					</div>
 				</div>
@@ -105,6 +126,40 @@
 				<!-- Desktop Navigation -->
 				<nav class="hidden items-center gap-8 md:flex">
 					<div class="flex items-center gap-3">
+						{#if user?.role === 'admin'}
+							<div class="relative">
+								<button
+									data-admin-dropdown-button
+									class=" hover:bg-accent/30 flex items-center gap-2 px-3 py-2 text-white transition-all duration-200"
+									style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
+									onclick={() => (isAdminDropdownOpen = !isAdminDropdownOpen)}
+								>
+									Admin ▼
+								</button>
+
+								{#if isAdminDropdownOpen}
+									<div
+										data-admin-dropdown
+										class="border-accent/30 absolute top-full right-0 z-[60] mt-2 w-48 border bg-[#0D1326] shadow-xl"
+									>
+										<div class="p-2">
+											{#each adminItems as item}
+												{@const isActive = isNavItemActive(item.href)}
+												<a
+													href={item.href}
+													class="hover:bg-accent/20 flex w-full items-center px-3 py-2 transition-colors
+													{isActive ? 'bg-accent/30 text-accent' : 'text-slate-300 hover:text-white'}"
+													onclick={() => (isAdminDropdownOpen = false)}
+												>
+													{item.label}
+												</a>
+											{/each}
+										</div>
+									</div>
+								{/if}
+							</div>
+						{/if}
+
 						{#if user}
 							<div class="relative">
 								<button
@@ -191,18 +246,35 @@
 			>
 				<nav class="container mx-auto flex flex-col gap-2 px-4 py-6 text-sm">
 					{#each navItems as item}
-						{#if !item.adminOnly || user?.role === 'admin'}
-							{@const isActive = isNavItemActive(item.href)}
-							<a
-								href={item.href}
-								class="flex items-center gap-3 px-4 py-3 transition-all duration-200
-								{isActive ? 'bg-accent font-medium text-black' : 'hover:bg-accent/20 text-white'}"
-								onclick={() => (isMobileMenuOpen = false)}
-							>
-								{item.label}
-							</a>
-						{/if}
+						{@const isActive = isNavItemActive(item.href)}
+						<a
+							href={item.href}
+							class="flex items-center gap-3 px-4 py-3 transition-all duration-200
+							{isActive ? 'bg-accent font-medium text-black' : 'hover:bg-accent/20 text-white'}"
+							onclick={() => (isMobileMenuOpen = false)}
+						>
+							{item.label}
+						</a>
 					{/each}
+
+					{#if user?.role === 'admin'}
+						<div class="border-accent/30 mt-4 border-t pt-4">
+							<p class="mb-2 px-4 text-xs font-medium tracking-wider text-slate-400 uppercase">
+								Admin
+							</p>
+							{#each adminItems as item}
+								{@const isActive = isNavItemActive(item.href)}
+								<a
+									href={item.href}
+									class="flex items-center gap-3 px-4 py-3 transition-all duration-200
+									{isActive ? 'bg-accent font-medium text-black' : 'hover:bg-accent/20 text-white'}"
+									onclick={() => (isMobileMenuOpen = false)}
+								>
+									{item.label}
+								</a>
+							{/each}
+						</div>
+					{/if}
 
 					<div class="border-accent/30 mt-6 border-t pt-6">
 						{#if user?.emailVerified}
