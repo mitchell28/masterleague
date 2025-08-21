@@ -1,4 +1,4 @@
-import { db } from '../server/db';
+import { db } from '$lib/server/db';
 import { organization, member } from '../server/db/auth/auth-schema';
 import { user as authUser } from '../server/db/auth/auth-schema';
 import { randomUUID } from 'crypto';

@@ -349,15 +349,35 @@ export async function triggerBackgroundProcessing(
 	}
 ): Promise<void> {
 	try {
-		const body: any = { action };
-		if (options?.organizationId) body.organizationId = options.organizationId;
-		if (options?.season) body.season = options.season;
+		// Map actions to correct API endpoints
+		let endpoint: string;
+		let body: any = {};
+
+		switch (action) {
+			case 'update-predictions':
+				endpoint = '/api/cron/predictions-update';
+				if (options?.organizationId) body.organizationId = options.organizationId;
+				if (options?.season) body.season = options.season;
+				break;
+			case 'refresh-leaderboard':
+				endpoint = '/api/cron/intelligent-processor';
+				body.job = 'leaderboard';
+				if (options?.organizationId) body.organizationId = options.organizationId;
+				break;
+			case 'check-fixture-schedules':
+				endpoint = '/api/cron/fixture-schedule';
+				if (options?.season) body.season = options.season;
+				break;
+			default:
+				console.log(`❌ Unknown action: ${action}`);
+				return;
+		}
 
 		// Use provided fetch function (for SvelteKit server context) or global fetch
 		const fetchFn = options?.fetch || fetch;
 
 		// Make the background API call
-		fetchFn('/api/cron/background', {
+		fetchFn(endpoint, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
@@ -366,7 +386,7 @@ export async function triggerBackgroundProcessing(
 		})
 			.then(async (response) => {
 				if (response.ok) {
-					console.log(`✅ Background ${action} trigger sent successfully`);
+					console.log(`✅ Background ${action} trigger sent successfully to ${endpoint}`);
 				} else {
 					const errorText = await response.text().catch(() => 'Unknown error');
 					console.log(`⚠️ Background ${action} trigger failed: ${response.status} ${errorText}`);

@@ -78,23 +78,23 @@ export const POST: RequestHandler = async ({ url, request }) => {
 
 			await CronCoordinator.trackExecution('predictions-update', true, {
 				duration: executionTime,
-				itemsProcessed: predictionUpdateResult.fixturesProcessed
+				itemsProcessed: predictionUpdateResult?.fixturesProcessed || 0
 			});
 
 			console.log(
-				`Predictions cron completed in ${executionTime}ms: ${predictionUpdateResult.fixturesProcessed} fixtures processed`
+				`Predictions cron completed in ${executionTime}ms: ${predictionUpdateResult?.fixturesProcessed || 0} fixtures processed`
 			);
 
 			// Return comprehensive results
 			return json({
 				success: true,
 				executionTime,
-				predictionsUpdate: predictionUpdateResult,
+				predictionsUpdate: predictionUpdateResult || { fixturesProcessed: 0 },
 				liveData: {
-					hasLiveMatches: liveData.hasLiveMatches,
-					liveFixturesCount: liveData.liveFixtures.length,
-					cacheStatus: liveData.cacheStatus,
-					apiCallsRemaining: liveData.apiCallsRemaining
+					hasLiveMatches: liveData?.hasLiveMatches || false,
+					liveFixturesCount: liveData?.liveFixtures?.length || 0,
+					cacheStatus: liveData?.cacheStatus || 'unknown',
+					apiCallsRemaining: liveData?.apiCallsRemaining || 0
 				},
 				coordination: {
 					leaderboardTriggered,

@@ -1,5 +1,5 @@
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import { getDatabase } from '../utils/env';
 import * as appSchema from './schema';
 import * as authSchema from './auth/auth-schema';
@@ -11,21 +11,11 @@ if (!DATABASE_URL) {
 	throw new Error("DATABASE_URL is not set. Make sure it's available in process.env");
 }
 
-// Create the Neon PostgreSQL client with connection options
-const sql = neon(DATABASE_URL, {
-	fetchOptions: {
-		cache: 'no-store',
-		keepalive: true
-	}
-});
+// Create the PostgreSQL client with connection options
+const client = postgres(DATABASE_URL);
 
 // Export the database connection with both schemas
-export const db = drizzle(sql, {
-	schema: {
-		...appSchema,
-		...authSchema
-	}
-});
+export const db = drizzle(client, { schema: { ...appSchema, ...authSchema } });
 
 // Export game-related tables from app schema
 export const { teams, fixtures, predictions, leagueTable } = appSchema;

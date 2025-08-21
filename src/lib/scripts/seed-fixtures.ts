@@ -1,18 +1,11 @@
 import * as dotenv from 'dotenv';
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
 import { teams, fixtures, predictions } from '$lib/server/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import { db } from '$lib/server/db';
 
 // Load environment variables from .env file
 dotenv.config();
-
-// Set up database connection
-const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) throw new Error('DATABASE_URL is not set');
-const sql = neon(DATABASE_URL);
-const db = drizzle(sql);
 
 // Get API key from environment
 const FOOTBALL_DATA_API_KEY = process.env.FOOTBALL_DATA_API_KEY;

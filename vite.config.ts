@@ -6,6 +6,7 @@ import { defineConfig } from 'vite';
 export default defineConfig(() => {
 	return {
 		plugins: [tailwindcss(), sveltekit(), devtoolsJson()],
+		logLevel: 'warn', // Reduce verbose CSS output in terminal
 		optimizeDeps: {
 			include: ['@lucide/svelte', 'motion'],
 			exclude: ['@vinejs/vine']
