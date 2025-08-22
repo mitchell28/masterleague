@@ -78,7 +78,7 @@ export function prepareFixturesWithPredictionInfo(fixtures: any[], isPastWeek: b
 			isPastWeek,
 			isWeekend,
 			isLive: isFixtureLive(fixture.status),
-			predictionClosesAt: new Date(matchDate.getTime() - 60 * 60 * 1000)
+			predictionClosesAt: new Date(matchDate.getTime() - 30 * 60 * 1000) // 30 minutes before
 		};
 	});
 }
