@@ -1,9 +1,13 @@
 <script lang="ts">
 	import { animate } from 'motion';
 	import { urlFor } from '$lib/sanity/lib/image';
+	import { useBlogPagination } from './hooks';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	// Initialize pagination hook
+	const pagination = useBlogPagination(data.posts, { postsPerPage: 3 });
 
 	let headerRef = $state<HTMLElement>();
 	let postsListRef = $state<HTMLElement>();
@@ -14,11 +18,20 @@
 		if (headerRef) {
 			animate(headerRef, { opacity: [0, 1], y: [30, 0] }, { duration: 0.8, ease: 'easeOut' });
 		}
+	});
+
+	// Effect for post animations - re-run when pagination changes
+	$effect(() => {
+		// Trigger when currentPage or paginatedPosts change
+		const currentPage = pagination.currentPage;
+		const posts = pagination.paginatedPosts;
 
 		// Animate post cards with staggered delay
-		if (postsListRef) {
+		if (postsListRef && posts.length > 0) {
 			const cards = postsListRef.querySelectorAll('.post-card');
 			cards.forEach((card, index) => {
+				// Reset opacity first
+				(card as HTMLElement).style.opacity = '0';
 				animate(
 					card,
 					{ opacity: [0, 1], y: [40, 0], scale: [0.95, 1] },
@@ -76,7 +89,7 @@
 
 	<!-- Posts List -->
 	<div bind:this={postsListRef} class="grid gap-8 sm:gap-12 lg:gap-16">
-		{#each data.posts || [] as post, index (post._id || index)}
+		{#each pagination.paginatedPosts as post, index (post._id || index)}
 			<article class="post-card opacity-0">
 				<div
 					class="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-12 {index % 2 === 1
@@ -152,7 +165,7 @@
 				</div>
 
 				<!-- Divider (except for last post) -->
-				{#if index < (data.posts?.length || 0) - 1}
+				{#if index < pagination.paginatedPosts.length - 1}
 					<div class="mt-12 border-t border-white/10 pt-0 sm:mt-16"></div>
 				{/if}
 			</article>
@@ -161,55 +174,61 @@
 
 	<!-- Pagination -->
 	<div class="mt-16 flex items-center justify-center gap-4 sm:mt-20">
-		{#if data.pagination?.hasPrevPage}
-			<a
-				href="/blog?page={data.pagination?.prevPage}"
-				class="bg-accent hover:bg-accent/90 inline-flex items-center px-6 py-3 font-semibold text-black transition-all duration-200 hover:scale-105 hover:shadow-lg"
-				style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
-			>
-				<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"
-					></path>
-				</svg>
-				Previous
-			</a>
-		{/if}
-
-		<div class="flex items-center gap-2">
-			{#each Array(data.pagination?.totalPages || 0) as _, i}
-				{@const pageNum = i + 1}
-				<a
-					href="/blog?page={pageNum}"
-					class="flex h-10 w-10 items-center justify-center rounded text-sm font-medium transition-all duration-200 {pageNum ===
-					data.pagination?.currentPage
-						? 'bg-accent text-black'
-						: 'bg-white/10 text-white hover:bg-white/20'}"
+		{#if pagination.totalPages > 1}
+			{#if pagination.hasPrevPage}
+				<button
+					onclick={() => pagination.goToPrevPage()}
+					class="bg-accent hover:bg-accent/90 inline-flex items-center px-6 py-3 font-semibold text-black transition-all duration-200 hover:scale-105 hover:shadow-lg"
+					style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
 				>
-					{pageNum}
-				</a>
-			{/each}
-		</div>
+					<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M15 19l-7-7 7-7"
+						></path>
+					</svg>
+					Previous
+				</button>
+			{/if}
 
-		{#if data.pagination?.hasNextPage}
-			<a
-				href="/blog?page={data.pagination?.nextPage}"
-				class="bg-accent hover:bg-accent/90 inline-flex items-center px-6 py-3 font-semibold text-black transition-all duration-200 hover:scale-105 hover:shadow-lg"
-				style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
-			>
-				Next
-				<svg class="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"
-					></path>
-				</svg>
-			</a>
+			<div class="flex items-center gap-2">
+				{#each Array(pagination.totalPages) as _, i}
+					{@const pageNum = i + 1}
+					<button
+						onclick={() => pagination.goToPage(pageNum)}
+						class="flex h-10 w-10 items-center justify-center rounded text-sm font-medium transition-all duration-200 {pageNum ===
+						pagination.currentPage
+							? 'bg-accent text-black'
+							: 'bg-white/10 text-white hover:bg-white/20'}"
+					>
+						{pageNum}
+					</button>
+				{/each}
+			</div>
+
+			{#if pagination.hasNextPage}
+				<button
+					onclick={() => pagination.goToNextPage()}
+					class="bg-accent hover:bg-accent/90 inline-flex items-center px-6 py-3 font-semibold text-black transition-all duration-200 hover:scale-105 hover:shadow-lg"
+					style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
+				>
+					Next
+					<svg class="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"
+						></path>
+					</svg>
+				</button>
+			{/if}
 		{/if}
 	</div>
 
 	<!-- Page Info -->
 	<div class="mt-8 text-center">
 		<p class="text-sm text-white/60">
-			Showing page {data.pagination?.currentPage || 1} of {data.pagination?.totalPages || 1}
-			({data.pagination?.totalPosts || 0} total posts)
+			Showing page {pagination.currentPage} of {pagination.totalPages}
+			({pagination.totalPosts} total posts)
 		</p>
 	</div>
 
