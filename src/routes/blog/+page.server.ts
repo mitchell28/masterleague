@@ -9,7 +9,10 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const { loadQuery } = locals;
 	const page = parseInt(url.searchParams.get('page') || '1');
 
+	console.log('Blog page load - URL:', url.pathname, 'Search params:', url.searchParams.toString());
+
 	if (page < 1 || isNaN(page)) {
+		console.log('Invalid page number:', page);
 		throw error(404, 'Page not found');
 	}
 
@@ -27,7 +30,17 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const totalPosts = sortedPosts.length;
 	const totalPages = Math.ceil(totalPosts / POSTS_PER_PAGE);
 
+	console.log(
+		'Blog pagination - Page:',
+		page,
+		'Total pages:',
+		totalPages,
+		'Total posts:',
+		totalPosts
+	);
+
 	if (page > totalPages && totalPages > 0) {
+		console.log('Page exceeds total pages:', page, '>', totalPages);
 		throw error(404, 'Page not found');
 	}
 

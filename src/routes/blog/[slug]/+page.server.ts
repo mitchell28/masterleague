@@ -8,6 +8,11 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const { loadQuery } = locals;
 	const { slug } = params;
 
+	// If this is a pagination request, redirect to main blog page
+	if (url.searchParams.has('page')) {
+		throw redirect(302, `/blog?${url.searchParams.toString()}`);
+	}
+
 	const sanityParams = { slug };
 
 	try {
@@ -91,7 +96,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		// format you like.
 		return {
 			query,
-			params,
+			params: sanityParams,
 			options: { initial },
 			pageMetaTags
 		};

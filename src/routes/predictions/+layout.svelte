@@ -109,6 +109,9 @@
 								</span>
 							{/if}
 						</div>
+						<div class="mt-2 text-center">
+							<span class="text-xs text-slate-400">Predictions close 30 mins before kickoff</span>
+						</div>
 					</div>
 
 					<!-- Week navigation centered on mobile -->
@@ -141,6 +144,7 @@
 									PAST WEEK
 								</span>
 							{/if}
+							<span class="text-xs text-slate-400"> Predictions close 30 mins before kickoff </span>
 						</div>
 					</div>
 

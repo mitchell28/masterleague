@@ -102,9 +102,6 @@
 							{post.excerpt}
 						</p>
 					{/if}
-					<p class="text-base text-white/70 sm:text-lg">
-						Continue reading to learn more about this topic.
-					</p>
 				</div>
 			</div>
 
