@@ -13,7 +13,16 @@ export const postQuery = groq`*[_type == "post" && slug.current == $slug][0]{
   category,
   showCTA,
   mainImage,
-  body
+  body,
+  metaTitle,
+  metaDescription,
+  openGraphTitle,
+  openGraphDescription,
+  openGraphImage,
+  twitterTitle,
+  twitterDescription,
+  keywords,
+  noIndex
 }`;
 
 export const postsQuery = groq`*[_type == "post" && defined(slug.current)] | order(coalesce(publishedAt, _createdAt) desc) {
@@ -40,4 +49,14 @@ export interface Post {
 	showCTA?: boolean;
 	mainImage?: ImageAsset;
 	body: PortableTextBlock[];
+	// SEO fields (now individual fields instead of nested object)
+	metaTitle?: string;
+	metaDescription?: string;
+	openGraphTitle?: string;
+	openGraphDescription?: string;
+	openGraphImage?: ImageAsset;
+	twitterTitle?: string;
+	twitterDescription?: string;
+	keywords?: string[];
+	noIndex?: boolean;
 }

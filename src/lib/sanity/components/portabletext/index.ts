@@ -1,1 +1,1 @@
-export { default as CalloutBlock } from './CalloutBlock.svelte';
+// Portabletext component exports removed - problematic blocks have been deleted
