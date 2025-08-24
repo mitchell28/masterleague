@@ -170,21 +170,40 @@ export const load = (async ({ params, locals }) => {
 
 			// Try a direct DB update first for any finished fixtures with null points
 			try {
-				// For any fixture that is finished with scores but has null points in prediction,
-				// set points to 0 as a fallback
-				const updatedCount = await db
-					.update(predictions)
-					.set({ points: 0 })
-					.where(
-						and(
-							eq(predictions.userId, userId),
-							inArray(predictions.fixtureId, finishedFixtureIds),
-							isNull(predictions.points)
-						)
-					)
-					.execute();
+				// Import the proper calculation function used by cron jobs
+				const { calculatePredictionPoints } = await import('$lib/server/engine/shared/utils');
 
-				console.log(`Manually updated ${updatedCount} predictions with default 0 points`);
+				// Calculate points properly for each prediction instead of just setting to 0
+				for (const fixtureId of finishedFixtureIds) {
+					const prediction = predictionMap.get(fixtureId);
+					const fixture = weekFixturesData.find((f) => f.id === fixtureId);
+
+					if (
+						prediction &&
+						prediction.points === null &&
+						fixture &&
+						fixture.homeScore !== null &&
+						fixture.awayScore !== null
+					) {
+						const calculatedPoints = calculatePredictionPoints(
+							prediction.predictedHomeScore,
+							prediction.predictedAwayScore,
+							fixture.homeScore,
+							fixture.awayScore,
+							fixture.pointsMultiplier || 1
+						);
+
+						await db
+							.update(predictions)
+							.set({ points: calculatedPoints })
+							.where(eq(predictions.id, prediction.id))
+							.execute();
+
+						console.log(`Updated prediction ${prediction.id} with ${calculatedPoints} points`);
+					}
+				}
+
+				console.log(`Manually updated predictions with calculated points`);
 
 				// Re-fetch predictions after manual update
 				const manuallyUpdatedPredictions = await db
@@ -257,7 +276,7 @@ export const load = (async ({ params, locals }) => {
 
 					// Log what we're sending to the client
 					console.log(
-						`Prediction for fixture ${prediction.fixtureId}: points=${prediction.points}, totalPoints=${totalPoints}`
+						`Predicted Home Score ${prediction.predictedHomeScore} Predicted Away Score=${prediction.predictedAwayScore}, totalPoints=${totalPoints}`
 					);
 				}
 				return map;

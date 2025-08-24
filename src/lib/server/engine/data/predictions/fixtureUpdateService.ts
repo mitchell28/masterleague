@@ -199,7 +199,7 @@ export async function checkAndUpdateRecentFixtures(
 			.from(schema.fixtures)
 			.where(
 				and(
-					eq(schema.fixtures.status, 'SCHEDULED'),
+					inArray(schema.fixtures.status, ['SCHEDULED', 'TIMED']), // Include TIMED fixtures
 					lt(schema.fixtures.matchDate, sixHoursAgo),
 					gt(schema.fixtures.matchDate, twoDaysAgo)
 				)
