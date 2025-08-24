@@ -23,6 +23,7 @@ interface FixtureUpdateResult {
 	updated: number;
 	live: number;
 	recentlyCompleted: number;
+	overdueChecked: number;
 	potentiallyMissed: number;
 }
 
@@ -113,14 +114,26 @@ export async function checkAndUpdateRecentFixtures(
 			// Only check live matches more frequently
 			if (currentTime - lastLiveUpdateTimestamp < LIVE_UPDATE_COOLDOWN) {
 				console.log('Skipping updates - within cooldown period');
-				return { updated: 0, live: 0, recentlyCompleted: 0, potentiallyMissed: 0 };
+				return {
+					updated: 0,
+					live: 0,
+					recentlyCompleted: 0,
+					overdueChecked: 0,
+					potentiallyMissed: 0
+				};
 			}
 
 			// Fast check if updates are actually needed
 			const updatesNeeded = await areFixtureUpdatesNeeded();
 			if (!updatesNeeded) {
 				console.log('No fixture updates needed at this time');
-				return { updated: 0, live: 0, recentlyCompleted: 0, potentiallyMissed: 0 };
+				return {
+					updated: 0,
+					live: 0,
+					recentlyCompleted: 0,
+					overdueChecked: 0,
+					potentiallyMissed: 0
+				};
 			}
 
 			console.log('Checking only live matches - bypassing main cooldown');
@@ -131,7 +144,13 @@ export async function checkAndUpdateRecentFixtures(
 				.where(inArray(schema.fixtures.status, ['IN_PLAY', 'PAUSED']));
 
 			if (liveFixtures.length === 0) {
-				return { updated: 0, live: 0, recentlyCompleted: 0, potentiallyMissed: 0 };
+				return {
+					updated: 0,
+					live: 0,
+					recentlyCompleted: 0,
+					overdueChecked: 0,
+					potentiallyMissed: 0
+				};
 			}
 
 			lastLiveUpdateTimestamp = currentTime;
@@ -145,6 +164,7 @@ export async function checkAndUpdateRecentFixtures(
 				updated: result.updated,
 				live: result.live,
 				recentlyCompleted: 0,
+				overdueChecked: 0,
 				potentiallyMissed: 0
 			};
 
@@ -159,7 +179,13 @@ export async function checkAndUpdateRecentFixtures(
 			const updatesNeeded = await areFixtureUpdatesNeeded();
 			if (!updatesNeeded) {
 				console.log('No fixture updates needed at this time');
-				return { updated: 0, live: 0, recentlyCompleted: 0, potentiallyMissed: 0 };
+				return {
+					updated: 0,
+					live: 0,
+					recentlyCompleted: 0,
+					overdueChecked: 0,
+					potentiallyMissed: 0
+				};
 			}
 		}
 
@@ -168,6 +194,7 @@ export async function checkAndUpdateRecentFixtures(
 		lastLiveUpdateTimestamp = currentTime;
 
 		// Define time windows for queries - more focused windows to reduce scope
+		const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
 		const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
 		const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
 		const oneHourAhead = new Date(now.getTime() + 1 * 60 * 60 * 1000);
@@ -193,7 +220,21 @@ export async function checkAndUpdateRecentFixtures(
 			)
 			.limit(20); // Reduced limit
 
-		// 3. Potentially missed fixtures (only check very recent ones most of the time)
+		// 3. Overdue fixtures - matches that started 2+ hours ago but still not finished
+		// These need API check to get correct status (match could still be ongoing with delays)
+		const overdueFixtures: Fixture[] = await db
+			.select()
+			.from(schema.fixtures)
+			.where(
+				and(
+					inArray(schema.fixtures.status, ['SCHEDULED', 'TIMED']),
+					lt(schema.fixtures.matchDate, twoHoursAgo),
+					gt(schema.fixtures.matchDate, twoDaysAgo)
+				)
+			)
+			.limit(15); // Check overdue fixtures frequently
+
+		// 4. Potentially missed fixtures (older ones - 6+ hours)
 		const potentiallyMissedFixtures: Fixture[] = await db
 			.select()
 			.from(schema.fixtures)
@@ -206,7 +247,7 @@ export async function checkAndUpdateRecentFixtures(
 			)
 			.limit(20); // Reduced limit
 
-		// 4. Upcoming fixtures about to start
+		// 5. Upcoming fixtures about to start
 		const upcomingFixtures: Fixture[] = await db
 			.select()
 			.from(schema.fixtures)
@@ -224,6 +265,7 @@ export async function checkAndUpdateRecentFixtures(
 		[
 			...liveFixtures,
 			...recentlyCompletedFixtures,
+			...overdueFixtures,
 			...potentiallyMissedFixtures,
 			...upcomingFixtures
 		].forEach((fixture) => {
@@ -240,6 +282,7 @@ export async function checkAndUpdateRecentFixtures(
 				updated: 0,
 				live: 0,
 				recentlyCompleted: 0,
+				overdueChecked: 0,
 				potentiallyMissed: 0
 			};
 			cacheTimestamp = currentTime;
@@ -247,7 +290,7 @@ export async function checkAndUpdateRecentFixtures(
 		}
 
 		console.log(
-			`Updating ${allFixturesToUpdate.length} fixtures: ${liveFixtures.length} live, ${recentlyCompletedFixtures.length} recent, ${potentiallyMissedFixtures.length} missed, ${upcomingFixtures.length} upcoming`
+			`Updating ${allFixturesToUpdate.length} fixtures: ${liveFixtures.length} live, ${recentlyCompletedFixtures.length} recent, ${overdueFixtures.length} overdue (2h+), ${potentiallyMissedFixtures.length} missed (6h+), ${upcomingFixtures.length} upcoming`
 		);
 
 		// Use the updateFixtureStatuses function to do the actual updates
@@ -260,6 +303,7 @@ export async function checkAndUpdateRecentFixtures(
 			updated: result.updated,
 			live: result.live,
 			recentlyCompleted: recentlyCompletedFixtures.length,
+			overdueChecked: overdueFixtures.length,
 			potentiallyMissed: potentiallyMissedFixtures.length
 		};
 
@@ -269,7 +313,7 @@ export async function checkAndUpdateRecentFixtures(
 		return updateResult;
 	} catch (error) {
 		console.error('Error in checkAndUpdateRecentFixtures:', error);
-		return { updated: 0, live: 0, recentlyCompleted: 0, potentiallyMissed: 0 };
+		return { updated: 0, live: 0, recentlyCompleted: 0, overdueChecked: 0, potentiallyMissed: 0 };
 	}
 }
 
