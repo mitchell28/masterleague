@@ -344,23 +344,31 @@ export const load = (async ({ params, locals }) => {
 		// Calculate real-time stats from THIS WEEK's prediction data only
 		const weeklyPredictions = userPredictions; // These are already filtered for this week
 
-		// Get fixture data for this week to understand point multipliers
+		// Get fixture data for this week to understand point multipliers and status
 		const weeklyFixtures = weekFixturesData; // These are already the week's fixtures
 
 		const fixtureMultiplierMap = new Map();
+		const fixtureStatusMap = new Map();
 		weeklyFixtures.forEach((fixture) => {
 			fixtureMultiplierMap.set(fixture.id, fixture.pointsMultiplier || 1);
+			fixtureStatusMap.set(fixture.id, fixture.status);
 		});
 
-		const completedWeeklyPredictions = weeklyPredictions.filter((pred) => pred.points !== null);
+		// Only count predictions for FINISHED games (games that have been played)
+		const playedGamePredictions = weeklyPredictions.filter((pred) => {
+			const fixtureStatus = fixtureStatusMap.get(pred.fixtureId);
+			return fixtureStatus === 'FINISHED';
+		});
 
-		// Categorize predictions based on points and multipliers for THIS WEEK ONLY
+		const completedPlayedPredictions = playedGamePredictions.filter((pred) => pred.points !== null);
+
+		// Categorize predictions based on points and multipliers for FINISHED GAMES ONLY
 		let correctScorelines = 0;
 		let correctOutcomes = 0;
 		let incorrectPredictions = 0;
 		let totalPoints = 0;
 
-		completedWeeklyPredictions.forEach((pred) => {
+		completedPlayedPredictions.forEach((pred) => {
 			const points = pred.points || 0;
 			const multiplier = fixtureMultiplierMap.get(pred.fixtureId) || 1;
 
@@ -376,10 +384,10 @@ export const load = (async ({ params, locals }) => {
 			}
 		});
 
-		// Update stats with weekly data (all 6 stats needed for frontend)
+		// Update stats with played games data only
 		stats = {
-			totalPredictions: weeklyPredictions.length,
-			completedPredictions: completedWeeklyPredictions.length,
+			totalPredictions: playedGamePredictions.length, // Only count predictions for played games
+			completedPredictions: completedPlayedPredictions.length,
 			totalPoints,
 			correctScorelines,
 			correctOutcomes,
