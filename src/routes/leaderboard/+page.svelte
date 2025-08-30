@@ -75,7 +75,7 @@
 					{#each sorting.sortedData as entry, index}
 						<button
 							type="button"
-							class="focus:ring-accent w-full cursor-pointer border-b border-slate-700/60 p-4 text-left transition-colors hover:bg-slate-700/30 focus:bg-slate-700/30 focus:ring-2 focus:outline-none focus:ring-inset"
+							class="w-full cursor-pointer border-b border-slate-700/50 p-4 text-left transition-all duration-200 last:border-b-0 hover:bg-slate-700/30 focus:bg-slate-700/30 focus:ring-2 focus:ring-indigo-500/50 focus:outline-none focus:ring-inset active:bg-slate-700/40"
 							onclick={() => goto(`/leaderboard/${entry.userId}/${data.currentWeek}`)}
 							onkeydown={(e) => {
 								if (e.key === 'Enter' || e.key === ' ') {
@@ -85,21 +85,47 @@
 							}}
 							aria-label="View predictions for {entry.username}"
 						>
-							<div class="mb-3 flex items-center justify-between">
-								<div class="flex items-center">
+							<!-- Main content row -->
+							<div class="flex items-center justify-between">
+								<!-- Left side: Rank and name -->
+								<div class="flex items-center space-x-3">
 									<div
-										class="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-slate-700/80 text-sm font-bold text-slate-300"
+										class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700/60 text-sm font-bold text-slate-200"
 									>
 										{index + 1}
 									</div>
-									<div>
-										<div class="text-sm font-medium tracking-wide text-white">
+									<div class="min-w-0 flex-1">
+										<h3 class="truncate text-sm font-semibold text-white">
 											{entry?.username || 'Anonymous'}
-										</div>
+										</h3>
 									</div>
 								</div>
-								<div class="text-lg font-bold text-indigo-300">
-									{entry.points || 0} pts
+								<!-- Right side: Total points -->
+								<div class="ml-4 text-right">
+									<div class="text-lg font-bold text-indigo-300">
+										{entry.points || 0}
+									</div>
+									<div class="text-xs text-slate-400">points</div>
+								</div>
+							</div>
+
+							<!-- Stats row -->
+							<div class="mt-3 flex items-center justify-between pt-2 text-xs">
+								<div class="flex items-center space-x-1">
+									<span class="text-slate-400">Correct:</span>
+									<span class="font-medium text-green-400">
+										{entry.correctScorelines || 0}
+									</span>
+								</div>
+								<div class="flex items-center space-x-1">
+									<span class="text-slate-400">Week {data.currentWeek}:</span>
+									<span
+										class="font-medium {entry.weeklyPoints > 0
+											? 'text-blue-400'
+											: 'text-slate-500'}"
+									>
+										{entry.weeklyPoints > 0 ? `+${entry.weeklyPoints}` : '0'}
+									</span>
 								</div>
 							</div>
 						</button>
@@ -224,25 +250,25 @@
 			</div>
 
 			<!-- Legend simplified with mobile responsive design -->
-			<div class="mt-6 sm:mt-10">
-				<div class="relative overflow-hidden bg-slate-800/50 p-4 sm:p-5">
-					<div>
-						<h3 class="font-display mb-3 text-base font-semibold text-white sm:text-lg">Scoring</h3>
-						<ul class="grid gap-2 text-sm text-slate-300 sm:grid-cols-3 sm:text-base">
-							<li class="flex items-center">
-								<span class="mr-2 inline-block h-2.5 w-2.5 bg-green-500"></span>Perfect Score: 3 pts
-							</li>
-							<li class="flex items-center">
-								<span class="mr-2 inline-block h-2.5 w-2.5 bg-blue-500"></span>Correct Outcome: 1 pt
-							</li>
-							<li class="flex items-center">
-								<span class="mr-2 inline-block h-2.5 w-2.5 bg-red-500"></span>Incorrect: 0 pts
-							</li>
-						</ul>
-						<p class="mt-3 text-xs leading-relaxed text-slate-400 sm:text-[11px]">
-							Multipliers (2× / 3×) apply to select fixtures.
-						</p>
-					</div>
+		</div>
+		<div class=" bg-background my-6 sm:mt-10">
+			<div class="relative overflow-hidden p-4 sm:p-5">
+				<div>
+					<h3 class="font-display mb-3 text-base font-semibold text-white sm:text-lg">Scoring</h3>
+					<ul class="grid gap-2 text-sm text-slate-300 sm:grid-cols-3 sm:text-base">
+						<li class="flex items-center">
+							<span class="mr-2 inline-block h-2.5 w-2.5 bg-green-500"></span>Perfect Score: 3 pts
+						</li>
+						<li class="flex items-center">
+							<span class="mr-2 inline-block h-2.5 w-2.5 bg-blue-500"></span>Correct Outcome: 1 pt
+						</li>
+						<li class="flex items-center">
+							<span class="mr-2 inline-block h-2.5 w-2.5 bg-red-500"></span>Incorrect: 0 pts
+						</li>
+					</ul>
+					<p class="mt-3 text-xs leading-relaxed text-slate-400 sm:text-[11px]">
+						Multipliers (2× / 3×) apply to select fixtures.
+					</p>
 				</div>
 			</div>
 		</div>
