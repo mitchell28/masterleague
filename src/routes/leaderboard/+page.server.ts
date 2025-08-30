@@ -1,14 +1,14 @@
 import { db } from '$lib/server/db';
 import { user as authUser, organization } from '$lib/server/db/auth/auth-schema';
-import { leagueTable } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { leagueTable, predictions, fixtures } from '$lib/server/db/schema';
+import { eq, and, sum } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { MetaTagsProps } from 'svelte-meta-tags';
 import { getCurrentWeek } from '$lib/server/engine/data/fixtures';
 import { getLeaderboard } from '$lib/server/engine/analytics/leaderboard.js';
 
-export const load = (async ({ locals, url, fetch }) => {
+export const load = (async ({ locals, url }) => {
 	if (!locals.user?.id) {
 		throw redirect(302, '/auth/login');
 	} else if (!locals.user.emailVerified) {
@@ -63,6 +63,34 @@ export const load = (async ({ locals, url, fetch }) => {
 		const currentWeek = await getCurrentWeek();
 		const leaderboard = await getLeaderboard(selectedOrganization.id, currentSeason);
 
+		// Calculate weekly points for current week
+		const weeklyPointsData = await db
+			.select({
+				userId: predictions.userId,
+				weeklyPoints: sum(predictions.points)
+			})
+			.from(predictions)
+			.innerJoin(fixtures, eq(predictions.fixtureId, fixtures.id))
+			.where(
+				and(
+					eq(predictions.organizationId, selectedOrganization.id),
+					eq(fixtures.season, currentSeason),
+					eq(fixtures.weekId, currentWeek)
+				)
+			)
+			.groupBy(predictions.userId);
+
+		// Create a map for quick lookup of weekly points
+		const weeklyPointsMap = new Map(
+			weeklyPointsData.map((wp) => [wp.userId, wp.weeklyPoints || 0])
+		);
+
+		// Add weekly points to leaderboard entries
+		const enhancedLeaderboard = leaderboard.map((entry) => ({
+			...entry,
+			weeklyPoints: weeklyPointsMap.get(entry.userId) || 0
+		}));
+
 		// Meta tags for SEO
 		const pageMetaTags = Object.freeze({
 			title: 'Leaderboard',
@@ -84,7 +112,7 @@ export const load = (async ({ locals, url, fetch }) => {
 
 		return {
 			currentWeek,
-			leaderboard,
+			leaderboard: enhancedLeaderboard,
 			selectedOrganization,
 			currentSeason,
 			leaderboardMeta: null, // Simplified - no metadata tracking

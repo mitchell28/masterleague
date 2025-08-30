@@ -285,7 +285,14 @@ export const load = (async ({ params, locals }) => {
 		);
 
 		// Step 3: Get all teams data for these fixtures
-		const teamsData = await db.select().from(teams);
+		const teamsData = await db
+			.select({
+				id: teams.id,
+				name: teams.name,
+				shortName: teams.shortName,
+				logo: teams.logo
+			})
+			.from(teams);
 
 		// Create maps for easier access
 		const teamsById = teamsData.reduce(

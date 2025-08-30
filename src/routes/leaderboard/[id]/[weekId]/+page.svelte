@@ -39,6 +39,7 @@
 						id: string;
 						name: string;
 						shortName: string;
+						logo: string | null;
 					};
 					originalPrediction?: {
 						id: string;
@@ -57,6 +58,7 @@
 					id: string;
 					name: string;
 					shortName: string;
+					logo: string | null;
 				}
 			>;
 			isViewingOwnProfile: boolean;
@@ -182,18 +184,51 @@
 		<!-- Mobile Card View (visible on small screens) -->
 		<div class="block sm:hidden">
 			{#each data.weekData.predictions as { prediction, fixture, homeTeam, originalPrediction, isHidden }}
-				<div class="border-b border-slate-700 p-4 transition-colors hover:bg-slate-800/50">
-					<!-- Match Header -->
-					<div class="mb-3 flex items-center justify-between">
-						<div class="flex flex-col">
-							<span class="text-sm font-medium text-white">
-								{homeTeam.shortName} vs {data.awayTeams[fixture.id]?.shortName || '???'}
-							</span>
-							<span class="text-xs text-slate-400">{formatDate(fixture.matchDate)}</span>
+				<div
+					class="border-b border-slate-700/50 p-5 transition-all duration-200 last:border-b-0 hover:border-slate-600/50 hover:bg-slate-800/50"
+				>
+					<!-- Match Header with enhanced styling -->
+					<div class="mb-4 flex items-center justify-between">
+						<div class="flex w-full items-center justify-between">
+							<div class="flex items-center gap-2 text-sm font-medium text-white">
+								<div class="flex items-center gap-1">
+									{#if homeTeam.logo}
+										<img
+											src={homeTeam.logo}
+											alt="{homeTeam.name} logo"
+											class="h-4 w-4 rounded-sm"
+										/>
+									{/if}
+									<span class="text-indigo-200">{homeTeam.shortName}</span>
+								</div>
+								<span class="text-slate-400">vs</span>
+								<div class="flex items-center gap-1">
+									{#if data.awayTeams[fixture.id]?.logo}
+										<img
+											src={data.awayTeams[fixture.id].logo}
+											alt="{data.awayTeams[fixture.id].name} logo"
+											class="h-4 w-4 rounded-sm"
+										/>
+									{/if}
+									<span class="text-purple-200"
+										>{data.awayTeams[fixture.id]?.shortName || '???'}</span
+									>
+								</div>
+							</div>
+
+							<div class="mt-1 flex items-center gap-2 text-xs text-slate-400">
+								<span>{formatDate(fixture.matchDate)}</span>
+							</div>
 						</div>
-						{#if fixture.pointsMultiplier > 1}
+						{#if fixture.pointsMultiplier === 2}
 							<span
-								class="inline-flex items-center rounded-full bg-yellow-700 px-2 py-1 text-xs font-bold text-yellow-200"
+								class="inline-flex items-center rounded-full bg-indigo-600 px-2 py-1 text-xs font-bold"
+							>
+								{fixture.pointsMultiplier}× Points
+							</span>
+						{:else if fixture.pointsMultiplier === 3}
+							<span
+								class="inline-flex items-center rounded-full bg-yellow-600 px-2 py-1 text-xs font-bold"
 							>
 								{fixture.pointsMultiplier}× Points
 							</span>
@@ -274,9 +309,9 @@
 
 		<!-- Desktop Table View (hidden on small screens) -->
 		<div class="hidden overflow-x-auto sm:block">
-			<table class="min-w-full">
-				<thead>
-					<tr class="border-b border-slate-700">
+			<table class="min-w-full bg-slate-800/30 backdrop-blur-sm">
+				<thead class="bg-gradient-to-r from-slate-900/80 to-slate-800/80">
+					<tr class="border-b border-slate-700/70">
 						<th
 							class="px-6 py-4 text-left text-xs font-medium tracking-wider text-slate-300 uppercase"
 						>
@@ -311,15 +346,45 @@
 				</thead>
 				<tbody class="divide-y divide-slate-700">
 					{#each data.weekData.predictions as { prediction, fixture, homeTeam, isHidden }}
-						<tr class="transition-colors hover:bg-slate-800/50">
+						<tr
+							class="border-b border-slate-700/50 transition-all duration-200 hover:bg-slate-700/30 hover:shadow-lg"
+						>
 							<td class="px-6 py-4 text-sm font-medium text-white">
-								<div class="flex items-center gap-2">
-									<span class="font-medium">
-										{homeTeam.shortName} vs {data.awayTeams[fixture.id]?.shortName || '???'}
-									</span>
-									{#if fixture.pointsMultiplier > 1}
+								<div class="flex items-center gap-3">
+									<div class="flex items-center gap-2">
+										<div class="flex items-center gap-1">
+											{#if homeTeam.logo}
+												<img
+													src={homeTeam.logo}
+													alt="{homeTeam.name} logo"
+													class="h-5 w-5 rounded-sm"
+												/>
+											{/if}
+											<span class="font-medium text-indigo-200">{homeTeam.shortName}</span>
+										</div>
+										<span class="text-slate-400">vs</span>
+										<div class="flex items-center gap-1">
+											{#if data.awayTeams[fixture.id]?.logo}
+												<img
+													src={data.awayTeams[fixture.id].logo}
+													alt="{data.awayTeams[fixture.id].name} logo"
+													class="h-5 w-5 rounded-sm"
+												/>
+											{/if}
+											<span class="font-medium text-purple-200"
+												>{data.awayTeams[fixture.id]?.shortName || '???'}</span
+											>
+										</div>
+									</div>
+									{#if fixture.pointsMultiplier === 2}
 										<span
-											class="inline-flex items-center rounded-full bg-yellow-700 px-2 py-1 text-xs font-bold text-yellow-200"
+											class="inline-flex items-center rounded-full bg-indigo-800 px-2 py-1 text-xs font-bold"
+										>
+											{fixture.pointsMultiplier}× Points
+										</span>
+									{:else if fixture.pointsMultiplier === 3}
+										<span
+											class="inline-flex items-center rounded-full bg-yellow-600 px-2 py-1 text-xs font-bold"
 										>
 											{fixture.pointsMultiplier}× Points
 										</span>

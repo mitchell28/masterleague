@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { type PageData } from './$types';
-	import { ChevronUp } from '@lucide/svelte';
+	import { ChevronUp, TrendingUp } from '@lucide/svelte';
 	import { useLeaderboardSorting } from './hooks';
 
 	// Props and state
@@ -102,15 +102,6 @@
 									{entry.points || 0} pts
 								</div>
 							</div>
-
-							<div class="grid grid-cols-1 gap-3 text-center">
-								<div>
-									<div class="mb-1 text-xs tracking-wide text-slate-400 uppercase">Correct</div>
-									<div class="text-sm font-medium text-green-400">
-										{entry.correctScorelines || 0}
-									</div>
-								</div>
-							</div>
 						</button>
 					{/each}
 				{:else}
@@ -156,25 +147,40 @@
 									/>
 								</div>
 							</th>
+							<th
+								class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
+								onclick={() => sorting.toggleSort('weeklyPoints')}
+							>
+								<div class="flex items-center justify-center">
+									<span>Week {data.currentWeek}</span>
+									<ChevronUp
+										size={16}
+										class={`ml-1 text-slate-400 ${sorting.sortKey === 'weeklyPoints' ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+									/>
+								</div>
+							</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-700/60">
 						{#if sorting.sortedData && sorting.sortedData.length > 0}
 							{#each sorting.sortedData as entry, index}
 								<tr
-									class="cursor-pointer transition-colors hover:bg-slate-700/30"
+									class="group cursor-pointer transition-all duration-200 hover:scale-[1.005] hover:bg-slate-700/30 hover:shadow-lg"
 									onclick={() => goto(`/leaderboard/${entry.userId}/${data.currentWeek}`)}
 								>
 									<!-- Player name and rank -->
 									<td class="px-4 py-3 whitespace-nowrap">
 										<div class="flex items-center">
 											<div
-												class="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-slate-700/80 text-sm font-bold text-slate-300"
+												class="mr-3 flex h-8 w-8 items-center justify-center
+													rounded-full bg-slate-700/80 text-sm font-bold text-slate-300 transition-all group-hover:shadow-md"
 											>
 												{index + 1}
 											</div>
 											<div>
-												<div class="text-sm font-medium tracking-wide text-white">
+												<div
+													class="text-sm font-medium tracking-wide text-white transition-colors group-hover:text-indigo-200"
+												>
 													{entry?.username || 'Anonymous'}
 												</div>
 											</div>
@@ -182,21 +188,33 @@
 									</td>
 									<!-- Total points -->
 									<td
-										class="px-4 py-3 text-center text-base font-bold whitespace-nowrap text-indigo-300"
+										class="px-4 py-3 text-center text-base font-bold whitespace-nowrap text-indigo-300 transition-colors group-hover:text-indigo-200"
 									>
 										{entry.score || 0}
 									</td>
 									<!-- Correct predictions -->
 									<td
-										class="px-4 py-3 text-center text-base font-medium whitespace-nowrap text-green-400"
+										class="px-4 py-3 text-center text-base font-medium whitespace-nowrap text-green-400 transition-colors group-hover:text-green-300"
 									>
 										{entry.correctScorelines || 0}
+									</td>
+									<!-- Weekly points -->
+									<td
+										class="px-4 py-3 text-center text-base font-medium whitespace-nowrap transition-colors group-hover:text-blue-300"
+									>
+										{#if entry.weeklyPoints > 0}
+											<div class="flex items-center justify-center text-blue-400">
+												<span class="font-semibold">+{entry.weeklyPoints}</span>
+											</div>
+										{:else}
+											<span class="text-slate-500">0</span>
+										{/if}
 									</td>
 								</tr>
 							{/each}
 						{:else}
 							<tr>
-								<td colspan="3" class="py-8 text-center text-sm text-slate-400">
+								<td colspan="4" class="py-8 text-center text-sm text-slate-400">
 									No players found in the leaderboard
 								</td>
 							</tr>
@@ -204,27 +222,27 @@
 					</tbody>
 				</table>
 			</div>
-		</div>
 
-		<!-- Legend simplified with mobile responsive design -->
-		<div class="mt-6 sm:mt-10">
-			<div class="relative overflow-hidden bg-slate-800/50 p-4 sm:p-5">
-				<div>
-					<h3 class="font-display mb-3 text-base font-semibold text-white sm:text-lg">Scoring</h3>
-					<ul class="grid gap-2 text-sm text-slate-300 sm:grid-cols-3 sm:text-base">
-						<li class="flex items-center">
-							<span class="mr-2 inline-block h-2.5 w-2.5 bg-green-500"></span>Perfect Score: 3 pts
-						</li>
-						<li class="flex items-center">
-							<span class="mr-2 inline-block h-2.5 w-2.5 bg-blue-500"></span>Correct Outcome: 1 pt
-						</li>
-						<li class="flex items-center">
-							<span class="mr-2 inline-block h-2.5 w-2.5 bg-red-500"></span>Incorrect: 0 pts
-						</li>
-					</ul>
-					<p class="mt-3 text-xs leading-relaxed text-slate-400 sm:text-[11px]">
-						Multipliers (2× / 3×) apply to select fixtures.
-					</p>
+			<!-- Legend simplified with mobile responsive design -->
+			<div class="mt-6 sm:mt-10">
+				<div class="relative overflow-hidden bg-slate-800/50 p-4 sm:p-5">
+					<div>
+						<h3 class="font-display mb-3 text-base font-semibold text-white sm:text-lg">Scoring</h3>
+						<ul class="grid gap-2 text-sm text-slate-300 sm:grid-cols-3 sm:text-base">
+							<li class="flex items-center">
+								<span class="mr-2 inline-block h-2.5 w-2.5 bg-green-500"></span>Perfect Score: 3 pts
+							</li>
+							<li class="flex items-center">
+								<span class="mr-2 inline-block h-2.5 w-2.5 bg-blue-500"></span>Correct Outcome: 1 pt
+							</li>
+							<li class="flex items-center">
+								<span class="mr-2 inline-block h-2.5 w-2.5 bg-red-500"></span>Incorrect: 0 pts
+							</li>
+						</ul>
+						<p class="mt-3 text-xs leading-relaxed text-slate-400 sm:text-[11px]">
+							Multipliers (2× / 3×) apply to select fixtures.
+						</p>
+					</div>
 				</div>
 			</div>
 		</div>

@@ -60,7 +60,7 @@ export const load: PageServerLoad = async ({ params, locals, parent, fetch }) =>
 	if (liveGameCheck.shouldTriggerUpdate) {
 		console.log(`🎮 Live game trigger: ${liveGameCheck.reason}`);
 		// Fire and forget - don't wait for response to avoid slowing page load
-		triggerLiveScoreUpdate().catch((err) => console.warn('Live score trigger failed:', err));
+		triggerLiveScoreUpdate(fetch).catch((err) => console.warn('Live score trigger failed:', err));
 	}
 
 	// Handle processing based on intelligent decision
