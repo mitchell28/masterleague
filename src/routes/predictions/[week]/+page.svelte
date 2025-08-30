@@ -257,7 +257,7 @@
 				<div class="mt-8 flex justify-end">
 					<button
 						type="submit"
-						class="bg-accent hover:bg-accent/80 font-display rounded px-8 py-3 font-medium text-black disabled:cursor-not-allowed disabled:opacity-50"
+						class="bg-accent hover:bg-accent/80 font-display px-8 py-3 font-medium text-black disabled:cursor-not-allowed disabled:opacity-50"
 						disabled={predictionsState.submitting || !canSubmitForm()}
 					>
 						{predictionsState.submitting ? 'SAVING...' : 'SAVE PREDICTIONS'}
