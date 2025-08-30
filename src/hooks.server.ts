@@ -4,11 +4,11 @@ import type { Handle } from '@sveltejs/kit';
 import { building } from '$app/environment';
 import { sequence } from '@sveltejs/kit/hooks';
 
-import { createRequestHandler, setServerClient } from '@sanity/svelte-loader';
-import { serverClient } from '$lib/sanity/server/client';
+// import { createRequestHandler, setServerClient } from '@sanity/svelte-loader';
+// import { serverClient } from '$lib/sanity/server/client';
 
-setServerClient(serverClient);
-const sanityHandler = createRequestHandler();
+// setServerClient(serverClient);
+// const sanityHandler = createRequestHandler();
 
 const authHandler: Handle = async ({ event, resolve }) => {
 	try {
@@ -27,4 +27,4 @@ const authHandler: Handle = async ({ event, resolve }) => {
 	return svelteKitHandler({ event, resolve, auth, building });
 };
 
-export const handle = sequence(authHandler, sanityHandler);
+export const handle = authHandler; // sequence(authHandler, sanityHandler);

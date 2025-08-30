@@ -360,18 +360,19 @@
 													class="h-5 w-5 rounded-sm"
 												/>
 											{/if}
-											<span class="font-medium text-indigo-200">{homeTeam.shortName}</span>
+											<span class="font-medium">{homeTeam.shortName}</span>
 										</div>
 										<span class="text-slate-400">vs</span>
 										<div class="flex items-center gap-1">
 											{#if data.awayTeams[fixture.id]?.logo}
 												<img
+													loading="lazy"
 													src={data.awayTeams[fixture.id].logo}
 													alt="{data.awayTeams[fixture.id].name} logo"
 													class="h-5 w-5 rounded-sm"
 												/>
 											{/if}
-											<span class="font-medium text-purple-200"
+											<span class="font-medium"
 												>{data.awayTeams[fixture.id]?.shortName || '???'}</span
 											>
 										</div>

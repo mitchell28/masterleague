@@ -8,7 +8,7 @@ import {
 	index,
 	uniqueIndex
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import { user as authUser, organization, member, invitation } from './auth/auth-schema';
 
 export const teams = pgTable('teams', {
@@ -96,6 +96,13 @@ export const predictions = pgTable(
 		userOrgIdx: index('predictions_user_org_idx').on(table.userId, table.organizationId),
 		orgFixtureIdx: index('predictions_org_fixture_idx').on(table.organizationId, table.fixtureId),
 		userFixtureIdx: index('predictions_user_fixture_idx').on(table.userId, table.fixtureId),
+
+		// Weekly stats optimization - user, org, and creation time for recent predictions
+		userOrgWeekIdx: index('predictions_user_org_week_idx').on(
+			table.userId,
+			table.organizationId,
+			table.createdAt
+		),
 
 		// Individual indexes
 		fixtureIdIdx: index('predictions_fixture_id_idx').on(table.fixtureId),

@@ -377,6 +377,7 @@
 				<div class="flex flex-col items-center gap-2">
 					{#if awayTeam.logo}
 						<img
+							loading="lazy"
 							src={awayTeam.logo}
 							alt={awayTeam.name}
 							class="h-10 w-10 object-contain sm:h-12 sm:w-12 md:h-14 md:w-14"

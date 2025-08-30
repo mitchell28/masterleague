@@ -18,6 +18,14 @@ Thumbs.db
 !.env.example
 !.env.test
 
+# Database backups
+backups/
+*.sql
+
+# Temporary files
+*.tmp
+*.temp
+
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*

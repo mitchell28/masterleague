@@ -1,34 +1,10 @@
-/* Gunterz Font - for headings */
+/* Optimized Gunterz Font Loading with font-display: swap */
 @font-face {
 	font-family: 'Gunterz';
 	src: url('/src/lib/assets/fonts/Gunterz-Regular.otf') format('opentype');
 	font-weight: 400;
 	font-style: normal;
-	font-display: auto;
-}
-
-@font-face {
-	font-family: 'Gunterz';
-	src: url('/src/lib/assets/fonts/Gunterz-Italic.otf') format('opentype');
-	font-weight: 400;
-	font-style: italic;
-	font-display: auto;
-}
-
-@font-face {
-	font-family: 'Gunterz';
-	src: url('/src/lib/assets/fonts/Gunterz-Medium.otf') format('opentype');
-	font-weight: 500;
-	font-style: normal;
-	font-display: auto;
-}
-
-@font-face {
-	font-family: 'Gunterz';
-	src: url('/src/lib/assets/fonts/Gunterz-MediumItalic.otf') format('opentype');
-	font-weight: 500;
-	font-style: italic;
-	font-display: auto;
+	font-display: swap; /* Non-blocking font loading */
 }
 
 @font-face {
@@ -36,15 +12,7 @@
 	src: url('/src/lib/assets/fonts/Gunterz-Bold.otf') format('opentype');
 	font-weight: 700;
 	font-style: normal;
-	font-display: auto;
-}
-
-@font-face {
-	font-family: 'Gunterz';
-	src: url('/src/lib/assets/fonts/Gunterz-BoldItalic.otf') format('opentype');
-	font-weight: 700;
-	font-style: italic;
-	font-display: auto;
+	font-display: swap;
 }
 
 @font-face {
@@ -52,13 +20,17 @@
 	src: url('/src/lib/assets/fonts/Gunterz-Black.otf') format('opentype');
 	font-weight: 900;
 	font-style: normal;
-	font-display: auto;
+	font-display: swap;
 }
 
-@font-face {
-	font-family: 'Gunterz';
-	src: url('/src/lib/assets/fonts/Gunterz-BlackItalic.otf') format('opentype');
-	font-weight: 900;
-	font-style: italic;
-	font-display: auto;
+/* Preload most critical font variants only */
+/* Add these to your app.html head section:
+<link rel="preload" href="/src/lib/assets/fonts/Gunterz-Regular.otf" as="font" type="font/otf" crossorigin>
+<link rel="preload" href="/src/lib/assets/fonts/Gunterz-Bold.otf" as="font" type="font/otf" crossorigin>
+*/
+
+/* Fallback font stack optimization */
+.font-display {
+	font-family: 'Gunterz', 'Impact', 'Arial Black', sans-serif;
+	font-synthesis: none; /* Prevent faux bold/italic */
 }

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { useQuery } from '@sanity/svelte-loader';
+	// import { useQuery } from '@sanity/svelte-loader';
 	import { urlFor } from '$lib/sanity/lib/image';
 	import { animate } from 'motion';
 	import PortableTextRenderer from '$lib/sanity/components/PortableTextRenderer.svelte';
@@ -16,9 +16,10 @@
 		});
 	};
 
-	const q = useQuery<Post>(data);
+	// const q = useQuery<Post>(data);
 
-	let post = $derived($q.data);
+	// let post = $derived($q.data);
+	let post = $derived(data.post);
 
 	let announcementRef = $state<HTMLElement>();
 	let titleRef = $state<HTMLElement>();

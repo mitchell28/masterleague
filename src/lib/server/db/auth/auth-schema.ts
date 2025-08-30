@@ -8,6 +8,7 @@ import {
 	index,
 	uniqueIndex
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const user = pgTable(
 	'user',
@@ -34,7 +35,9 @@ export const user = pgTable(
 		roleIdx: index('user_role_idx').on(table.role),
 		bannedIdx: index('user_banned_idx').on(table.banned),
 		stripeCustomerIdx: index('user_stripe_customer_idx').on(table.stripeCustomerId),
-		createdAtIdx: index('user_created_at_idx').on(table.createdAt)
+		createdAtIdx: index('user_created_at_idx').on(table.createdAt),
+		// Index for verified users (without WHERE clause to avoid IMMUTABLE issues)
+		emailVerifiedIdx: index('user_email_verified_idx').on(table.emailVerified, table.email)
 	})
 );
 

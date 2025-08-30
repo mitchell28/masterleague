@@ -8,6 +8,23 @@ import type { MetaTagsProps } from 'svelte-meta-tags';
 import { getCurrentWeek } from '$lib/server/engine/data/fixtures';
 import { getLeaderboard } from '$lib/server/engine/analytics/leaderboard.js';
 
+// Simple cache for frequently accessed data
+const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+
+function getCached<T>(key: string): T | null {
+	const item = cache.get(key);
+	if (!item) return null;
+	if (Date.now() - item.timestamp > item.ttl) {
+		cache.delete(key);
+		return null;
+	}
+	return item.data;
+}
+
+function setCache(key: string, data: any, ttlMs: number = 300000): void {
+	cache.set(key, { data, timestamp: Date.now(), ttl: ttlMs });
+}
+
 export const load = (async ({ locals, url }) => {
 	if (!locals.user?.id) {
 		throw redirect(302, '/auth/login');
@@ -15,15 +32,30 @@ export const load = (async ({ locals, url }) => {
 		throw redirect(302, '/auth/verify-email');
 	}
 
-	// Get the default organization
-	const defaultOrganization = await db
-		.select()
-		.from(organization)
-		.where(eq(organization.slug, 'master-league'))
-		.limit(1);
+	const userId = locals.user.id;
+	const cacheKey = `leaderboard:${userId}`;
+
+	// Try cache first (5 minute TTL)
+	const cached = getCached(cacheKey);
+	if (cached) {
+		return cached;
+	}
+
+	// Get the default organization with caching
+	const orgCacheKey = 'default-org';
+	let defaultOrganization = getCached<any[]>(orgCacheKey);
+
+	if (!defaultOrganization) {
+		defaultOrganization = await db
+			.select()
+			.from(organization)
+			.where(eq(organization.slug, 'master-league'))
+			.limit(1);
+		setCache(orgCacheKey, defaultOrganization, 600000); // 10 minutes
+	}
 
 	if (!defaultOrganization[0]) {
-		return {
+		const fallbackData = {
 			currentWeek: await getCurrentWeek(),
 			leaderboard: [],
 			selectedOrganization: null,
@@ -31,65 +63,50 @@ export const load = (async ({ locals, url }) => {
 			currentSeason: '2025-26',
 			leaderboardMeta: null
 		};
+		setCache(cacheKey, fallbackData, 60000); // 1 minute for empty state
+		return fallbackData;
 	}
 
 	const selectedOrganization = defaultOrganization[0];
 
 	try {
-		// Simple season detection logic
-		const possibleSeasons = ['2025-26', '24-25', '2024-25', '2025'];
-		let currentSeason = '2025-26'; // Default to the most likely format
+		// Parallel data fetching for better performance
+		const [currentWeek, leaderboard] = await Promise.all([
+			getCurrentWeek(),
+			getLeaderboard(selectedOrganization.id, '2025-26')
+		]);
 
-		// Find which season has data in league_table
-		for (const season of possibleSeasons) {
-			const hasData = await db
-				.select()
-				.from(leagueTable)
+		// Only calculate weekly points if we have leaderboard data
+		let enhancedLeaderboard = leaderboard;
+		if (leaderboard.length > 0) {
+			// Get weekly points for current week in parallel
+			const weeklyPointsData = await db
+				.select({
+					userId: predictions.userId,
+					weeklyPoints: sum(predictions.points)
+				})
+				.from(predictions)
+				.innerJoin(fixtures, eq(predictions.fixtureId, fixtures.id))
 				.where(
 					and(
-						eq(leagueTable.organizationId, selectedOrganization.id),
-						eq(leagueTable.season, season)
+						eq(predictions.organizationId, selectedOrganization.id),
+						eq(fixtures.season, '2025-26'),
+						eq(fixtures.weekId, currentWeek)
 					)
 				)
-				.limit(1);
+				.groupBy(predictions.userId);
 
-			if (hasData.length > 0) {
-				currentSeason = season;
-				break;
-			}
+			// Create optimized lookup map
+			const weeklyPointsMap = new Map(
+				weeklyPointsData.map((wp) => [wp.userId, wp.weeklyPoints || 0])
+			);
+
+			// Enhance leaderboard with weekly points
+			enhancedLeaderboard = leaderboard.map((entry) => ({
+				...entry,
+				weeklyPoints: weeklyPointsMap.get(entry.userId) || 0
+			}));
 		}
-
-		// Get current week and leaderboard directly from database
-		const currentWeek = await getCurrentWeek();
-		const leaderboard = await getLeaderboard(selectedOrganization.id, currentSeason);
-
-		// Calculate weekly points for current week
-		const weeklyPointsData = await db
-			.select({
-				userId: predictions.userId,
-				weeklyPoints: sum(predictions.points)
-			})
-			.from(predictions)
-			.innerJoin(fixtures, eq(predictions.fixtureId, fixtures.id))
-			.where(
-				and(
-					eq(predictions.organizationId, selectedOrganization.id),
-					eq(fixtures.season, currentSeason),
-					eq(fixtures.weekId, currentWeek)
-				)
-			)
-			.groupBy(predictions.userId);
-
-		// Create a map for quick lookup of weekly points
-		const weeklyPointsMap = new Map(
-			weeklyPointsData.map((wp) => [wp.userId, wp.weeklyPoints || 0])
-		);
-
-		// Add weekly points to leaderboard entries
-		const enhancedLeaderboard = leaderboard.map((entry) => ({
-			...entry,
-			weeklyPoints: weeklyPointsMap.get(entry.userId) || 0
-		}));
 
 		// Meta tags for SEO
 		const pageMetaTags = Object.freeze({
@@ -100,39 +117,48 @@ export const load = (async ({ locals, url }) => {
 			openGraph: {
 				title: 'Leaderboard - Master League',
 				description:
-					'View the current leaderboard standings and see how you rank against other players in your prediction groups.',
+					'View the current leaderboard standings and see how you rank against other players.',
 				url: new URL(url.pathname, url.origin).href
 			},
 			twitter: {
 				title: 'Leaderboard - Master League',
 				description:
-					'View the current leaderboard standings and see how you rank against other players in your prediction groups.'
+					'View the current leaderboard standings and see how you rank against other players.'
 			}
 		}) satisfies MetaTagsProps;
 
-		return {
+		const result = {
 			currentWeek,
 			leaderboard: enhancedLeaderboard,
 			selectedOrganization,
-			currentSeason,
-			leaderboardMeta: null, // Simplified - no metadata tracking
-			pageMetaTags,
-			processingInfo: 'Direct database query'
+			user: locals.user,
+			currentSeason: '2025-26',
+			leaderboardMeta: null,
+			pageMetaTags
 		};
-	} catch (error) {
-		console.error('Failed to load leaderboard:', error);
 
-		// Fallback to empty leaderboard
-		return {
+		// Cache the result for 5 minutes
+		setCache(cacheKey, result, 300000);
+		return result;
+	} catch (error) {
+		console.error('Error loading leaderboard:', error);
+
+		// Return minimal data on error
+		const errorResult = {
 			currentWeek: await getCurrentWeek(),
 			leaderboard: [],
 			selectedOrganization,
+			user: locals.user,
 			currentSeason: '2025-26',
 			leaderboardMeta: null,
 			pageMetaTags: {
-				title: 'Leaderboard',
-				description: 'View the current leaderboard standings.'
+				title: 'Leaderboard - Error',
+				description: 'Leaderboard temporarily unavailable'
 			}
 		};
+
+		// Short cache for error state
+		setCache(cacheKey, errorResult, 30000); // 30 seconds
+		return errorResult;
 	}
 }) satisfies PageServerLoad;

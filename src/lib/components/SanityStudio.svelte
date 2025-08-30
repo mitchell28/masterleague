@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { renderStudio, defineConfig, type StudioProps } from 'sanity';
+	import { browser } from '$app/environment';
 
 	let { config } = $props<{ config: StudioProps['config'] }>();
 
 	let studioEl: HTMLDivElement;
 
 	$effect(() => {
-		if (studioEl) {
+		if (browser && studioEl) {
 			const sanityConfig = defineConfig(config);
 
 			renderStudio(studioEl, sanityConfig);

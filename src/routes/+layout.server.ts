@@ -1,7 +1,25 @@
 import type { MetaTagsProps } from 'svelte-meta-tags';
 import type { LayoutServerLoad } from './$types';
+import { getCurrentWeek } from '$lib/server/engine/data/fixtures';
+import { lightCache } from '$lib/server/light-cache';
 
-export const load: LayoutServerLoad = ({ url, locals }) => {
+export const load: LayoutServerLoad = async ({ url, locals }) => {
+	// Cache key for layout data
+	const cacheKey = 'layout:core-data';
+
+	// Try to get cached data first
+	const cached = lightCache.stable.get(cacheKey);
+	if (cached) {
+		return {
+			...cached,
+			user: locals.user // Always use fresh user data
+		};
+	}
+
+	// Get current week (weeks are typically 1-38 for Premier League)
+	const currentWeek = await getCurrentWeek();
+	const weeks = Array.from({ length: 38 }, (_, i) => i + 1); // Generate weeks 1-38
+
 	const baseMetaTags = Object.freeze({
 		title: 'Home',
 		titleTemplate: '%s | Master League',
@@ -69,8 +87,17 @@ export const load: LayoutServerLoad = ({ url, locals }) => {
 		]
 	}) satisfies MetaTagsProps;
 
-	return {
-		user: locals.user,
+	const coreData = {
+		currentWeek,
+		weeks,
 		baseMetaTags
+	};
+
+	// Cache for 10 minutes (weeks data doesn't change often)
+	lightCache.stable.set(cacheKey, coreData, 600000, ['weeks', 'layout']);
+
+	return {
+		...coreData,
+		user: locals.user
 	};
 };

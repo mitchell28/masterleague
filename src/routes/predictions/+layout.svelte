@@ -19,8 +19,6 @@
 			: currentWeek
 	);
 
-	$inspect('Current week:', currentWeek, 'Selected week:', week);
-
 	// State for managing week transitions and validation
 	let isValidWeek = $state(true);
 	let weekStatus = $state<'current' | 'past' | 'future'>('current');
