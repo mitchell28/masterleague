@@ -96,7 +96,7 @@
 									<!-- Right side: Total points -->
 									<div class="ml-4 text-right">
 										<div class="text-lg font-bold text-indigo-300">
-											{entry.points || 0}
+											{entry.score || 0}
 										</div>
 										<div class="text-xs text-slate-400">points</div>
 									</div>
@@ -280,6 +280,9 @@
 			<div class="relative overflow-hidden p-4 sm:p-5">
 				<div>
 					<h3 class="font-display mb-3 text-base font-semibold text-white sm:text-lg">Scoring</h3>
+					<p class="mb-3 text-xs leading-relaxed text-slate-400 sm:hidden sm:text-[11px]">
+						Multipliers (2× / 3×) apply to select fixtures.
+					</p>
 					<ul class="grid gap-2 text-sm text-slate-300 sm:grid-cols-3 sm:text-base">
 						<li class="flex items-center">
 							<span class="mr-2 inline-block h-2.5 w-2.5 bg-green-500"></span>Perfect Score: 3 pts
@@ -291,7 +294,7 @@
 							<span class="mr-2 inline-block h-2.5 w-2.5 bg-red-500"></span>Incorrect: 0 pts
 						</li>
 					</ul>
-					<p class="mt-3 text-xs leading-relaxed text-slate-400 sm:text-[11px]">
+					<p class="mt-3 hidden text-xs leading-relaxed text-slate-400 sm:block sm:text-[11px]">
 						Multipliers (2× / 3×) apply to select fixtures.
 					</p>
 				</div>

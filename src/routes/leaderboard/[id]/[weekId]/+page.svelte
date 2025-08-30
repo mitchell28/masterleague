@@ -214,25 +214,25 @@
 										>{data.awayTeams[fixture.id]?.shortName || '???'}</span
 									>
 								</div>
+								{#if fixture.pointsMultiplier === 2}
+									<span
+										class="inline-flex items-center rounded-full bg-indigo-600 px-2 py-1 text-xs font-bold"
+									>
+										{fixture.pointsMultiplier}× Points
+									</span>
+								{:else if fixture.pointsMultiplier === 3}
+									<span
+										class="inline-flex items-center rounded-full bg-yellow-600 px-2 py-1 text-xs font-bold"
+									>
+										{fixture.pointsMultiplier}× Points
+									</span>
+								{/if}
 							</div>
 
 							<div class="mt-1 flex items-center gap-2 text-xs text-slate-400">
 								<span>{formatDate(fixture.matchDate)}</span>
 							</div>
 						</div>
-						{#if fixture.pointsMultiplier === 2}
-							<span
-								class="inline-flex items-center rounded-full bg-indigo-600 px-2 py-1 text-xs font-bold"
-							>
-								{fixture.pointsMultiplier}× Points
-							</span>
-						{:else if fixture.pointsMultiplier === 3}
-							<span
-								class="inline-flex items-center rounded-full bg-yellow-600 px-2 py-1 text-xs font-bold"
-							>
-								{fixture.pointsMultiplier}× Points
-							</span>
-						{/if}
 					</div>
 
 					<!-- Prediction vs Result -->
