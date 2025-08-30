@@ -92,11 +92,11 @@ export async function checkForLiveGamesOnPageVisit(
  * Trigger live score update with urgent priority
  * Called when live games are detected on page visit
  */
-export async function triggerLiveScoreUpdate(): Promise<boolean> {
+export async function triggerLiveScoreUpdate(e): Promise<boolean> {
 	try {
 		console.log('🚀 Triggering urgent live score update from page visit');
 
-		const response = await fetch('/api/cron/live-scores-updater', {
+		const response = await e.fetch('/api/cron/live-scores-updater', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'

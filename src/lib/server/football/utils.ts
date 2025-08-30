@@ -10,10 +10,15 @@
 export function calculatePredictionPoints(
 	predictedHomeScore: number,
 	predictedAwayScore: number,
-	actualHomeScore: number,
-	actualAwayScore: number,
+	actualHomeScore: number | null,
+	actualAwayScore: number | null,
 	pointsMultiplier = 1
 ): number {
+	// If actual scores are null, void the prediction (return 0 points)
+	if (actualHomeScore === null || actualAwayScore === null) {
+		return 0;
+	}
+
 	// Perfect score: 3 points × multiplier
 	if (predictedHomeScore === actualHomeScore && predictedAwayScore === actualAwayScore) {
 		return 3 * pointsMultiplier;
@@ -44,8 +49,13 @@ export function calculatePredictionPoints(
 
 /**
  * Determines the outcome of a match from scores
+ * Returns null if either score is null (match not completed or scores unavailable)
  */
-export function getMatchOutcome(homeScore: number, awayScore: number): 'home' | 'away' | 'draw' {
+export function getMatchOutcome(
+	homeScore: number | null,
+	awayScore: number | null
+): 'home' | 'away' | 'draw' | null {
+	if (homeScore === null || awayScore === null) return null;
 	if (homeScore > awayScore) return 'home';
 	if (homeScore < awayScore) return 'away';
 	return 'draw';

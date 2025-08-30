@@ -39,8 +39,8 @@ interface UserPointsUpdate {
  */
 export async function processPredictionsForFixture(
 	fixtureId: string,
-	homeScore: number,
-	awayScore: number
+	homeScore: number | null,
+	awayScore: number | null
 ): Promise<PredictionProcessResult> {
 	// Validate that scores are not null - if they are, don't process predictions
 	if (homeScore === null || awayScore === null) {
