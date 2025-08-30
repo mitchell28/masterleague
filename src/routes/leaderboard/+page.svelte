@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { type PageData } from './$types';
 	import { ChevronUp, TrendingUp } from '@lucide/svelte';
 	import { useLeaderboardSorting } from './hooks';
@@ -73,62 +72,66 @@
 			<div class="block sm:hidden">
 				{#if sorting.sortedData && sorting.sortedData.length > 0}
 					{#each sorting.sortedData as entry, index}
-						<button
-							type="button"
-							class="w-full cursor-pointer border-b border-slate-700/50 p-4 text-left transition-all duration-200 last:border-b-0 hover:bg-slate-700/30 focus:bg-slate-700/30 focus:ring-2 focus:ring-indigo-500/50 focus:outline-none focus:ring-inset active:bg-slate-700/40"
-							onclick={() => goto(`/leaderboard/${entry.userId}/${data.currentWeek}`)}
-							onkeydown={(e) => {
-								if (e.key === 'Enter' || e.key === ' ') {
-									e.preventDefault();
-									goto(`/leaderboard/${entry.userId}/${data.currentWeek}`);
-								}
-							}}
+						<a
+							class="group block w-full cursor-pointer border-b border-slate-700/50 text-left transition-all duration-200 last:border-b-0 hover:bg-slate-700/30 focus:bg-slate-700/30 focus:ring-2 focus:ring-indigo-500/50 focus:outline-none focus:ring-inset active:bg-slate-700/40"
+							href={`/leaderboard/${entry.userId}/${data.currentWeek}`}
 							aria-label="View predictions for {entry.username}"
 						>
 							<!-- Main content row -->
-							<div class="flex items-center justify-between">
-								<!-- Left side: Rank and name -->
-								<div class="flex items-center space-x-3">
-									<div
-										class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700/60 text-sm font-bold text-slate-200"
-									>
-										{index + 1}
+							<div class="p-4">
+								<div class="flex items-center justify-between">
+									<!-- Left side: Rank and name -->
+									<div class="flex items-center space-x-3">
+										<div
+											class="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700/60 text-sm font-bold text-slate-200"
+										>
+											{index + 1}
+										</div>
+										<div class="min-w-0 flex-1">
+											<h3 class="truncate text-sm font-semibold text-white">
+												{entry?.username || 'Anonymous'}
+											</h3>
+										</div>
 									</div>
-									<div class="min-w-0 flex-1">
-										<h3 class="truncate text-sm font-semibold text-white">
-											{entry?.username || 'Anonymous'}
-										</h3>
+									<!-- Right side: Total points -->
+									<div class="ml-4 text-right">
+										<div class="text-lg font-bold text-indigo-300">
+											{entry.points || 0}
+										</div>
+										<div class="text-xs text-slate-400">points</div>
 									</div>
 								</div>
-								<!-- Right side: Total points -->
-								<div class="ml-4 text-right">
-									<div class="text-lg font-bold text-indigo-300">
-										{entry.points || 0}
+
+								<!-- Stats row -->
+								<div class="mt-3 flex items-center justify-between pt-2 text-xs">
+									<div class="flex items-center space-x-1">
+										<span class="text-slate-400">Correct:</span>
+										<span class="font-medium text-green-400">
+											{entry.correctScorelines || 0}
+										</span>
 									</div>
-									<div class="text-xs text-slate-400">points</div>
+									<div class="flex items-center space-x-1">
+										<span class="text-slate-400">Week {data.currentWeek}:</span>
+										<span
+											class="font-medium {entry.weeklyPoints > 0
+												? 'text-blue-400'
+												: 'text-slate-500'}"
+										>
+											{entry.weeklyPoints > 0 ? `+${entry.weeklyPoints}` : '0'}
+										</span>
+									</div>
 								</div>
 							</div>
 
-							<!-- Stats row -->
-							<div class="mt-3 flex items-center justify-between pt-2 text-xs">
-								<div class="flex items-center space-x-1">
-									<span class="text-slate-400">Correct:</span>
-									<span class="font-medium text-green-400">
-										{entry.correctScorelines || 0}
-									</span>
-								</div>
-								<div class="flex items-center space-x-1">
-									<span class="text-slate-400">Week {data.currentWeek}:</span>
-									<span
-										class="font-medium {entry.weeklyPoints > 0
-											? 'text-blue-400'
-											: 'text-slate-500'}"
-									>
-										{entry.weeklyPoints > 0 ? `+${entry.weeklyPoints}` : '0'}
-									</span>
+							<!-- View Stats Button for Mobile -->
+							<div class="px-4 pb-3">
+								<div
+									class="cursor-pointer border border-slate-600/50 bg-slate-700/50 px-3 py-1.5 text-center text-xs font-medium text-slate-300 transition-colors duration-200 group-hover:border-slate-500/70 group-hover:bg-slate-600/70 hover:border-slate-500/70 hover:bg-slate-600/70 hover:text-white"
+								>
+									View Stats
 								</div>
 							</div>
-						</button>
+						</a>
 					{/each}
 				{:else}
 					<div class="py-8 text-center text-sm text-slate-400">
@@ -185,6 +188,11 @@
 									/>
 								</div>
 							</th>
+							<th
+								class="px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase"
+							>
+								<span>Actions</span>
+							</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-700/60">
@@ -192,55 +200,72 @@
 							{#each sorting.sortedData as entry, index}
 								<tr
 									class="group cursor-pointer transition-all duration-200 hover:scale-[1.005] hover:bg-slate-700/30 hover:shadow-lg"
-									onclick={() => goto(`/leaderboard/${entry.userId}/${data.currentWeek}`)}
 								>
-									<!-- Player name and rank -->
-									<td class="px-4 py-3 whitespace-nowrap">
-										<div class="flex items-center">
-											<div
-												class="mr-3 flex h-8 w-8 items-center justify-center
-													rounded-full bg-slate-700/80 text-sm font-bold text-slate-300 transition-all group-hover:shadow-md"
-											>
-												{index + 1}
-											</div>
-											<div>
-												<div
-													class="text-sm font-medium tracking-wide text-white transition-colors group-hover:text-indigo-200"
-												>
-													{entry?.username || 'Anonymous'}
+									<td colspan="5" class="p-0">
+										<a
+											href={`/leaderboard/${entry.userId}/${data.currentWeek}`}
+											class="flex w-full cursor-pointer"
+											aria-label="View predictions for {entry.username}"
+										>
+											<!-- Player name and rank -->
+											<div class="w-1/5 flex-none px-4 py-3 whitespace-nowrap">
+												<div class="flex items-center">
+													<div
+														class="mr-3 flex h-8 w-8 items-center justify-center
+															rounded-full bg-slate-700/80 text-sm font-bold text-slate-300 transition-all group-hover:shadow-md"
+													>
+														{index + 1}
+													</div>
+													<div>
+														<div
+															class="text-sm font-medium tracking-wide text-white transition-colors group-hover:text-indigo-200"
+														>
+															{entry?.username || 'Anonymous'}
+														</div>
+													</div>
 												</div>
 											</div>
-										</div>
-									</td>
-									<!-- Total points -->
-									<td
-										class="px-4 py-3 text-center text-base font-bold whitespace-nowrap text-indigo-300 transition-colors group-hover:text-indigo-200"
-									>
-										{entry.score || 0}
-									</td>
-									<!-- Correct predictions -->
-									<td
-										class="px-4 py-3 text-center text-base font-medium whitespace-nowrap text-green-400 transition-colors group-hover:text-green-300"
-									>
-										{entry.correctScorelines || 0}
-									</td>
-									<!-- Weekly points -->
-									<td
-										class="px-4 py-3 text-center text-base font-medium whitespace-nowrap transition-colors group-hover:text-blue-300"
-									>
-										{#if entry.weeklyPoints > 0}
-											<div class="flex items-center justify-center text-blue-400">
-												<span class="font-semibold">+{entry.weeklyPoints}</span>
+											<!-- Total points -->
+											<div
+												class="flex w-1/5 flex-none items-center justify-center px-4 py-3 text-center text-base font-bold whitespace-nowrap text-indigo-300 transition-colors group-hover:text-indigo-200"
+											>
+												{entry.score || 0}
 											</div>
-										{:else}
-											<span class="text-slate-500">0</span>
-										{/if}
+											<!-- Correct predictions -->
+											<div
+												class="flex w-1/5 flex-none items-center justify-center px-4 py-3 text-center text-base font-medium whitespace-nowrap text-green-400 transition-colors group-hover:text-green-300"
+											>
+												{entry.correctScorelines || 0}
+											</div>
+											<!-- Weekly points -->
+											<div
+												class="flex w-1/5 flex-none items-center justify-center px-4 py-3 text-center text-base font-medium whitespace-nowrap transition-colors group-hover:text-blue-300"
+											>
+												{#if entry.weeklyPoints > 0}
+													<div class="flex items-center justify-center text-blue-400">
+														<span class="font-semibold">+{entry.weeklyPoints}</span>
+													</div>
+												{:else}
+													<span class="text-slate-500">0</span>
+												{/if}
+											</div>
+											<!-- View Stats Button -->
+											<div
+												class="flex w-1/5 flex-none items-center justify-center px-4 py-3 text-center whitespace-nowrap"
+											>
+												<div
+													class="cursor-pointer border border-slate-600/50 bg-slate-700/50 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors duration-200 group-hover:border-slate-500/70 group-hover:bg-slate-600/70 hover:border-slate-500/70 hover:bg-slate-600/70 hover:text-white"
+												>
+													View Stats
+												</div>
+											</div>
+										</a>
 									</td>
 								</tr>
 							{/each}
 						{:else}
 							<tr>
-								<td colspan="4" class="py-8 text-center text-sm text-slate-400">
+								<td colspan="5" class="py-8 text-center text-sm text-slate-400">
 									No players found in the leaderboard
 								</td>
 							</tr>

@@ -31,8 +31,9 @@
 <div class="week-selector flex items-center gap-2 sm:gap-4">
 	<!-- Previous week button -->
 	<button
-		class="bg-accent hover:bg-accent/80 flex h-8 w-8 items-center justify-center rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10"
+		class="bg-accent hover:bg-accent/80 flex h-8 w-8 items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10"
 		onclick={() => onNavigate('prev')}
+		style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
 		disabled={!weeks.includes(week - 1)}
 		aria-label="Previous week"
 	>
@@ -44,7 +45,7 @@
 		<select
 			bind:value={selectedWeek}
 			onchange={handleSelectChange}
-			class="custom-select border-accent w-full appearance-none rounded-md border-2 px-3 py-2 text-sm font-medium text-white transition-colors focus:outline-none"
+			class="custom-select border-accent w-full appearance-none border-2 px-3 py-2 text-sm font-medium text-white transition-colors focus:outline-none"
 		>
 			{#each weeks as weekNumber}
 				<option value={weekNumber} class=" text-white">
@@ -55,9 +56,10 @@
 	</div>
 	<!-- Next week button -->
 	<button
-		class="bg-accent hover:bg-accent/80 flex h-8 w-8 items-center justify-center rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10"
+		class="bg-accent hover:bg-accent/80 flex h-8 w-8 items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10"
 		onclick={() => onNavigate('next')}
 		disabled={!weeks.includes(week + 1)}
+		style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
 		aria-label="Next week"
 	>
 		<ChevronRight class="text-black" size={16} />
@@ -82,7 +84,6 @@
 		background: #0d1326;
 		background-color: #0d1326;
 		color: white;
-		border-radius: 0.375rem;
 		font-weight: 500;
 		transition: all 0.2s;
 		min-width: 100px;
@@ -125,7 +126,6 @@
 
 		.custom-select::picker(select) {
 			border: 2px solid var(--color-accent);
-			border-radius: 0.375rem;
 			background: #0d1326;
 			padding: 0.25rem;
 			margin-top: 0.25rem;

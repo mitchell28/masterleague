@@ -80,7 +80,7 @@
 			<div class="bg-accent/10 border-accent/20 border-b px-4 py-2 sm:px-6">
 				<div class="mx-auto flex max-w-6xl items-center justify-center gap-2 text-center">
 					<span class="text-xs font-medium text-slate-300 sm:text-sm"> Current League Week: </span>
-					<span class="bg-accent rounded px-2 py-1 text-xs font-bold text-black sm:px-3">
+					<span class="bg-accent px-2 py-1 text-xs font-bold text-black sm:px-3">
 						Week {currentWeek}
 					</span>
 				</div>
@@ -94,17 +94,13 @@
 						<h1 class="text-2xl font-bold text-white">Week {week}</h1>
 						<div class="mt-2 flex items-center justify-center gap-2">
 							{#if weekStatus === 'current'}
-								<span class="bg-accent rounded px-2 py-1 text-xs font-bold text-black">
-									CURRENT WEEK
-								</span>
+								<span class="bg-accent px-2 py-1 text-xs font-bold text-black"> CURRENT WEEK </span>
 							{:else if weekStatus === 'future'}
-								<span class="rounded bg-blue-500 px-2 py-1 text-xs font-bold text-white">
+								<span class=" bg-blue-500 px-2 py-1 text-xs font-bold text-white">
 									FUTURE WEEK
 								</span>
 							{:else if weekStatus === 'past'}
-								<span class="rounded bg-gray-500 px-2 py-1 text-xs font-bold text-white">
-									PAST WEEK
-								</span>
+								<span class=" bg-gray-500 px-2 py-1 text-xs font-bold text-white"> PAST WEEK </span>
 							{/if}
 						</div>
 						<div class="mt-2 text-center">
@@ -130,17 +126,13 @@
 						<h1 class="text-3xl font-bold text-white lg:text-4xl">Week {week}</h1>
 						<div class="mt-2 flex items-center gap-3">
 							{#if weekStatus === 'current'}
-								<span class="bg-accent rounded px-3 py-1 text-xs font-bold text-black">
-									CURRENT WEEK
-								</span>
+								<span class="bg-accent px-3 py-1 text-xs font-bold text-black"> CURRENT WEEK </span>
 							{:else if weekStatus === 'future'}
-								<span class="rounded bg-blue-500 px-3 py-1 text-xs font-bold text-white">
+								<span class=" bg-blue-500 px-3 py-1 text-xs font-bold text-white">
 									FUTURE WEEK
 								</span>
 							{:else if weekStatus === 'past'}
-								<span class="rounded bg-gray-500 px-3 py-1 text-xs font-bold text-white">
-									PAST WEEK
-								</span>
+								<span class=" bg-gray-500 px-3 py-1 text-xs font-bold text-white"> PAST WEEK </span>
 							{/if}
 							<span class="text-xs text-slate-400"> Predictions close 30 mins before kickoff </span>
 						</div>

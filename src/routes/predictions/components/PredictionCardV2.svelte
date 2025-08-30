@@ -357,13 +357,8 @@
 				>
 					<!-- Only show "No prediction made" message for completed matches without predictions -->
 					{#if showActualScore && !prediction}
-						<div class="flex items-center gap-2">
+						<div class="-mt-1 flex items-center gap-2">
 							<span class="text-xs text-slate-400 italic">No prediction made</span>
-							{#if isPastWeek}
-								<span class="rounded-full bg-gray-600 px-2 py-0.5 text-xs text-white"
-									>No Points</span
-								>
-							{/if}
 						</div>
 					{/if}
 
