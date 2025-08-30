@@ -141,7 +141,7 @@
 			</div>
 
 			<!-- Desktop Table View (hidden on small screens) -->
-			<div class="hidden overflow-x-auto sm:block">
+			<div class="hidden sm:block">
 				<table class="min-w-full divide-y divide-slate-700/70">
 					<thead class="bg-slate-900/50">
 						<tr>
