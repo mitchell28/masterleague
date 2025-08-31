@@ -86,7 +86,6 @@
 		"postgres": "^3.4.7",
 		"resend": "^4.7.0",
 		"sanity": "^4.5.0",
-		"sanity-plugin-media": "^4.0.0",
 		"stripe": "^18.0.0",
 		"svelte-sonner": "^1.0.5",
 		"vite-node": "^3.2.4",

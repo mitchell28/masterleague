@@ -12,13 +12,30 @@ export const postQuery = groq`*[_type == "post" && slug.current == $slug][0]{
   publishedAt,
   category,
   showCTA,
-  mainImage,
-  body,
+  mainImage{
+    asset->,
+    alt,
+    caption
+  },
+  body[]{
+    ...,
+    _type == "image" => {
+      ...,
+      asset->,
+      alt,
+      caption,
+      size,
+      customWidth,
+      alignment
+    }
+  },
   metaTitle,
   metaDescription,
   openGraphTitle,
   openGraphDescription,
-  openGraphImage,
+  openGraphImage{
+    asset->
+  },
   twitterTitle,
   twitterDescription,
   keywords,
@@ -34,7 +51,11 @@ export const postsQuery = groq`*[_type == "post" && defined(slug.current)] | ord
   excerpt,
   publishedAt,
   category,
-  mainImage
+  mainImage{
+    asset->,
+    alt,
+    caption
+  }
 }`;
 
 export interface Post {

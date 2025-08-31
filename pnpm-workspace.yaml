@@ -1,6 +1,0 @@
-onlyBuiltDependencies:
-  - '@depot/cli'
-  - '@tailwindcss/oxide'
-  - esbuild
-  - oxc-resolver
-  - protobufjs

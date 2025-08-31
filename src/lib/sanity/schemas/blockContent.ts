@@ -63,6 +63,66 @@ export default defineType({
 					}
 				]
 			}
+		}),
+		// Now add image support to the block content
+		defineArrayMember({
+			type: 'image',
+			options: { hotspot: true },
+			fields: [
+				{
+					name: 'alt',
+					type: 'string',
+					title: 'Alternative Text',
+					description: 'Important for SEO and accessibility.',
+					validation: (Rule) => Rule.required()
+				},
+				{
+					name: 'caption',
+					type: 'string',
+					title: 'Caption',
+					description: 'Optional caption to display below the image.'
+				},
+				{
+					name: 'size',
+					type: 'string',
+					title: 'Image Size',
+					description: 'Choose how large the image should appear.',
+					options: {
+						list: [
+							{ title: 'Small', value: 'small' },
+							{ title: 'Medium', value: 'medium' },
+							{ title: 'Large', value: 'large' },
+							{ title: 'Full Width', value: 'full' },
+							{ title: 'Custom', value: 'custom' }
+						],
+						layout: 'radio'
+					},
+					initialValue: 'large'
+				},
+				{
+					name: 'customWidth',
+					type: 'number',
+					title: 'Custom Width (px)',
+					description: 'Custom width in pixels (only used when size is "Custom").',
+					hidden: ({ parent }: { parent: any }) => parent?.size !== 'custom',
+					validation: (Rule) => Rule.min(100).max(1200)
+				},
+				{
+					name: 'alignment',
+					type: 'string',
+					title: 'Image Alignment',
+					description: 'Choose how to align the image.',
+					options: {
+						list: [
+							{ title: 'Left', value: 'start' },
+							{ title: 'Center', value: 'center' },
+							{ title: 'Right', value: 'end' }
+						],
+						layout: 'radio'
+					},
+					initialValue: 'center'
+				}
+			]
 		})
 	]
 });

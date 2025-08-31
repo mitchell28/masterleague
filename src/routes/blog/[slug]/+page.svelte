@@ -109,9 +109,9 @@
 			<div bind:this={imageRef} class="flex flex-col gap-3 opacity-0">
 				{#if post?.mainImage}
 					<img
-						src={urlFor(post.mainImage).width(800).height(600).url()}
+						src={urlFor(post.mainImage).width(800).height(500).url()}
 						alt={post?.title}
-						class="mx-auto h-auto w-full max-w-lg rounded-lg object-cover shadow-2xl transition-transform duration-300 hover:scale-105 lg:max-w-none"
+						class="mx-auto h-auto w-full max-w-lg object-cover shadow-2xl transition-transform duration-300 hover:scale-105 lg:max-w-none"
 					/>
 				{:else}
 					<div

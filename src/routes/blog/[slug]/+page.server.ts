@@ -98,6 +98,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			query,
 			params: sanityParams,
 			options: { initial },
+			post: initial.data, // Add direct access to post data
 			pageMetaTags
 		};
 	} catch (err) {

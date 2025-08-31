@@ -10,7 +10,6 @@ import {
 } from '$env/static/public';
 
 import { schemaTypes } from './schemas';
-import { media } from 'sanity-plugin-media';
 import { assist } from '@sanity/assist';
 
 const projectId = PUBLIC_SANITY_STUDIO_PROJECT_ID!;
@@ -24,7 +23,6 @@ export default defineConfig({
 	// Set the base path for the studio
 	basePath: '/studio',
 	plugins: [
-		media(),
 		assist(),
 		structureTool(),
 		presentationTool({
