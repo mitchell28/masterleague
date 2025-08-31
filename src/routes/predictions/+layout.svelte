@@ -158,13 +158,10 @@
 			<div class="mt-6 mb-6">
 				<div class="font-display w-full border-l-4 border-l-blue-500 bg-slate-900 p-4 sm:p-6">
 					<div class="flex items-start gap-3">
-						<div class="flex-shrink-0 rounded-full bg-blue-500 p-2">
-							<Info class="h-4 w-4 text-white sm:h-5 sm:w-5" />
-						</div>
 						<div>
 							<div class="mb-2 flex items-center gap-2">
 								<span
-									class="rounded bg-blue-500 px-2 py-1 text-xs font-bold text-white sm:px-3 sm:text-sm"
+									class=" bg-blue-500 px-2 py-1 text-xs font-bold text-white sm:px-3 sm:text-sm"
 								>
 									FUTURE WEEK
 								</span>

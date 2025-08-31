@@ -150,11 +150,11 @@
 								<img
 									src={urlFor(post.mainImage).width(800).height(500).url()}
 									alt={post.title}
-									class="group-hover:shadow-3xl mx-auto h-auto w-full max-w-lg rounded-lg object-cover shadow-2xl transition-all duration-300 group-hover:scale-105 lg:max-w-none"
+									class="group-hover:shadow-3xl mx-auto h-auto w-full max-w-lg object-cover shadow-2xl transition-all duration-300 group-hover:scale-105 lg:max-w-none"
 								/>
 							{:else}
 								<div
-									class="group-hover:shadow-3xl mx-auto flex h-auto w-full max-w-lg items-center justify-center rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 shadow-2xl transition-all duration-300 group-hover:scale-105 lg:max-w-none"
+									class="group-hover:shadow-3xl mx-auto flex h-auto w-full max-w-lg items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 shadow-2xl transition-all duration-300 group-hover:scale-105 lg:max-w-none"
 									style="aspect-ratio: 4/3;"
 								>
 									<div class="text-6xl text-slate-400">📝</div>
@@ -198,7 +198,7 @@
 					{@const pageNum = i + 1}
 					<button
 						onclick={() => pagination.goToPage(pageNum)}
-						class="flex h-10 w-10 items-center justify-center rounded text-sm font-medium transition-all duration-200 {pageNum ===
+						class="flex h-10 w-10 items-center justify-center text-sm font-medium transition-all duration-200 {pageNum ===
 						pagination.currentPage
 							? 'bg-accent text-black'
 							: 'bg-white/10 text-white hover:bg-white/20'}"
