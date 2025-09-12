@@ -14,7 +14,7 @@ const resend = new Resend(getEnvVar('RESEND_API_KEY'));
 
 // Initialize Stripe client
 const stripeClient = new Stripe(getEnvVar('STRIPE_SECRET_KEY')!, {
-	apiVersion: '2025-07-30.basil'
+	apiVersion: '2025-08-27.basil'
 });
 
 // Subscription plans configuration
@@ -74,7 +74,38 @@ export const betterAuthOptions: BetterAuthOptions = {
 	emailAndPassword: {
 		requireEmailVerification: true, // Block unverified users from signing in
 		enabled: true,
-		autoSignIn: false // We handle sign-in manually after OTP verification
+		autoSignIn: false, // We handle sign-in manually after OTP verification
+		sendResetPassword: async ({ user, url, token }, request) => {
+			try {
+				const emailResult = await resend.emails.send({
+					from: 'Master League <noreply@mail.masterleague.app>',
+					to: user.email,
+					subject: 'Reset your Master League password',
+					text: `Click the link to reset your password: ${url}`
+				});
+
+				// Check for Resend API errors (like testing restrictions)
+				if (emailResult.error) {
+					console.error(`❌ [OTP] Resend API Error:`, emailResult.error);
+
+					// Handle specific Resend testing restrictions
+					const errorObj = emailResult.error as any;
+					if (errorObj.statusCode === 403 && errorObj.error?.includes('testing emails')) {
+						throw new Error(
+							`Email verification unavailable. Please contact support or use a different email address.`
+						);
+					}
+
+					// Throw the original error for other cases
+					throw new Error(
+						errorObj.error || errorObj.message || 'Failed to send verification email'
+					);
+				}
+			} catch (error) {
+				console.error(`❌ [OTP] Failed to send email to ${user.email}:`, error);
+				throw error;
+			}
+		}
 	},
 
 	// Add user creation debugging

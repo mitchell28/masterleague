@@ -84,6 +84,17 @@
 						placeholder="Enter your password"
 						required
 					/>
+
+					<p class="mt-2 text-sm text-slate-400">
+						Forgot your password?
+						<a
+							href="/auth/request-password-reset"
+							class="text-accent hover:text-accent/80 font-medium transition-colors"
+						>
+							Reset it here
+						</a>
+					</p>
+
 					{#if $errors.password}
 						<p class="mt-2 text-sm text-red-400">{$errors.password}</p>
 					{/if}
