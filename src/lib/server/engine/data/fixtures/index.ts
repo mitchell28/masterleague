@@ -1,5 +1,5 @@
 // Re-export everything from the individual modules
-import { getCurrentWeek, mapApiStatusToDbStatus } from './fixtureUtils';
+import { getCurrentWeek, getLeaderboardWeek, mapApiStatusToDbStatus } from './fixtureUtils';
 import {
 	getFixturesByWeek,
 	getFixtureById,
@@ -28,6 +28,7 @@ import {
 export {
 	// Utils
 	getCurrentWeek, // Now returns Promise<number> instead of number
+	getLeaderboardWeek, // Shows previous week until current week matches start
 	mapApiStatusToDbStatus,
 
 	// DB operations

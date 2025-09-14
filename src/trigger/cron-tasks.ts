@@ -265,3 +265,55 @@ export const liveScoresUpdater = schedules.task({
 		};
 	}
 });
+
+// Prediction safety check task - runs every 6 hours to catch missed predictions
+export const predictionSafetyCheck = schedules.task({
+	id: 'prediction-safety-check',
+	cron: '0 */6 * * *', // Every 6 hours
+	run: async (payload) => {
+		console.log('🛡️ Running scheduled prediction safety check task');
+		console.log('Scheduled for:', payload.timestamp);
+		console.log('Last run:', payload.lastTimestamp);
+
+		const baseUrl = getBaseUrl();
+		console.log('Using base URL:', baseUrl);
+
+		const requestPayload = {
+			daysBack: 7, // Check last 7 days
+			force: false
+		};
+
+		const response = await fetch(`${baseUrl}/api/cron/prediction-safety-check`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(requestPayload)
+		});
+
+		if (!response.ok) {
+			throw new Error(`Prediction safety check failed: ${response.statusText}`);
+		}
+
+		const result = await response.json();
+		console.log('🛡️ Prediction safety check completed:', result);
+
+		// Log important results
+		if (result.result) {
+			console.log(
+				`📊 Safety check: ${result.result.fixturesChecked} fixtures checked, ${result.result.predictionsFixed} predictions fixed, ${result.result.pointsAwarded} points awarded`
+			);
+
+			if (result.result.errors?.length > 0) {
+				console.error(`⚠️ Safety check errors:`, result.result.errors);
+			}
+		}
+
+		return {
+			success: true,
+			timestamp: new Date().toISOString(),
+			scheduleId: payload.scheduleId,
+			result
+		};
+	}
+});

@@ -5,7 +5,7 @@ import { eq, and, sum } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { MetaTagsProps } from 'svelte-meta-tags';
-import { getCurrentWeek } from '$lib/server/engine/data/fixtures';
+import { getLeaderboardWeek, getCurrentWeek } from '$lib/server/engine/data/fixtures';
 import { getLeaderboard } from '$lib/server/engine/analytics/leaderboard.js';
 
 // Simple cache for frequently accessed data
@@ -56,7 +56,7 @@ export const load = (async ({ locals, url }) => {
 
 	if (!defaultOrganization[0]) {
 		const fallbackData = {
-			currentWeek: await getCurrentWeek(),
+			currentWeek: await getLeaderboardWeek(),
 			leaderboard: [],
 			selectedOrganization: null,
 			user: locals.user,
@@ -72,7 +72,7 @@ export const load = (async ({ locals, url }) => {
 	try {
 		// Parallel data fetching for better performance
 		const [currentWeek, leaderboard] = await Promise.all([
-			getCurrentWeek(),
+			getLeaderboardWeek(),
 			getLeaderboard(selectedOrganization.id, '2025-26')
 		]);
 
@@ -145,7 +145,7 @@ export const load = (async ({ locals, url }) => {
 
 		// Return minimal data on error
 		const errorResult = {
-			currentWeek: await getCurrentWeek(),
+			currentWeek: await getLeaderboardWeek(),
 			leaderboard: [],
 			selectedOrganization,
 			user: locals.user,
