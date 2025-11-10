@@ -2,31 +2,75 @@ import { schedules } from '@trigger.dev/sdk';
 
 // Helper function to get the base URL
 function getBaseUrl(): string {
-	// In production, try ORIGIN first (for deployed environments)
 	if (process.env.ORIGIN) {
 		return process.env.ORIGIN;
 	}
-
-	// Fallback to PUBLIC_BETTER_AUTH_URL (works in development)
 	if (process.env.PUBLIC_BETTER_AUTH_URL) {
 		return process.env.PUBLIC_BETTER_AUTH_URL;
 	}
-
-	// Last fallback for development
 	return 'https://masterleague.app';
 }
 
-// Intelligent processor task - replaces old background processing (every minute)
+// Helper to check match activity intelligently
+async function checkMatchActivity(): Promise<{
+	needsProcessing: boolean;
+	hasLiveMatches: boolean;
+	hasUpcomingMatches: boolean;
+	hasRecentlyFinished: boolean;
+	needsFinishCheck: boolean;
+}> {
+	const baseUrl = getBaseUrl();
+
+	try {
+		const response = await fetch(`${baseUrl}/api/cron/check-active-matches`, {
+			method: 'GET',
+			headers: { 'Content-Type': 'application/json' }
+		});
+
+		if (!response.ok) {
+			console.error('Failed to check match activity:', response.statusText);
+			// Fail safe - assume activity
+			return {
+				needsProcessing: true,
+				hasLiveMatches: true,
+				hasUpcomingMatches: true,
+				hasRecentlyFinished: true,
+				needsFinishCheck: true
+			};
+		}
+
+		return await response.json();
+	} catch (error) {
+		console.error('Error checking match activity:', error);
+		// Fail safe
+		return {
+			needsProcessing: true,
+			hasLiveMatches: true,
+			hasUpcomingMatches: true,
+			hasRecentlyFinished: true,
+			needsFinishCheck: true
+		};
+	}
+}
+
+// Intelligent processor task - handles leaderboard recalculation and general maintenance
+// NOTE: Prediction processing is handled by finished-fixtures-checker immediately when matches finish
 export const intelligentProcessor = schedules.task({
 	id: 'intelligent-processor',
-	cron: '* * * * *', // Every minute (changed from every 30 seconds)
+	cron: '*/15 * * * *', // Every 15 minutes (was 5 - too frequent since finished-fixtures-checker handles predictions)
 	run: async (payload) => {
-		console.log('Running scheduled intelligent processor task');
-		console.log('Scheduled for:', payload.timestamp);
-		console.log('Last run:', payload.lastTimestamp);
+		console.log('🤖 Intelligent processor: Running leaderboard maintenance...');
 
+		const activity = await checkMatchActivity();
+
+		// Only run if there was recent match activity (leaderboards might need updating)
+		if (!activity.hasRecentlyFinished && !activity.hasLiveMatches) {
+			console.log('✅ No recent matches - leaderboards should be current, skipping');
+			return { skipped: true, reason: 'no-recent-match-activity' };
+		}
+
+		console.log('📊 Recent match activity - checking if leaderboards need updating');
 		const baseUrl = getBaseUrl();
-		console.log('Using base URL:', baseUrl);
 
 		const requestPayload = {
 			job: 'auto',
@@ -57,10 +101,11 @@ export const intelligentProcessor = schedules.task({
 	}
 });
 
-// Fixture schedule task - replaces predictions update (every 2 minutes)
+// Fixture schedule task - checks for schedule changes
+// Runs once per day (schedule changes are rare)
 export const fixtureSchedule = schedules.task({
 	id: 'fixture-schedule',
-	cron: '*/2 * * * *', // Every 2 minutes
+	cron: '0 8 * * *', // Once per day at 8 AM UTC (schedule changes are very rare!)
 	run: async (payload) => {
 		console.log('Running scheduled fixture schedule task');
 		console.log('Scheduled for:', payload.timestamp);
@@ -100,10 +145,10 @@ export const fixtureSchedule = schedules.task({
 	}
 });
 
-// Simple coordinate task - replaces cron coordination (every 10 minutes)
+// Simple coordinate task - lightweight coordinator
 export const simpleCoordinate = schedules.task({
 	id: 'simple-coordinate',
-	cron: '*/10 * * * *', // Every 10 minutes
+	cron: '*/15 * * * *', // Every 15 minutes (was every 10 minutes)
 	run: async (payload) => {
 		console.log('Running scheduled simple coordinate task');
 		console.log('Scheduled for:', payload.timestamp);
@@ -141,10 +186,10 @@ export const simpleCoordinate = schedules.task({
 	}
 });
 
-// Health check task - monitors system health (every 5 minutes)
+// Health check task - monitors system health
 export const healthCheck = schedules.task({
 	id: 'health-check',
-	cron: '*/5 * * * *', // Every 5 minutes
+	cron: '*/30 * * * *', // Every 30 minutes (was every 5 minutes - too frequent!)
 	run: async (payload) => {
 		console.log('Running scheduled health check task');
 		console.log('Scheduled for:', payload.timestamp);
@@ -173,30 +218,35 @@ export const healthCheck = schedules.task({
 	}
 });
 
-// Finished fixtures checker task - checks finished fixtures missing scores (every 30 minutes)
+// Finished fixtures checker - verifies and processes completed matches
 export const finishedFixturesChecker = schedules.task({
 	id: 'finished-fixtures-checker',
-	cron: '*/30 * * * *', // Every 30 minutes
+	cron: '*/10 * * * *', // Every 10 minutes - checks for matches that need verification
 	run: async (payload) => {
-		console.log('Running scheduled finished fixtures checker task');
-		console.log('Scheduled for:', payload.timestamp);
+		console.log('🏁 Finished fixtures: Checking for completed matches...');
+
+		const activity = await checkMatchActivity();
+
+		// Run if there are recently finished matches OR matches that should be finished
+		if (!activity.hasRecentlyFinished && !activity.needsFinishCheck) {
+			console.log('✅ No finished matches to verify - skipping');
+			return { skipped: true, reason: 'no-finished-matches' };
+		}
+
+		if (activity.hasRecentlyFinished) {
+			console.log('🏁 Recently finished matches found - verifying and processing predictions');
+		}
+		if (activity.needsFinishCheck) {
+			console.log('⏳ Matches should be finished - checking status (might be in extra time)');
+		}
 
 		const baseUrl = getBaseUrl();
-		console.log('Using base URL:', baseUrl);
-
-		const requestPayload = {
-			hoursBack: 6,
-			maxFixtures: 20,
-			force: false,
-			priority: 'normal'
-		};
 
 		const response = await fetch(`${baseUrl}/api/cron/finished-fixtures-checker`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify(requestPayload)
+			}
 		});
 
 		if (!response.ok) {
@@ -215,32 +265,29 @@ export const finishedFixturesChecker = schedules.task({
 	}
 });
 
-// Live scores updater task - smart cron-optimized live game score updates
+// Live scores updater - updates scores for matches currently in play
 export const liveScoresUpdater = schedules.task({
 	id: 'live-scores-updater',
-	cron: '0 * * * *', // Every hour (top of the hour)
+	cron: '*/3 * * * *', // Every 3 minutes - checks for ACTUAL live matches first
 	run: async (payload) => {
-		console.log('🚀 Running scheduled live scores updater task');
-		console.log('Scheduled for:', payload.timestamp);
-		console.log('Last run:', payload.lastTimestamp);
+		console.log('⚽ Live scores: Checking for live matches...');
 
+		const activity = await checkMatchActivity();
+
+		// Only run if there are actually live matches OR matches that should be live
+		if (!activity.hasLiveMatches) {
+			console.log('✅ No live matches - skipping');
+			return { skipped: true, reason: 'no-live-matches' };
+		}
+
+		console.log('🔴 LIVE matches detected - updating scores');
 		const baseUrl = getBaseUrl();
-		console.log('Using base URL:', baseUrl);
-
-		// Smart payload - let the API handle time window calculations
-		const requestPayload = {
-			priority: 'normal',
-			force: false,
-			// Optional: tell API how frequently this cron runs for optimal time windows
-			cronFrequency: 60 // Default 60 minutes (hourly)
-		};
 
 		const response = await fetch(`${baseUrl}/api/cron/live-scores-updater`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify(requestPayload)
+			}
 		});
 
 		if (!response.ok) {
@@ -248,14 +295,7 @@ export const liveScoresUpdater = schedules.task({
 		}
 
 		const result = await response.json();
-		console.log('⚽ Live scores updater completed:', result);
-
-		// Enhanced logging for smart system
-		if (result.checked !== undefined) {
-			console.log(
-				`📊 Smart update: checked ${result.checked} fixtures, updated ${result.updated || 0}`
-			);
-		}
+		console.log('Live scores updater completed:', result);
 
 		return {
 			success: true,

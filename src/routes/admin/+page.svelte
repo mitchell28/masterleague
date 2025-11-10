@@ -266,8 +266,8 @@
 		<!-- Admin sections organized by category -->
 
 		<!-- Points & Scoring Section -->
-		<div class="mb-8 overflow-hidden bg-slate-800/50">
-			<div class="border-b border-slate-700/60 px-4 py-4 sm:px-6">
+		<div class="mb-6 overflow-hidden bg-slate-800/50">
+			<div class="border-b border-slate-700/60 bg-slate-900/30 px-4 py-4 sm:px-6">
 				<div class="flex items-center gap-3">
 					<Calculator class="text-blue-400" size={20} />
 					<h2 class="text-lg font-semibold text-white">Points & Scoring</h2>
@@ -278,7 +278,7 @@
 				<button
 					onclick={recalculateAllPoints}
 					disabled={loadingStates.recalculatePoints}
-					class="flex items-center gap-3 rounded-lg bg-blue-600 px-4 py-3 text-left transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+					class="flex items-center gap-3 bg-blue-600 px-4 py-3 text-left transition-all duration-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					<RefreshCw
 						size={18}
@@ -297,7 +297,7 @@
 				<button
 					onclick={updateLeaderboard}
 					disabled={loadingStates.updateLeaderboard}
-					class="flex items-center gap-3 rounded-lg bg-purple-600 px-4 py-3 text-left transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+					class="flex items-center gap-3 bg-purple-600 px-4 py-3 text-left transition-all duration-200 hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					<Trophy
 						size={18}
@@ -314,8 +314,8 @@
 		</div>
 
 		<!-- Fixtures & Scores Section -->
-		<div class="mb-8 overflow-hidden bg-slate-800/50">
-			<div class="border-b border-slate-700/60 px-4 py-4 sm:px-6">
+		<div class="mb-6 overflow-hidden bg-slate-800/50">
+			<div class="border-b border-slate-700/60 bg-slate-900/30 px-4 py-4 sm:px-6">
 				<div class="flex items-center gap-3">
 					<BarChart3 class="text-green-400" size={20} />
 					<h2 class="text-lg font-semibold text-white">Fixtures & Scores</h2>
@@ -326,7 +326,7 @@
 				<button
 					onclick={checkMissingFixtures}
 					disabled={loadingStates.checkMissingFixtures}
-					class="flex items-center gap-3 rounded-lg bg-orange-600 px-4 py-3 text-left transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+					class="flex items-center gap-3 bg-orange-600 px-4 py-3 text-left transition-all duration-200 hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					<AlertTriangle
 						size={18}
@@ -345,7 +345,7 @@
 				<button
 					onclick={updateLiveScores}
 					disabled={loadingStates.updateLiveScores}
-					class="flex items-center gap-3 rounded-lg bg-red-600 px-4 py-3 text-left transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+					class="flex items-center gap-3 bg-red-600 px-4 py-3 text-left transition-all duration-200 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					<Play
 						size={18}
@@ -362,7 +362,7 @@
 				<button
 					onclick={checkFixtureSchedule}
 					disabled={loadingStates.fixtureSchedule}
-					class="flex items-center gap-3 rounded-lg bg-amber-600 px-4 py-3 text-left transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+					class="flex items-center gap-3 bg-amber-600 px-4 py-3 text-left transition-all duration-200 hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					<Clock
 						size={18}
@@ -379,8 +379,8 @@
 		</div>
 
 		<!-- System & Maintenance Section -->
-		<div class="mb-8 overflow-hidden bg-slate-800/50">
-			<div class="border-b border-slate-700/60 px-4 py-4 sm:px-6">
+		<div class="mb-6 overflow-hidden bg-slate-800/50">
+			<div class="border-b border-slate-700/60 bg-slate-900/30 px-4 py-4 sm:px-6">
 				<div class="flex items-center gap-3">
 					<Database class="text-indigo-400" size={20} />
 					<h2 class="text-lg font-semibold text-white">System & Maintenance</h2>
@@ -391,7 +391,7 @@
 				<button
 					onclick={runHealthCheck}
 					disabled={loadingStates.healthCheck}
-					class="flex items-center gap-3 rounded-lg bg-teal-600 px-4 py-3 text-left transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+					class="flex items-center gap-3 bg-teal-600 px-4 py-3 text-left transition-all duration-200 hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					<Database
 						size={18}
@@ -408,7 +408,7 @@
 				<button
 					onclick={triggerPredictionsUpdate}
 					disabled={loadingStates.predictionsUpdate}
-					class="flex items-center gap-3 rounded-lg bg-emerald-600 px-4 py-3 text-left transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+					class="flex items-center gap-3 bg-emerald-600 px-4 py-3 text-left transition-all duration-200 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					<Users
 						size={18}
@@ -425,9 +425,9 @@
 		</div>
 
 		<!-- Warning Notice -->
-		<div class="mb-8 rounded-lg border border-yellow-600/50 bg-yellow-900/20 p-4">
+		<div class="mb-8 border border-yellow-600/50 bg-yellow-900/20 p-4">
 			<div class="flex items-start gap-3">
-				<AlertTriangle class="mt-0.5 text-yellow-400" size={20} />
+				<AlertTriangle class="mt-0.5 shrink-0 text-yellow-400" size={20} />
 				<div>
 					<h3 class="font-medium text-yellow-200">Admin Actions Warning</h3>
 					<p class="mt-1 text-sm text-yellow-300">
