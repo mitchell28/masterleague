@@ -95,7 +95,7 @@
 <header class="fixed top-0 left-0 z-50 w-full">
 	{#if !isStudioPage}
 		<!-- Main navbar container -->
-		<div class="relative w-full bg-[#090e1e] md:min-h-[80px]">
+		<div class="relative w-full bg-[#090e1e] md:min-h-20">
 			<div class="mx-auto flex max-w-7xl items-center justify-between gap-5 px-4 py-4">
 				<div class="hidden items-center justify-center gap-10 md:flex">
 					<a href="/" class="group relative flex items-center gap-3">
@@ -140,7 +140,7 @@
 								{#if isAdminDropdownOpen}
 									<div
 										data-admin-dropdown
-										class="border-accent/30 absolute top-full right-0 z-[60] mt-2 w-48 border bg-[#0D1326] shadow-xl"
+										class="border-accent/30 absolute top-full right-0 z-60 mt-2 w-48 border bg-[#0D1326] shadow-xl"
 									>
 										<div class="p-2">
 											{#each adminItems as item}
