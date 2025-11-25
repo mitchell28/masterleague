@@ -97,7 +97,7 @@
 		<!-- Christmas fairy lights hanging from navbar -->
 		<div class="pointer-events-none absolute bottom-0 left-0 z-10 w-full translate-y-full overflow-hidden">
 			<!-- The wire connecting all lights -->
-			<svg class="absolute top-0 left-0 h-8 w-full" preserveAspectRatio="none">
+			<svg class="absolute top-0 left-0 h-6 w-full md:h-8" preserveAspectRatio="none">
 				<path 
 					d="M0,2 Q60,20 120,5 Q180,22 240,8 Q300,20 360,5 Q420,22 480,8 Q540,20 600,5 Q660,22 720,8 Q780,20 840,5 Q900,22 960,8 Q1020,20 1080,5 Q1140,22 1200,8 Q1260,20 1320,5 Q1380,22 1440,8 Q1500,20 1560,5 Q1620,22 1680,8 Q1740,20 1800,5 Q1860,22 1920,8" 
 					stroke="#1a1a1a" 
@@ -106,26 +106,26 @@
 					class="wire"
 				/>
 			</svg>
-			<!-- Light bulbs -->
-			<div class="flex w-full justify-between px-4">
+			<!-- Light bulbs - fewer on mobile -->
+			<div class="flex w-full justify-between px-2 md:px-4">
 				{#each Array(16) as _, i}
 					{@const colors = ['#ff3333', '#33ff33', '#ffcc00', '#ff3333', '#33ff33', '#ffcc00']}
 					{@const color = colors[i % colors.length]}
 					<div 
-						class="relative"
-						style="margin-top: {4 + Math.sin(i * 0.5) * 8}px;"
+						class="relative {i % 2 === 1 ? 'hidden sm:block' : ''}"
+						style="margin-top: {3 + Math.sin(i * 0.5) * 6}px;"
 					>
 						<!-- Wire to bulb -->
-						<div class="mx-auto h-2 w-0.5 bg-gray-700"></div>
+						<div class="mx-auto h-1.5 w-0.5 bg-gray-700 md:h-2"></div>
 						<!-- Bulb base -->
-						<div class="mx-auto h-1 w-2 rounded-t-sm bg-gray-600"></div>
+						<div class="mx-auto h-0.5 w-1.5 rounded-t-sm bg-gray-600 md:h-1 md:w-2"></div>
 						<!-- Bulb -->
 						<div 
-							class="bulb h-3 w-2.5 rounded-b-full"
+							class="bulb h-2 w-1.5 rounded-b-full md:h-3 md:w-2.5"
 							style="
 								background: {color};
 								animation-delay: {i * 0.15}s;
-								box-shadow: 0 0 8px {color}, 0 0 16px {color}60;
+								box-shadow: 0 0 6px {color}, 0 0 12px {color}60;
 							"
 						></div>
 					</div>
