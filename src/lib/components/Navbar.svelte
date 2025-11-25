@@ -94,37 +94,37 @@
 
 <header class="fixed top-0 left-0 z-50 w-full">
 	{#if !isStudioPage}
-		<!-- Christmas fairy lights hanging from top -->
-		<div class="pointer-events-none absolute top-0 left-0 z-60 w-full overflow-hidden">
+		<div
+			class="pointer-events-none absolute bottom-0 left-0 z-10 w-full translate-y-full overflow-hidden"
+		>
 			<!-- The wire connecting all lights -->
 			<svg class="absolute top-0 left-0 h-4 w-full md:h-5" preserveAspectRatio="none">
-				<path 
-					d="M0,0 Q60,12 120,3 Q180,14 240,5 Q300,12 360,3 Q420,14 480,5 Q540,12 600,3 Q660,14 720,5 Q780,12 840,3 Q900,14 960,5 Q1020,12 1080,3 Q1140,14 1200,5 Q1260,12 1320,3 Q1380,14 1440,5 Q1500,12 1560,3 Q1620,14 1680,5 Q1740,12 1800,3 Q1860,14 1920,5" 
-					stroke="#2a2a2a" 
-					stroke-width="2" 
+				<path
+					d="M0,2 Q60,14 120,4 Q180,16 240,6 Q300,14 360,4 Q420,16 480,6 Q540,14 600,4 Q660,16 720,6 Q780,14 840,4 Q900,16 960,6 Q1020,14 1080,4 Q1140,16 1200,6 Q1260,14 1320,4 Q1380,16 1440,6 Q1500,14 1560,4 Q1620,16 1680,6 Q1740,14 1800,4 Q1860,16 1920,6"
+					stroke="#2a2a2a"
+					stroke-width="2"
 					fill="none"
-					class="wire"
 				/>
 			</svg>
-			<!-- Light bulbs - fewer on mobile -->
+			<!-- Light bulbs -->
 			<div class="flex w-full justify-between px-2 md:px-4">
 				{#each Array(16) as _, i}
-					{@const colors = ['#ff3333', '#33ff33', '#ffcc00', '#ff3333', '#33ff33', '#ffcc00']}
+					{@const colors = ['#ffcc00', '#ff3333', '#33ff33', '#ffcc00', '#ff3333', '#33ff33']}
 					{@const color = colors[i % colors.length]}
-					<div 
+					<div
 						class="relative {i % 2 === 1 ? 'hidden sm:block' : ''}"
-						style="margin-top: {2 + Math.sin(i * 0.5) * 4}px;"
+						style="margin-top: {2 + Math.sin(i * 0.5 + 1) * 4}px;"
 					>
 						<!-- Wire to bulb -->
 						<div class="mx-auto h-1 w-0.5 bg-gray-600 md:h-1.5"></div>
 						<!-- Bulb base -->
 						<div class="mx-auto h-0.5 w-1.5 rounded-t-sm bg-gray-500 md:h-1 md:w-2"></div>
 						<!-- Bulb -->
-						<div 
+						<div
 							class="bulb h-2 w-1.5 rounded-b-full md:h-2.5 md:w-2"
 							style="
 								background: {color};
-								animation-delay: {i * 0.15}s;
+								animation-delay: {i * 0.15 + 0.5}s;
 								box-shadow: 0 0 6px {color}, 0 0 12px {color}60;
 							"
 						></div>
@@ -132,7 +132,7 @@
 				{/each}
 			</div>
 		</div>
-		
+
 		<!-- Main navbar container -->
 		<div class="relative w-full bg-[#090e1e] md:min-h-20">
 			<div class="mx-auto flex max-w-7xl items-center justify-between gap-5 px-4 py-4">

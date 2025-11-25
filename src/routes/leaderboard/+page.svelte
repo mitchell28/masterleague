@@ -2,12 +2,20 @@
 	import { type PageData } from './$types';
 	import { ChevronUp, TrendingUp } from '@lucide/svelte';
 	import { useLeaderboardSorting } from './hooks';
+	import TopThreePodium from '$lib/components/christmas/TopThreePodium.svelte';
 
 	// Props and state
 	let { data } = $props<{ data: PageData }>();
 
 	// Update leaderboard when data changes (reactive to server load updates)
 	let leaderboard = $derived(data.leaderboard || []);
+
+	// Get top 3 for podium
+	let topThree = $derived(
+		[...leaderboard]
+			.sort((a, b) => (b.score || 0) - (a.score || 0))
+			.slice(0, 3)
+	);
 
 	// Use custom hooks
 	const sorting = useLeaderboardSorting(() => leaderboard, {
@@ -66,6 +74,9 @@
 	</div>
 
 	<div class="mx-auto max-w-6xl px-4 sm:px-6">
+		<!-- Top 3 Podium -->
+		<TopThreePodium {topThree} currentWeek={data.currentWeek} />
+
 		<!-- Leaderboard table clean card with mobile responsive design -->
 		<div class="overflow-hidden bg-slate-800/50">
 			<!-- Mobile Card View (visible on small screens) -->
