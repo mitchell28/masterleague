@@ -1,97 +1,151 @@
 <script lang="ts">
-	import { animate } from 'motion';
+	import { animate, stagger } from 'motion';
 
 	let heroRef = $state<HTMLElement>();
-	let logoRef = $state<HTMLElement>();
 	let titleRef = $state<HTMLElement>();
 	let subtitleRef = $state<HTMLElement>();
+	let statsRef = $state<HTMLElement>();
+	let ctaRef = $state<HTMLElement>();
+	let featuresRef = $state<HTMLElement>();
+	let pitchLinesRef = $state<HTMLElement>();
 
 	// Effect for animations
 	$effect(() => {
-		// Animate elements on load
-		if (logoRef) {
+		if (pitchLinesRef) {
 			animate(
-				logoRef,
-				{ opacity: [0, 1], scale: [0.8, 1], rotateY: [180, 0] },
-				{ duration: 1, ease: 'easeOut' }
+				pitchLinesRef,
+				{ opacity: [0, 1], scale: [0.95, 1] },
+				{ duration: 1.5, ease: 'easeOut' }
 			);
 		}
 
 		if (titleRef) {
 			animate(
 				titleRef,
-				{ opacity: [0, 1], y: [30, 0] },
-				{ duration: 0.8, delay: 0.3, ease: 'easeOut' }
+				{ opacity: [0, 1], y: [40, 0], scale: [0.95, 1] },
+				{ duration: 0.8, delay: 0.2, ease: 'easeOut' }
 			);
 		}
 
 		if (subtitleRef) {
 			animate(
 				subtitleRef,
+				{ opacity: [0, 1], y: [30, 0] },
+				{ duration: 0.7, delay: 0.4, ease: 'easeOut' }
+			);
+		}
+
+		if (ctaRef) {
+			animate(
+				ctaRef,
 				{ opacity: [0, 1], y: [20, 0] },
-				{ duration: 0.8, delay: 0.5, ease: 'easeOut' }
+				{ duration: 0.6, delay: 0.6, ease: 'easeOut' }
+			);
+		}
+
+		if (statsRef) {
+			animate(
+				statsRef,
+				{ opacity: [0, 1], y: [30, 0] },
+				{ duration: 0.7, delay: 0.8, ease: 'easeOut' }
+			);
+		}
+
+		if (featuresRef) {
+			const cards = featuresRef.querySelectorAll('.feature-card');
+			animate(
+				cards,
+				{ opacity: [0, 1], y: [40, 0], scale: [0.9, 1] },
+				{ duration: 0.5, delay: stagger(0.15), ease: 'easeOut' }
 			);
 		}
 	});
 </script>
 
-<div bind:this={heroRef} class="relative mt-22 flex min-h-screen items-center justify-center p-4">
-	<div class="container mx-auto flex flex-col items-center justify-center space-y-12 text-center">
-		<!-- Main Title -->
-		<div bind:this={titleRef} class="space-y-6 opacity-0">
-			<h1 class="text-4xl font-black tracking-tight sm:text-5xl md:text-7xl lg:text-8xl">
-				<span
-					class="from-accent to-accent bg-gradient-to-r via-white bg-clip-text text-transparent"
+<!-- Hero Section with Football Pitch Aesthetic -->
+<div bind:this={heroRef} class="relative min-h-screen overflow-hidden">
+	<!-- Animated Football Pitch Lines Background -->
+	<div bind:this={pitchLinesRef} class="pointer-events-none absolute inset-0 opacity-0">
+		<!-- Center circle -->
+		<div
+			class="absolute top-1/2 left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10 md:h-96 md:w-96"
+		></div>
+		<div
+			class="absolute top-1/2 left-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/20"
+		></div>
+
+		<!-- Horizontal pitch lines -->
+		<div
+			class="absolute top-1/2 right-0 left-0 h-px -translate-y-1/2 bg-linear-to-r from-transparent via-white/10 to-transparent"
+		></div>
+
+		<!-- Vertical accent lines -->
+		<div
+			class="absolute top-0 bottom-0 left-1/4 w-px bg-linear-to-b from-transparent via-white/5 to-transparent"
+		></div>
+		<div
+			class="absolute top-0 right-1/4 bottom-0 w-px bg-linear-to-b from-transparent via-white/5 to-transparent"
+		></div>
+	</div>
+
+	<!-- Glowing accent orbs -->
+	<div class="pointer-events-none absolute inset-0">
+		<div
+			class="bg-accent/5 absolute top-1/4 left-1/4 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[120px]"
+		></div>
+		<div
+			class="bg-accent/8 absolute right-1/4 bottom-1/4 h-[400px] w-[400px] translate-x-1/2 translate-y-1/2 rounded-full blur-[100px]"
+		></div>
+	</div>
+
+	<!-- Main Content -->
+	<div class="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 py-20">
+		<div class="container mx-auto max-w-6xl">
+			<!-- Badge -->
+			<div class="mb-8 flex justify-center">
+				<div
+					class="inline-flex items-center gap-2 border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-sm"
 				>
-					MASTER LEAGUE
-				</span>
-			</h1>
-			<div bind:this={subtitleRef} class="opacity-0">
-				<p class="mx-auto max-w-2xl text-xl font-light text-white/80 sm:text-2xl md:text-3xl">
-					The Pitch Is Ready <span class="christmas-emoji">🎄</span>
+					<span class="relative flex h-2 w-2">
+						<span
+							class="bg-accent absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
+						></span>
+						<span class="bg-accent relative inline-flex h-2 w-2 rounded-full"></span>
+					</span>
+					<span class="text-sm font-medium text-white/80">Season 2024/25 is Live</span>
+				</div>
+			</div>
+
+			<!-- Title -->
+			<div bind:this={titleRef} class="mb-6 text-center opacity-0">
+				<h1
+					class="text-5xl font-black tracking-tight sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl"
+				>
+					<span
+						class="block bg-linear-to-r from-white via-white to-white/60 bg-clip-text text-transparent"
+					>
+						PREDICT.
+					</span>
+					<span
+						class="from-accent via-accent block bg-linear-to-r to-emerald-400 bg-clip-text text-transparent"
+					>
+						COMPETE.
+					</span>
+					<span
+						class="block bg-linear-to-r from-white/60 via-white to-white bg-clip-text text-transparent"
+					>
+						DOMINATE.
+					</span>
+				</h1>
+			</div>
+
+			<!-- Subtitle -->
+			<div bind:this={subtitleRef} class="mb-10 text-center opacity-0">
+				<p class="mx-auto max-w-2xl text-lg font-light text-white/70 sm:text-xl md:text-2xl">
+					Join the ultimate Premier League prediction arena. Test your football IQ against friends
+					and climb the leaderboard.
 				</p>
 			</div>
 		</div>
-		<div class="flex gap-4">
-			<a
-				href="/auth/signup"
-				style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
-				class="bg-accent hover:bg-accent/90 inline-flex min-w-[140px] items-center justify-center gap-2 px-6 py-3 text-base font-semibold text-black transition-all duration-200 hover:scale-105 hover:shadow-lg sm:gap-3 sm:px-8 sm:py-4 sm:text-lg"
-			>
-				🎁 Sign Up Now
-			</a>
-			<a
-				href="/blog/launch-annoucment"
-				style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
-				class="inline-flex min-w-[140px] items-center justify-center gap-2 bg-white/5 px-6 py-3 text-base font-semibold text-white backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-white/10 hover:shadow-lg sm:gap-3 sm:px-8 sm:py-4 sm:text-lg"
-			>
-				Read Announcement
-			</a>
-		</div>
-
-		<!-- Additional Info -->
-		<div class="mx-auto max-w-lg">
-			<p class="text-sm leading-relaxed text-white/70 sm:text-base">
-				The ultimate football prediction platform is here. Get ready for a revolutionary way to
-				compete with friends and climb the leaderboard.
-			</p>
-		</div>
-	</div>
-
-	<!-- Decorative Elements - Christmas themed -->
-	<div class="pointer-events-none absolute inset-0 overflow-hidden">
-		<!-- Festive gradient orbs -->
-		<div
-			class="absolute top-1/4 left-1/4 h-64 w-64 animate-pulse rounded-full bg-red-500/10 blur-3xl"
-		></div>
-		<div
-			class="absolute right-1/4 bottom-1/4 h-48 w-48 animate-pulse rounded-full bg-green-500/10 blur-3xl delay-1000"
-		></div>
-		<div
-			class="absolute top-1/2 right-1/3 h-32 w-32 animate-pulse rounded-full bg-yellow-500/10 blur-2xl delay-500"
-		></div>
-		<div
-			class="absolute bottom-1/3 left-1/3 h-40 w-40 animate-pulse rounded-full bg-red-600/8 blur-3xl delay-700"
-		></div>
 	</div>
 </div>
