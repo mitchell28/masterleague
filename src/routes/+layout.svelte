@@ -5,19 +5,18 @@
 	import { MetaTags, deepMerge } from 'svelte-meta-tags';
 	import { Toaster } from 'svelte-sonner';
 	import Snowfall from '$lib/components/christmas/Snowfall.svelte';
-	import FairyLights from '$lib/components/christmas/FairyLights.svelte';
 
 	// Component props
 	let { children, data } = $props();
 
 	let metaTags = $derived(deepMerge(data.baseMetaTags, page.data.pageMetaTags));
+	let isHomePage = $derived(page.url.pathname === '/');
 </script>
 
 <MetaTags {...metaTags} />
 <Toaster />
 <Snowfall />
-<FairyLights />
-<Navbar />
+<Navbar showFairyLights={isHomePage} />
 <main class="min-h-screen">
 	{@render children()}
 </main>
