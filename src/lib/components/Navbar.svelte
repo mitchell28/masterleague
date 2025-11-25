@@ -94,13 +94,13 @@
 
 <header class="fixed top-0 left-0 z-50 w-full">
 	{#if !isStudioPage}
-		<!-- Christmas fairy lights hanging from navbar -->
-		<div class="pointer-events-none absolute bottom-0 left-0 z-10 w-full translate-y-full overflow-hidden">
+		<!-- Christmas fairy lights hanging from top -->
+		<div class="pointer-events-none absolute top-0 left-0 z-60 w-full overflow-hidden">
 			<!-- The wire connecting all lights -->
-			<svg class="absolute top-0 left-0 h-6 w-full md:h-8" preserveAspectRatio="none">
+			<svg class="absolute top-0 left-0 h-4 w-full md:h-5" preserveAspectRatio="none">
 				<path 
-					d="M0,2 Q60,20 120,5 Q180,22 240,8 Q300,20 360,5 Q420,22 480,8 Q540,20 600,5 Q660,22 720,8 Q780,20 840,5 Q900,22 960,8 Q1020,20 1080,5 Q1140,22 1200,8 Q1260,20 1320,5 Q1380,22 1440,8 Q1500,20 1560,5 Q1620,22 1680,8 Q1740,20 1800,5 Q1860,22 1920,8" 
-					stroke="#1a1a1a" 
+					d="M0,0 Q60,12 120,3 Q180,14 240,5 Q300,12 360,3 Q420,14 480,5 Q540,12 600,3 Q660,14 720,5 Q780,12 840,3 Q900,14 960,5 Q1020,12 1080,3 Q1140,14 1200,5 Q1260,12 1320,3 Q1380,14 1440,5 Q1500,12 1560,3 Q1620,14 1680,5 Q1740,12 1800,3 Q1860,14 1920,5" 
+					stroke="#2a2a2a" 
 					stroke-width="2" 
 					fill="none"
 					class="wire"
@@ -113,15 +113,15 @@
 					{@const color = colors[i % colors.length]}
 					<div 
 						class="relative {i % 2 === 1 ? 'hidden sm:block' : ''}"
-						style="margin-top: {3 + Math.sin(i * 0.5) * 6}px;"
+						style="margin-top: {2 + Math.sin(i * 0.5) * 4}px;"
 					>
 						<!-- Wire to bulb -->
-						<div class="mx-auto h-1.5 w-0.5 bg-gray-700 md:h-2"></div>
+						<div class="mx-auto h-1 w-0.5 bg-gray-600 md:h-1.5"></div>
 						<!-- Bulb base -->
-						<div class="mx-auto h-0.5 w-1.5 rounded-t-sm bg-gray-600 md:h-1 md:w-2"></div>
+						<div class="mx-auto h-0.5 w-1.5 rounded-t-sm bg-gray-500 md:h-1 md:w-2"></div>
 						<!-- Bulb -->
 						<div 
-							class="bulb h-2 w-1.5 rounded-b-full md:h-3 md:w-2.5"
+							class="bulb h-2 w-1.5 rounded-b-full md:h-2.5 md:w-2"
 							style="
 								background: {color};
 								animation-delay: {i * 0.15}s;
