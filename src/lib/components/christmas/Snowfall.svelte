@@ -51,7 +51,7 @@
 
 <style>
 	.snowflake {
-		animation: 
+		animation:
 			fall var(--fall-duration) linear infinite,
 			sway var(--sway-speed) ease-in-out infinite;
 		animation-delay: var(--fall-delay);
@@ -67,7 +67,8 @@
 	}
 
 	@keyframes sway {
-		0%, 100% {
+		0%,
+		100% {
 			margin-left: 0;
 		}
 		25% {
