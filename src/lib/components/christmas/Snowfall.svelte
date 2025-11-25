@@ -7,20 +7,23 @@
 		delay: number;
 		size: number;
 		drift: number;
+		swaySpeed: number;
 	}[] = $state([]);
 
 	$effect(() => {
-		const count = 80;
+		const count = 60;
 		const newSnowflakes = [];
 		for (let i = 0; i < count; i++) {
+			const size = Math.random() * 3 + 1.5; // 1.5-4.5px - smaller, more realistic
 			newSnowflakes.push({
 				id: i,
 				left: Math.random() * 100,
-				animationDuration: Math.random() * 15 + 20, // 20-35s fall time
-				opacity: Math.random() * 0.6 + 0.2,
-				delay: Math.random() * 20,
-				size: Math.random() * 4 + 2, // 2-6px size variation
-				drift: Math.random() * 30 + 10 // 10-40px horizontal drift
+				animationDuration: Math.random() * 20 + 25, // 25-45s fall time - gentle
+				opacity: Math.random() * 0.4 + 0.2, // 0.2-0.6 - softer
+				delay: Math.random() * 25,
+				size,
+				drift: Math.random() * 15 + 5, // 5-20px - subtle drift
+				swaySpeed: Math.random() * 2 + 3 // 3-5s sway cycle
 			});
 		}
 		snowflakes = newSnowflakes;
@@ -30,16 +33,17 @@
 <div class="pointer-events-none fixed inset-0 z-50 overflow-hidden" aria-hidden="true">
 	{#each snowflakes as flake (flake.id)}
 		<div
-			class="snowflake absolute -top-5 rounded-full bg-white"
+			class="snowflake absolute -top-5 rounded-full bg-white/90"
 			style="
 				left: {flake.left}%;
 				opacity: {flake.opacity};
 				width: {flake.size}px;
 				height: {flake.size}px;
-				filter: blur({flake.size > 4 ? 1 : 0}px);
+				filter: blur({flake.size > 3 ? 0.5 : 0}px);
 				--fall-duration: {flake.animationDuration}s;
 				--fall-delay: -{flake.delay}s;
 				--drift: {flake.drift}px;
+				--sway-speed: {flake.swaySpeed}s;
 			"
 		></div>
 	{/each}
@@ -47,28 +51,30 @@
 
 <style>
 	.snowflake {
-		animation: fall var(--fall-duration) ease-in-out infinite;
+		animation: 
+			fall var(--fall-duration) linear infinite,
+			sway var(--sway-speed) ease-in-out infinite;
 		animation-delay: var(--fall-delay);
 	}
 
 	@keyframes fall {
 		0% {
-			transform: translateY(-5vh) translateX(0) rotate(0deg);
-		}
-		20% {
-			transform: translateY(18vh) translateX(var(--drift)) rotate(90deg);
-		}
-		40% {
-			transform: translateY(38vh) translateX(calc(var(--drift) * -0.5)) rotate(180deg);
-		}
-		60% {
-			transform: translateY(58vh) translateX(var(--drift)) rotate(270deg);
-		}
-		80% {
-			transform: translateY(78vh) translateX(calc(var(--drift) * -0.3)) rotate(360deg);
+			transform: translateY(-2vh);
 		}
 		100% {
-			transform: translateY(105vh) translateX(calc(var(--drift) * 0.5)) rotate(450deg);
+			transform: translateY(102vh);
+		}
+	}
+
+	@keyframes sway {
+		0%, 100% {
+			margin-left: 0;
+		}
+		25% {
+			margin-left: var(--drift);
+		}
+		75% {
+			margin-left: calc(var(--drift) * -1);
 		}
 	}
 </style>
