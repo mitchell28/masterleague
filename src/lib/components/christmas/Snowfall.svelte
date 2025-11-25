@@ -11,26 +11,26 @@
 	}[] = $state([]);
 
 	$effect(() => {
-		const count = 60;
+		const count = 30; // Reduced for subtler effect
 		const newSnowflakes = [];
 		for (let i = 0; i < count; i++) {
-			const size = Math.random() * 3 + 1.5; // 1.5-4.5px - smaller, more realistic
+			const size = Math.random() * 2 + 1; // 1-3px - smaller
 			newSnowflakes.push({
 				id: i,
 				left: Math.random() * 100,
-				animationDuration: Math.random() * 20 + 25, // 25-45s fall time - gentle
-				opacity: Math.random() * 0.4 + 0.2, // 0.2-0.6 - softer
-				delay: Math.random() * 25,
+				animationDuration: Math.random() * 20 + 30, // 30-50s fall time - very gentle
+				opacity: Math.random() * 0.3 + 0.15, // 0.15-0.45 - even softer
+				delay: Math.random() * 30,
 				size,
-				drift: Math.random() * 15 + 5, // 5-20px - subtle drift
-				swaySpeed: Math.random() * 2 + 3 // 3-5s sway cycle
+				drift: Math.random() * 10 + 3, // 3-13px - subtle drift
+				swaySpeed: Math.random() * 2 + 4 // 4-6s sway cycle
 			});
 		}
 		snowflakes = newSnowflakes;
 	});
 </script>
 
-<div class="pointer-events-none fixed inset-0 z-50 overflow-hidden" aria-hidden="true">
+<div class="pointer-events-none fixed inset-0 z-40 overflow-hidden select-none" aria-hidden="true">
 	{#each snowflakes as flake (flake.id)}
 		<div
 			class="snowflake absolute -top-5 rounded-full bg-white/90"

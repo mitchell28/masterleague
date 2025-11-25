@@ -99,20 +99,24 @@
 		{#if showFairyLights}
 			<!-- Christmas fairy lights hanging from bottom of navbar -->
 			<div
-				class="pointer-events-none absolute bottom-0 left-0 z-10 w-full translate-y-full overflow-hidden"
+				class="pointer-events-none absolute bottom-0 left-0 z-10 w-full translate-y-full overflow-hidden select-none"
 			>
-				<!-- The wire connecting all lights -->
-				<svg class="absolute top-0 left-0 h-4 w-full md:h-5" preserveAspectRatio="none">
+				<!-- The wire connecting all lights - extended for wide screens -->
+				<svg
+					class="absolute top-0 left-0 h-5 w-full"
+					preserveAspectRatio="none"
+					viewBox="0 0 2400 20"
+				>
 					<path
-						d="M0,2 Q60,14 120,4 Q180,16 240,6 Q300,14 360,4 Q420,16 480,6 Q540,14 600,4 Q660,16 720,6 Q780,14 840,4 Q900,16 960,6 Q1020,14 1080,4 Q1140,16 1200,6 Q1260,14 1320,4 Q1380,16 1440,6 Q1500,14 1560,4 Q1620,16 1680,6 Q1740,14 1800,4 Q1860,16 1920,6"
+						d="M0,2 Q50,14 100,4 Q150,16 200,6 Q250,14 300,4 Q350,16 400,6 Q450,14 500,4 Q550,16 600,6 Q650,14 700,4 Q750,16 800,6 Q850,14 900,4 Q950,16 1000,6 Q1050,14 1100,4 Q1150,16 1200,6 Q1250,14 1300,4 Q1350,16 1400,6 Q1450,14 1500,4 Q1550,16 1600,6 Q1650,14 1700,4 Q1750,16 1800,6 Q1850,14 1900,4 Q1950,16 2000,6 Q2050,14 2100,4 Q2150,16 2200,6 Q2250,14 2300,4 Q2350,16 2400,6"
 						stroke="#2a2a2a"
 						stroke-width="2"
 						fill="none"
 					/>
 				</svg>
 				<!-- Light bulbs -->
-				<div class="flex w-full justify-between px-2 md:px-4">
-					{#each Array(16) as _, i}
+				<div class="flex w-full justify-between px-4">
+					{#each Array(20) as _, i}
 						{@const colors = ['#ffcc00', '#ff3333', '#33ff33', '#ffcc00', '#ff3333', '#33ff33']}
 						{@const color = colors[i % colors.length]}
 						<div
@@ -120,12 +124,12 @@
 							style="margin-top: {2 + Math.sin(i * 0.5 + 1) * 4}px;"
 						>
 							<!-- Wire to bulb -->
-							<div class="mx-auto h-1 w-0.5 bg-gray-600 md:h-1.5"></div>
+							<div class="mx-auto h-1.5 w-0.5 bg-gray-600"></div>
 							<!-- Bulb base -->
-							<div class="mx-auto h-0.5 w-1.5 rounded-t-sm bg-gray-500 md:h-1 md:w-2"></div>
+							<div class="mx-auto h-1 w-2 rounded-t-sm bg-gray-500"></div>
 							<!-- Bulb -->
 							<div
-								class="bulb h-2 w-1.5 rounded-b-full md:h-2.5 md:w-2"
+								class="bulb h-2.5 w-2 rounded-b-full"
 								style="
 									background: {color};
 									animation-delay: {i * 0.15 + 0.5}s;
