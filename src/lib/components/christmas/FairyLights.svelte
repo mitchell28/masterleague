@@ -8,10 +8,9 @@
 >
 	{#each Array(20) as _, i}
 		<div
-			class="h-3 w-3 rounded-full shadow-lg"
+			class="h-3 w-3 rounded-full shadow-lg light"
 			style="
                 background-color: {i % 2 === 0 ? '#ff0000' : '#00ff00'};
-                animation: twinkle 1s infinite alternate;
                 animation-delay: {i * 0.1}s;
                 margin-top: {i % 2 === 0 ? '-5px' : '5px'};
             "
@@ -20,6 +19,10 @@
 </div>
 
 <style>
+	.light {
+		animation: twinkle 1s infinite alternate;
+	}
+
 	@keyframes twinkle {
 		from {
 			opacity: 0.5;

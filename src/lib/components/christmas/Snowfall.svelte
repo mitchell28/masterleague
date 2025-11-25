@@ -26,18 +26,23 @@
 <div class="pointer-events-none fixed inset-0 z-50 overflow-hidden" aria-hidden="true">
 	{#each snowflakes as flake (flake.id)}
 		<div
-			class="absolute -top-5 h-2 w-2 rounded-full bg-white blur-[1px]"
+			class="absolute -top-5 h-2 w-2 rounded-full bg-white blur-[1px] snowflake"
 			style="
 				left: {flake.left}%;
 				opacity: {flake.opacity};
-				animation: fall {flake.animationDuration}s linear infinite;
-                animation-delay: -{flake.delay}s;
+				--fall-duration: {flake.animationDuration}s;
+				--fall-delay: -{flake.delay}s;
 			"
 		></div>
 	{/each}
 </div>
 
 <style>
+	.snowflake {
+		animation: fall var(--fall-duration) linear infinite;
+		animation-delay: var(--fall-delay);
+	}
+
 	@keyframes fall {
 		0% {
 			transform: translateY(-10vh) translateX(0);
