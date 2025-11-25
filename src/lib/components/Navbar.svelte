@@ -4,6 +4,7 @@
 	import { Menu, X, LogOut, LogIn, UserPlus } from '@lucide/svelte';
 	import { authClient } from '$lib/client/auth-client';
 	import logo from '$lib/assets/logo/masterleague.svg';
+	import SantaHat from '$lib/components/christmas/SantaHat.svelte';
 
 	let { user } = $derived(page.data);
 	let isStudioPage = $derived(page.url.pathname.includes('studio'));
@@ -98,8 +99,9 @@
 		<div class="relative w-full bg-[#090e1e] md:min-h-[80px]">
 			<div class="mx-auto flex max-w-7xl items-center justify-between gap-5 px-4 py-4">
 				<div class="hidden items-center justify-center gap-10 md:flex">
-					<a href="/" class="group flex items-center gap-3">
+					<a href="/" class="group relative flex items-center gap-3">
 						<img src={logo} height="56" alt="Master League Logo" class="h-14 min-h-14 min-w-14" />
+						<SantaHat class="absolute -top-4 -left-3 h-10 w-10 -rotate-12" />
 					</a>
 
 					<div class="flex gap-2">
@@ -119,8 +121,9 @@
 				</div>
 
 				<!-- Mobile Logo -->
-				<a href="/" class="group flex items-center gap-3 md:hidden">
+				<a href="/" class="group relative flex items-center gap-3 md:hidden">
 					<img src={logo} height="56" alt="Master League Logo" class="h-12" />
+					<SantaHat class="absolute -top-3 -left-2 h-8 w-8 -rotate-12" />
 				</a>
 
 				<!-- Desktop Navigation -->

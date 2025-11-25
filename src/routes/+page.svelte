@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { animate } from 'motion';
+	import FairyLights from '$lib/components/christmas/FairyLights.svelte';
 
 	let heroRef = $state<HTMLElement>();
 	let logoRef = $state<HTMLElement>();
@@ -34,6 +35,8 @@
 		}
 	});
 </script>
+
+<FairyLights />
 
 <div bind:this={heroRef} class="relative mt-22 flex min-h-screen items-center justify-center p-4">
 	<div class="container mx-auto flex flex-col items-center justify-center space-y-12 text-center">
