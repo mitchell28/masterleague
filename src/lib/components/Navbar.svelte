@@ -94,13 +94,43 @@
 
 <header class="fixed top-0 left-0 z-50 w-full">
 	{#if !isStudioPage}
-		<!-- Christmas garland decoration -->
-		<div class="pointer-events-none absolute bottom-0 left-0 z-10 flex w-full translate-y-full justify-around px-8">
-			{#each Array(12) as _, i}
-				<span class="text-lg" style="animation: sway 3s ease-in-out infinite; animation-delay: {i * 0.2}s;">
-					{['🎄', '⭐', '🔔', '❄️'][i % 4]}
-				</span>
-			{/each}
+		<!-- Christmas fairy lights hanging from navbar -->
+		<div class="pointer-events-none absolute bottom-0 left-0 z-10 w-full translate-y-full overflow-hidden">
+			<!-- The wire connecting all lights -->
+			<svg class="absolute top-0 left-0 h-8 w-full" preserveAspectRatio="none">
+				<path 
+					d="M0,2 Q60,20 120,5 Q180,22 240,8 Q300,20 360,5 Q420,22 480,8 Q540,20 600,5 Q660,22 720,8 Q780,20 840,5 Q900,22 960,8 Q1020,20 1080,5 Q1140,22 1200,8 Q1260,20 1320,5 Q1380,22 1440,8 Q1500,20 1560,5 Q1620,22 1680,8 Q1740,20 1800,5 Q1860,22 1920,8" 
+					stroke="#1a1a1a" 
+					stroke-width="2" 
+					fill="none"
+					class="wire"
+				/>
+			</svg>
+			<!-- Light bulbs -->
+			<div class="flex w-full justify-between px-4">
+				{#each Array(16) as _, i}
+					{@const colors = ['#ff3333', '#33ff33', '#ffcc00', '#ff3333', '#33ff33', '#ffcc00']}
+					{@const color = colors[i % colors.length]}
+					<div 
+						class="relative"
+						style="margin-top: {4 + Math.sin(i * 0.5) * 8}px;"
+					>
+						<!-- Wire to bulb -->
+						<div class="mx-auto h-2 w-0.5 bg-gray-700"></div>
+						<!-- Bulb base -->
+						<div class="mx-auto h-1 w-2 rounded-t-sm bg-gray-600"></div>
+						<!-- Bulb -->
+						<div 
+							class="bulb h-3 w-2.5 rounded-b-full"
+							style="
+								background: {color};
+								animation-delay: {i * 0.15}s;
+								box-shadow: 0 0 8px {color}, 0 0 16px {color}60;
+							"
+						></div>
+					</div>
+				{/each}
+			</div>
 		</div>
 		
 		<!-- Main navbar container -->
@@ -336,12 +366,18 @@
 </header>
 
 <style>
-	@keyframes sway {
-		0%, 100% {
-			transform: translateY(0) rotate(-5deg);
+	.bulb {
+		animation: twinkle 1s ease-in-out infinite alternate;
+	}
+
+	@keyframes twinkle {
+		0% {
+			opacity: 0.5;
+			filter: brightness(0.7);
 		}
-		50% {
-			transform: translateY(3px) rotate(5deg);
+		100% {
+			opacity: 1;
+			filter: brightness(1.4);
 		}
 	}
 </style>
