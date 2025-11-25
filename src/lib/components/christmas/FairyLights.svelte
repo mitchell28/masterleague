@@ -1,36 +1,76 @@
 <script lang="ts">
-	// Simple fairy lights component
+	// Fairy lights that wrap around an element
+	const colors = ['#ff0000', '#00ff00', '#ffcc00', '#0099ff', '#ff66cc'];
 </script>
 
-<div
-	class="pointer-events-none fixed top-0 left-0 z-50 flex w-full justify-between overflow-hidden px-4"
-	aria-hidden="true"
->
-	{#each Array(20) as _, i}
-		<div
-			class="h-3 w-3 rounded-full shadow-lg light"
-			style="
-                background-color: {i % 2 === 0 ? '#ff0000' : '#00ff00'};
-                animation-delay: {i * 0.1}s;
-                margin-top: {i % 2 === 0 ? '-5px' : '5px'};
-            "
-		></div>
-	{/each}
+<div class="pointer-events-none absolute inset-0 z-10" aria-hidden="true">
+	<!-- Top edge -->
+	<div class="absolute top-0 left-0 flex w-full justify-around px-1">
+		{#each Array(8) as _, i}
+			<div
+				class="h-2 w-2 rounded-full light"
+				style="
+					background-color: {colors[i % colors.length]};
+					animation-delay: {i * 0.15}s;
+					box-shadow: 0 0 6px {colors[i % colors.length]};
+				"
+			></div>
+		{/each}
+	</div>
+	<!-- Bottom edge -->
+	<div class="absolute bottom-0 left-0 flex w-full justify-around px-1">
+		{#each Array(8) as _, i}
+			<div
+				class="h-2 w-2 rounded-full light"
+				style="
+					background-color: {colors[(i + 2) % colors.length]};
+					animation-delay: {i * 0.15 + 0.5}s;
+					box-shadow: 0 0 6px {colors[(i + 2) % colors.length]};
+				"
+			></div>
+		{/each}
+	</div>
+	<!-- Left edge -->
+	<div class="absolute top-0 left-0 flex h-full flex-col justify-around py-1">
+		{#each Array(6) as _, i}
+			<div
+				class="h-2 w-2 rounded-full light"
+				style="
+					background-color: {colors[(i + 1) % colors.length]};
+					animation-delay: {i * 0.15 + 0.25}s;
+					box-shadow: 0 0 6px {colors[(i + 1) % colors.length]};
+				"
+			></div>
+		{/each}
+	</div>
+	<!-- Right edge -->
+	<div class="absolute top-0 right-0 flex h-full flex-col justify-around py-1">
+		{#each Array(6) as _, i}
+			<div
+				class="h-2 w-2 rounded-full light"
+				style="
+					background-color: {colors[(i + 3) % colors.length]};
+					animation-delay: {i * 0.15 + 0.75}s;
+					box-shadow: 0 0 6px {colors[(i + 3) % colors.length]};
+				"
+			></div>
+		{/each}
+	</div>
 </div>
 
 <style>
 	.light {
-		animation: twinkle 1s infinite alternate;
+		animation: flash 0.5s infinite alternate;
 	}
 
-	@keyframes twinkle {
-		from {
-			opacity: 0.5;
-			box-shadow: 0 0 5px currentColor;
+	@keyframes flash {
+		0% {
+			opacity: 0.3;
+			transform: scale(0.8);
 		}
-		to {
+		100% {
 			opacity: 1;
-			box-shadow: 0 0 15px currentColor;
+			transform: scale(1.1);
 		}
 	}
 </style>
