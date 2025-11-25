@@ -94,6 +94,15 @@
 
 <header class="fixed top-0 left-0 z-50 w-full">
 	{#if !isStudioPage}
+		<!-- Christmas garland decoration -->
+		<div class="pointer-events-none absolute bottom-0 left-0 z-10 flex w-full translate-y-full justify-around px-8">
+			{#each Array(12) as _, i}
+				<span class="text-lg" style="animation: sway 3s ease-in-out infinite; animation-delay: {i * 0.2}s;">
+					{['🎄', '⭐', '🔔', '❄️'][i % 4]}
+				</span>
+			{/each}
+		</div>
+		
 		<!-- Main navbar container -->
 		<div class="relative w-full bg-[#090e1e] md:min-h-20">
 			<div class="mx-auto flex max-w-7xl items-center justify-between gap-5 px-4 py-4">
@@ -325,3 +334,14 @@
 		{/if}
 	{/if}
 </header>
+
+<style>
+	@keyframes sway {
+		0%, 100% {
+			transform: translateY(0) rotate(-5deg);
+		}
+		50% {
+			transform: translateY(3px) rotate(5deg);
+		}
+	}
+</style>
