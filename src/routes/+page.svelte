@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { animate } from 'motion';
-	import FairyLights from '$lib/components/christmas/FairyLights.svelte';
-	import SantaHat from '$lib/components/christmas/SantaHat.svelte';
 
 	let heroRef = $state<HTMLElement>();
 	let logoRef = $state<HTMLElement>();
@@ -39,9 +37,8 @@
 
 <div bind:this={heroRef} class="relative mt-22 flex min-h-screen items-center justify-center p-4">
 	<div class="container mx-auto flex flex-col items-center justify-center space-y-12 text-center">
-		<!-- Main Title with Fairy Lights -->
-		<div bind:this={titleRef} class="relative space-y-6 opacity-0">
-			<FairyLights />
+		<!-- Main Title -->
+		<div bind:this={titleRef} class="space-y-6 opacity-0">
 			<h1 class="text-4xl font-black tracking-tight sm:text-5xl md:text-7xl lg:text-8xl">
 				<span
 					class="from-accent to-accent bg-gradient-to-r via-white bg-clip-text text-transparent"
@@ -51,7 +48,7 @@
 			</h1>
 			<div bind:this={subtitleRef} class="opacity-0">
 				<p class="mx-auto max-w-2xl text-xl font-light text-white/80 sm:text-2xl md:text-3xl">
-					The Pitch Is Ready
+					The Pitch Is Ready <span class="christmas-emoji">🎄</span>
 				</p>
 			</div>
 		</div>
@@ -59,10 +56,9 @@
 			<a
 				href="/auth/signup"
 				style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
-				class="bg-accent hover:bg-accent/90 relative inline-flex min-w-[140px] items-center justify-center gap-2 px-6 py-3 text-base font-semibold text-black transition-all duration-200 hover:scale-105 hover:shadow-lg sm:gap-3 sm:px-8 sm:py-4 sm:text-lg"
+				class="bg-accent hover:bg-accent/90 inline-flex min-w-[140px] items-center justify-center gap-2 px-6 py-3 text-base font-semibold text-black transition-all duration-200 hover:scale-105 hover:shadow-lg sm:gap-3 sm:px-8 sm:py-4 sm:text-lg"
 			>
-				Sign Up Now
-				<SantaHat class="absolute -top-3 -right-3 h-8 w-8 rotate-12" />
+				🎁 Sign Up Now
 			</a>
 			<a
 				href="/blog/launch-annoucment"
@@ -82,17 +78,20 @@
 		</div>
 	</div>
 
-	<!-- Decorative Elements -->
+	<!-- Decorative Elements - Christmas themed -->
 	<div class="pointer-events-none absolute inset-0 overflow-hidden">
-		<!-- Gradient orbs -->
+		<!-- Festive gradient orbs -->
 		<div
-			class="bg-accent/10 absolute top-1/4 left-1/4 h-64 w-64 animate-pulse rounded-full blur-3xl"
+			class="absolute top-1/4 left-1/4 h-64 w-64 animate-pulse rounded-full bg-red-500/10 blur-3xl"
 		></div>
 		<div
-			class="absolute right-1/4 bottom-1/4 h-48 w-48 animate-pulse rounded-full bg-white/5 blur-3xl delay-1000"
+			class="absolute right-1/4 bottom-1/4 h-48 w-48 animate-pulse rounded-full bg-green-500/10 blur-3xl delay-1000"
 		></div>
 		<div
-			class="bg-accent/15 absolute top-1/2 right-1/3 h-32 w-32 animate-pulse rounded-full blur-2xl delay-500"
+			class="absolute top-1/2 right-1/3 h-32 w-32 animate-pulse rounded-full bg-yellow-500/10 blur-2xl delay-500"
+		></div>
+		<div
+			class="absolute bottom-1/3 left-1/3 h-40 w-40 animate-pulse rounded-full bg-red-600/8 blur-3xl delay-700"
 		></div>
 	</div>
 </div>

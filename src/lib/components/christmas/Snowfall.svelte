@@ -26,7 +26,7 @@
 <div class="pointer-events-none fixed inset-0 z-50 overflow-hidden" aria-hidden="true">
 	{#each snowflakes as flake (flake.id)}
 		<div
-			class="absolute -top-5 h-2 w-2 rounded-full bg-white blur-[1px] snowflake"
+			class="snowflake absolute -top-5 h-2 w-2 rounded-full bg-white blur-[1px]"
 			style="
 				left: {flake.left}%;
 				opacity: {flake.opacity};
