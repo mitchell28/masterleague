@@ -12,6 +12,7 @@
 		{ href: '/', label: 'Home', adminOnly: false },
 		{ href: '/predictions', label: 'Predictions', adminOnly: false },
 		{ href: '/leaderboard', label: 'Leaderboard', adminOnly: false },
+		{ href: '/standings', label: 'PL Table', adminOnly: false },
 		{ href: '/blog', label: 'Blog', adminOnly: false }
 	];
 
