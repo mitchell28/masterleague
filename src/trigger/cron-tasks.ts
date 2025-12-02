@@ -306,6 +306,50 @@ export const liveScoresUpdater = schedules.task({
 	}
 });
 
+// Prediction reminder task - sends email reminders to users with missing predictions
+// Runs Friday 10 AM and Saturday 10 AM UTC (before typical Premier League kickoffs)
+export const predictionReminder = schedules.task({
+	id: 'prediction-reminder',
+	cron: '0 10 * * 5,6', // Friday and Saturday at 10 AM UTC
+	run: async (payload) => {
+		console.log('📧 Running scheduled prediction reminder task');
+		console.log('Scheduled for:', payload.timestamp);
+		console.log('Last run:', payload.lastTimestamp);
+
+		const baseUrl = getBaseUrl();
+		console.log('Using base URL:', baseUrl);
+
+		const response = await fetch(`${baseUrl}/api/cron/prediction-reminders`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({ force: false })
+		});
+
+		if (!response.ok) {
+			throw new Error(`Prediction reminder failed: ${response.statusText}`);
+		}
+
+		const result = await response.json();
+		console.log('📧 Prediction reminder completed:', result);
+
+		// Log summary
+		if (result.sent !== undefined) {
+			console.log(`✉️ Reminders sent: ${result.sent}, failed: ${result.failed || 0}`);
+		} else if (result.skipped) {
+			console.log(`⏭️ Skipped: ${result.reason}`);
+		}
+
+		return {
+			success: true,
+			timestamp: new Date().toISOString(),
+			scheduleId: payload.scheduleId,
+			result
+		};
+	}
+});
+
 // Prediction safety check task - runs every 6 hours to catch missed predictions
 export const predictionSafetyCheck = schedules.task({
 	id: 'prediction-safety-check',

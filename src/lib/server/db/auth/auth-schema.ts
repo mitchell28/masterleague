@@ -8,7 +8,6 @@ import {
 	index,
 	uniqueIndex
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
 
 export const user = pgTable(
 	'user',

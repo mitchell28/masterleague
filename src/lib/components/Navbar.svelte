@@ -5,8 +5,6 @@
 	import { authClient } from '$lib/client/auth-client';
 	import logo from '$lib/assets/logo/masterleague.svg';
 
-	let { showFairyLights = false }: { showFairyLights?: boolean } = $props();
-
 	let { user } = $derived(page.data);
 	let isStudioPage = $derived(page.url.pathname.includes('studio'));
 
@@ -20,7 +18,8 @@
 	const adminItems = [
 		{ href: '/groups', label: 'Groups' },
 		{ href: '/studio', label: 'Studio' },
-		{ href: '/admin', label: 'Admin' }
+		{ href: '/admin', label: 'Admin' },
+		{ href: '/admin/email-preview', label: 'Email Preview' }
 	];
 
 	let isDropdownOpen = $state(false);
@@ -96,52 +95,6 @@
 
 <header class="fixed top-0 left-0 z-50 w-full">
 	{#if !isStudioPage}
-		{#if showFairyLights}
-			<!-- Christmas fairy lights hanging from bottom of navbar -->
-			<div
-				class="pointer-events-none absolute bottom-0 left-0 z-10 w-full translate-y-full overflow-hidden select-none"
-			>
-				<!-- The wire connecting all lights - extended for wide screens -->
-				<svg
-					class="absolute top-0 left-0 h-5 w-full"
-					preserveAspectRatio="none"
-					viewBox="0 0 2400 20"
-				>
-					<path
-						d="M0,2 Q50,14 100,4 Q150,16 200,6 Q250,14 300,4 Q350,16 400,6 Q450,14 500,4 Q550,16 600,6 Q650,14 700,4 Q750,16 800,6 Q850,14 900,4 Q950,16 1000,6 Q1050,14 1100,4 Q1150,16 1200,6 Q1250,14 1300,4 Q1350,16 1400,6 Q1450,14 1500,4 Q1550,16 1600,6 Q1650,14 1700,4 Q1750,16 1800,6 Q1850,14 1900,4 Q1950,16 2000,6 Q2050,14 2100,4 Q2150,16 2200,6 Q2250,14 2300,4 Q2350,16 2400,6"
-						stroke="#2a2a2a"
-						stroke-width="2"
-						fill="none"
-					/>
-				</svg>
-				<!-- Light bulbs -->
-				<div class="flex w-full justify-between px-4">
-					{#each Array(20) as _, i}
-						{@const colors = ['#ffcc00', '#ff3333', '#33ff33', '#ffcc00', '#ff3333', '#33ff33']}
-						{@const color = colors[i % colors.length]}
-						<div
-							class="relative {i % 2 === 1 ? 'hidden sm:block' : ''}"
-							style="margin-top: {2 + Math.sin(i * 0.5 + 1) * 4}px;"
-						>
-							<!-- Wire to bulb -->
-							<div class="mx-auto h-1.5 w-0.5 bg-gray-600"></div>
-							<!-- Bulb base -->
-							<div class="mx-auto h-1 w-2 rounded-t-sm bg-gray-500"></div>
-							<!-- Bulb -->
-							<div
-								class="bulb h-2.5 w-2 rounded-b-full"
-								style="
-									background: {color};
-									animation-delay: {i * 0.15 + 0.5}s;
-									box-shadow: 0 0 6px {color}, 0 0 12px {color}60;
-								"
-							></div>
-						</div>
-					{/each}
-				</div>
-			</div>
-		{/if}
-
 		<!-- Main navbar container -->
 		<div class="relative w-full bg-[#090e1e] md:min-h-20">
 			<div class="mx-auto flex max-w-7xl items-center justify-between gap-5 px-4 py-4">
@@ -373,20 +326,3 @@
 		{/if}
 	{/if}
 </header>
-
-<style>
-	.bulb {
-		animation: twinkle 1s ease-in-out infinite alternate;
-	}
-
-	@keyframes twinkle {
-		0% {
-			opacity: 0.5;
-			filter: brightness(0.7);
-		}
-		100% {
-			opacity: 1;
-			filter: brightness(1.4);
-		}
-	}
-</style>

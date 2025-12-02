@@ -2,184 +2,148 @@
 
 ## Project Overview
 
-Master League is a SvelteKit sports prediction platform with organization-based multi-tenancy, real-time fixture tracking, and comprehensive leaderboard systems. Users make predictions on Premier League matches within organizations, earn points based on accuracy, and compete in leaderboards.
+SvelteKit Premier League prediction platform with organization-based multi-tenancy. Users predict match scores within organizations, earn points (3 for exact score, 1 for correct outcome), and compete on leaderboards.
 
 ## Architecture
 
-### Core Stack
+**Stack**: SvelteKit 2.x + Svelte 5 | PostgreSQL + Drizzle ORM | Better Auth | TailwindCSS v4 | Trigger.dev v4 | Sanity CMS
 
-- **Frontend**: SvelteKit 2.x with Svelte 5 (using `$props()` and `$derived`)
-- **Database**: PostgreSQL with Drizzle ORM, Better Auth for authentication
-- **Styling**: TailwindCSS with custom design system (clip-path polygons for angular design)
-- **Background Jobs**: Trigger.dev v4 for scheduled tasks and cron jobs
-- **CMS**: Sanity for blog content management
-- **External APIs**: Football-Data.org API for live fixture data
-
-### Data Model Hierarchy
+**Data Hierarchy** (all user data scoped by `organizationId`):
 
 ```
-Organization (Multi-tenant root)
-├── Members (users within org)
-├── Predictions (user predictions per fixture)
-├── League Tables (leaderboard per org/season)
-└── Fixtures (shared across all orgs)
+Organization → Members → Predictions → League Tables (per season)
+                       ↘ Fixtures (shared globally)
 ```
 
-**Key Schema Files:**
+**Key Directories**:
 
-- `src/lib/server/db/schema.ts` - Main application tables
-- `src/lib/server/db/auth/auth-schema.ts` - Better Auth tables with organization plugin
+- `src/lib/server/db/` - Schema and database access
+- `src/lib/server/engine/data/` - Core business logic (fixtures, predictions, processing)
+- `src/lib/server/football/` - Football-specific services
+- `src/routes/api/cron/` - Background job endpoints
 
-## Critical Development Patterns
+## Svelte 5 Patterns (CRITICAL)
 
-### 1. Authentication & Authorization
+Always use Svelte 5 runes syntax - never legacy `$:` or `export let`:
 
-Uses Better Auth with organization plugin for multi-tenancy:
+```svelte
+<script lang="ts">
+	// Props with destructuring and defaults
+	let { user, showNav = true }: { user: User; showNav?: boolean } = $props();
+
+	// Derived state (replaces $:)
+	let isAdmin = $derived(user?.role === 'admin');
+
+	// Reactive state
+	let isOpen = $state(false);
+
+	// Effects with cleanup
+	$effect(() => {
+		document.addEventListener('click', handler);
+		return () => document.removeEventListener('click', handler);
+	});
+</script>
+```
+
+Access page data via `$app/state`:
+
+```svelte
+import {page} from '$app/state'; let {user} = $derived(page.data);
+```
+
+## Database Patterns
+
+**Organization scoping** - Always filter by `organizationId`:
 
 ```typescript
-// Always check session in server loads
-export const load: LayoutServerLoad = async ({ locals }) => {
-	return {
-		user: locals.user,
-		session: locals.session
-	};
+const results = await db.select().from(predictions).where(eq(predictions.organizationId, orgId));
+```
+
+**Schema files**: `src/lib/server/db/schema.ts` (app) + `src/lib/server/db/auth/auth-schema.ts` (auth)
+
+**Commands**:
+
+```bash
+pnpm db:generate     # Generate migration from schema changes
+pnpm db:push         # Push directly to dev DB (no migration)
+pnpm db:migrate      # Run migrations in production
+pnpm db:studio       # Open Drizzle Studio
+pnpm db:seed-fixtures # Seed fixtures for current season
+```
+
+## Authentication (Better Auth)
+
+Session available in server loads via `locals`:
+
+```typescript
+export const load: PageServerLoad = async ({ locals }) => {
+	if (!locals.user?.id) throw redirect(302, '/auth/login');
+	// locals.user and locals.session populated by hooks.server.ts
 };
 ```
 
-**Key Auth Files:**
+New users auto-assigned to default org and league table via hooks in `src/lib/server/db/auth/auth.ts`.
 
-- `src/lib/server/db/auth/auth.ts` - Auth instance with organization hooks
-- `src/lib/server/db/auth/betterauth-options.ts` - Configuration with Stripe integration
-- `src/hooks.server.ts` - Session handling in SvelteKit hooks
+## Cron & Background Jobs
 
-### 2. Database Operations
+**Intelligent cron system** in `src/trigger/cron-tasks.ts` coordinates:
 
-All queries are organization-scoped where applicable:
+- `intelligent-processor` (15min) - Leaderboard maintenance
+- `live-scores-updater` (2min during matches) - Live score updates
+- `finished-fixtures-checker` - Post-match point calculations
 
-```typescript
-// Example: Always filter by organizationId
-const predictions = await db
-	.select()
-	.from(predictions)
-	.where(eq(predictions.organizationId, orgId));
-```
+**Football API rate limit**: 10 req/min - use existing queue in `src/lib/server/football/fixtures/fixtureApi.ts`
 
-**Migration Commands:**
+**Caching**: `src/lib/server/light-cache.ts` for server-side caching with tag-based invalidation
 
-```bash
-pnpm db:generate    # Generate migrations
-pnpm db:push        # Push to dev database
-pnpm db:migrate     # Run migrations in production
-```
+## Form Handling
 
-### 3. Real-time Fixture Updates
-
-Intelligent cron system updates fixtures and triggers point calculations:
-
-**Key Cron Endpoints:**
-
-- `/api/cron/intelligent-processor` - Smart coordinator for all tasks
-- `/api/cron/live-scores-updater` - Live game score updates (every 2 minutes during match times)
-- `/api/cron/finished-fixtures-checker` - Completed game verification
-- `/api/cron/fixture-schedule` - Schedule changes detection
-
-**Trigger.dev Tasks:** `src/trigger/cron-tasks.ts`
-
-### 4. Points Calculation System
-
-Located in `src/lib/server/football/predictions/`:
-
-- **Prediction scoring**: 3 points exact score, 1 point correct outcome
-- **Multipliers**: Random weekly multipliers (2x-5x) for selected fixtures
-- **Leaderboard updates**: Triggered after fixture completion
-
-### 5. Form Handling
-
-Uses SvelteKit Superforms with Zod validation:
+Use Superforms with Zod validation:
 
 ```typescript
-// Server action pattern
-export const actions: Actions = {
+import { superValidate } from 'sveltekit-superforms';
+import { zod } from 'sveltekit-superforms/adapters';
+import { authLoginSchema } from '$lib/validation/auth-schemas';
+
+export const actions = {
 	default: async ({ request }) => {
-		const form = await superValidate(request, zod(schema));
+		const form = await superValidate(request, zod(authLoginSchema));
 		if (!form.valid) return fail(400, { form });
-		// Process form...
+		// process...
 	}
 };
 ```
 
-**Validation Schemas:** `src/lib/validation/auth-schemas.ts`
+## Points System
 
-### 6. Component Patterns
+- **3 points**: Exact score prediction
+- **1 point**: Correct outcome (win/draw/loss)
+- **Multipliers**: Random 2x-5x on selected fixtures per week
 
-Svelte 5 syntax with TypeScript:
+Processing flow: `finished-fixtures-checker` → `prediction-processor.ts` → `leaderboard.ts`
 
-```svelte
-<script lang="ts">
-	// Use $props() for component props
-	let { data, user } = $props();
-
-	// Use $derived for reactive computations
-	let userPredictions = $derived(data.predictions.filter((p) => p.userId === user?.id));
-</script>
-```
-
-### 7. API Rate Limiting & Caching
-
-Football API calls are rate-limited (10 requests/minute):
-
-- Uses queuing system in `src/lib/server/football/fixtures/fixtureApi.ts`
-- Light caching for cron job coordination in `src/lib/server/light-cache.ts`
-
-## Key Workflows
-
-### Adding New Features
-
-1. **Database changes**: Update schema, generate migration
-2. **API endpoints**: Follow SvelteKit route conventions
-3. **Forms**: Create Zod schema, implement server action
-4. **Components**: Use Svelte 5 syntax with proper typing
-
-### Testing Football API Integration
+## Testing
 
 ```bash
-# Seed fixtures for current season
-pnpm db:seed-fixtures
-
-# Test live score updates
-curl -X POST localhost:5173/api/cron/live-scores-updater \
-  -H "Content-Type: application/json" \
-  -d '{"force": true}'
+pnpm test            # Run vitest
+pnpm test:ui         # Vitest UI
+pnpm test:e2e        # Playwright E2E
 ```
-
-### Debugging Predictions
-
-- Check `src/lib/server/football/predictions/predictionRepository.ts`
-- Points calculations in `src/lib/server/football/predictions/pointsCalculator.ts`
-- Admin tools at `/admin` for manual recalculation
 
 ## Environment Variables
 
-Critical vars in `.env`:
+Required in `.env`:
 
-- `DATABASE_URL` - PostgreSQL connection
-- `BETTER_AUTH_SECRET` - Auth encryption key
-- `FOOTBALL_DATA_API_KEY` - Live fixture data
-- `STRIPE_SECRET_KEY` - Payment processing
+- `DATABASE_URL` - PostgreSQL connection string
+- `BETTER_AUTH_SECRET` - Auth encryption (32+ chars)
+- `FOOTBALL_DATA_API_KEY` - football-data.org API
+- `STRIPE_SECRET_KEY` - Stripe payments
 - `RESEND_API_KEY` - Email delivery
-
-## Important Files to Reference
-
-- `src/lib/server/db/schema.ts` - Complete data model
-- `src/routes/+layout.server.ts` - Global data loading
-- `src/lib/server/football/predictions/` - Core prediction logic
-- `drizzle.config.ts` - Database configuration
-- `trigger.config.ts` - Background job configuration
 
 ## Common Gotchas
 
-- Always scope queries by `organizationId` where applicable
-- Use proper Svelte 5 syntax (`$props()`, `$derived`)
-- Check auth state in server loads before protected operations
-- Football API has strict rate limits - use existing queue system
-- Trigger.dev tasks must be deployed separately from main app
+1. **Organization scoping** - Query without `organizationId` = data leak
+2. **Svelte 5 syntax** - `$props()` not `export let`, `$derived` not `$:`
+3. **API rate limits** - Never bypass the Football API queue system
+4. **Trigger.dev deploys** - `pnpm deploy:trigger` separate from main app
+5. **Auth checks** - Always verify `locals.user` before protected operations
