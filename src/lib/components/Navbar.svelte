@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { Menu, X, LogOut, LogIn, UserPlus } from '@lucide/svelte';
+	import { Menu, X, LogOut, LogIn, UserPlus, ChevronDown } from '@lucide/svelte';
 	import { authClient } from '$lib/client/auth-client';
 	import logo from '$lib/assets/logo/masterleague.svg';
 
@@ -12,8 +12,12 @@
 		{ href: '/', label: 'Home', adminOnly: false },
 		{ href: '/predictions', label: 'Predictions', adminOnly: false },
 		{ href: '/leaderboard', label: 'Leaderboard', adminOnly: false },
-		{ href: '/standings', label: 'PL Table', adminOnly: false },
 		{ href: '/blog', label: 'Blog', adminOnly: false }
+	];
+
+	const moreItems = [
+		{ href: '/standings', label: 'PL Table' },
+		{ href: '/hall-of-fame', label: 'Hall of Fame' }
 	];
 
 	const adminItems = [
@@ -25,6 +29,7 @@
 
 	let isDropdownOpen = $state(false);
 	let isAdminDropdownOpen = $state(false);
+	let isMoreDropdownOpen = $state(false);
 	let isMobileMenuOpen = $state(false);
 
 	function isNavItemActive(href: string): boolean {
@@ -33,6 +38,10 @@
 
 	function isAnyAdminItemActive(): boolean {
 		return adminItems.some((item) => isNavItemActive(item.href));
+	}
+
+	function isAnyMoreItemActive(): boolean {
+		return moreItems.some((item) => isNavItemActive(item.href));
 	}
 
 	async function handleSignOut() {
@@ -69,6 +78,20 @@
 				!adminDropdownButton.contains(target)
 			) {
 				isAdminDropdownOpen = false;
+			}
+		}
+
+		// Close more dropdown if clicked outside
+		if (isMoreDropdownOpen) {
+			const moreDropdown = document.querySelector('[data-more-dropdown]');
+			const moreDropdownButton = document.querySelector('[data-more-dropdown-button]');
+			if (
+				moreDropdown &&
+				moreDropdownButton &&
+				!moreDropdown.contains(target) &&
+				!moreDropdownButton.contains(target)
+			) {
+				isMoreDropdownOpen = false;
 			}
 		}
 
@@ -117,6 +140,41 @@
 								{item.label}
 							</a>
 						{/each}
+
+						<!-- More Dropdown -->
+						<div class="relative">
+							<button
+								data-more-dropdown-button
+								class="relative flex items-center justify-center gap-1 px-4 py-2 font-medium transition-all duration-200
+								{isAnyMoreItemActive() ? 'bg-accent text-black' : 'hover:bg-accent/20'}"
+								style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
+								onclick={() => (isMoreDropdownOpen = !isMoreDropdownOpen)}
+							>
+								More
+								<ChevronDown class="size-4" />
+							</button>
+
+							{#if isMoreDropdownOpen}
+								<div
+									data-more-dropdown
+									class="border-accent/30 absolute top-full left-0 z-60 mt-2 w-40 border bg-[#0D1326] shadow-xl"
+								>
+									<div class="p-2">
+										{#each moreItems as item}
+											{@const isActive = isNavItemActive(item.href)}
+											<a
+												href={item.href}
+												class="hover:bg-accent/20 flex w-full items-center px-3 py-2 transition-colors
+												{isActive ? 'bg-accent/30 text-accent' : 'text-slate-300 hover:text-white'}"
+												onclick={() => (isMoreDropdownOpen = false)}
+											>
+												{item.label}
+											</a>
+										{/each}
+									</div>
+								</div>
+							{/if}
+						</div>
 					</div>
 				</div>
 
@@ -258,6 +316,24 @@
 							{item.label}
 						</a>
 					{/each}
+
+					<!-- More Items -->
+					<div class="border-accent/30 mt-4 border-t pt-4">
+						<p class="mb-2 px-4 text-xs font-medium tracking-wider text-slate-400 uppercase">
+							More
+						</p>
+						{#each moreItems as item}
+							{@const isActive = isNavItemActive(item.href)}
+							<a
+								href={item.href}
+								class="flex items-center gap-3 px-4 py-3 transition-all duration-200
+								{isActive ? 'bg-accent font-medium text-black' : 'hover:bg-accent/20 text-white'}"
+								onclick={() => (isMobileMenuOpen = false)}
+							>
+								{item.label}
+							</a>
+						{/each}
+					</div>
 
 					{#if user?.role === 'admin'}
 						<div class="border-accent/30 mt-4 border-t pt-4">
