@@ -102,9 +102,12 @@
 		);
 	}
 
-	// Initialize state with runes
-	let homeScore = $state(prediction?.home ?? 0);
-	let awayScore = $state(prediction?.away ?? 0);
+	// svelte-ignore state_referenced_locally
+	let initialHomeScore = prediction?.home ?? 0;
+	// svelte-ignore state_referenced_locally
+	let initialAwayScore = prediction?.away ?? 0;
+	let homeScore = $state(initialHomeScore);
+	let awayScore = $state(initialAwayScore);
 
 	// Sync with prediction changes
 	$effect(() => {
@@ -302,12 +305,12 @@
 								{/if}
 							</div>
 						{:else}
-							<!-- Interactive prediction controls -->
+							<!-- Interactive prediction controls - Enhanced touch targets -->
 							<div class="flex items-center">
 								<button
 									aria-label="Decrement Home Score"
 									type="button"
-									class="bg-accent hover:bg-accent/80 flex h-7 w-7 cursor-pointer items-center justify-center sm:h-8 sm:w-8"
+									class="bg-accent flex h-10 w-10 min-h-10 min-w-10 touch-manipulation cursor-pointer items-center justify-center transition-all duration-150 select-none sm:h-8 sm:w-8 sm:min-h-8 sm:min-w-8 active:scale-90 active:brightness-90"
 									style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
 									onclick={() => decrementHome()}
 								>
@@ -318,9 +321,11 @@
 								</button>
 								<input
 									type="number"
+									inputmode="numeric"
+									pattern="[0-9]*"
 									min="0"
 									max="20"
-									class="h-7 w-8 text-center text-sm text-white sm:h-8 sm:w-10 sm:text-base"
+									class="h-10 w-10 touch-manipulation text-center text-base text-white sm:h-8 sm:w-10 sm:text-base"
 									value={homeScore}
 									oninput={(e) => {
 										const target = e.target as HTMLInputElement;
@@ -332,7 +337,7 @@
 								<button
 									aria-label="Increment Home Score"
 									type="button"
-									class="bg-accent hover:bg-accent/80 flex h-7 w-7 cursor-pointer items-center justify-center text-black sm:h-8 sm:w-8"
+									class="bg-accent flex h-10 w-10 min-h-10 min-w-10 touch-manipulation cursor-pointer items-center justify-center text-black transition-all duration-150 select-none sm:h-8 sm:w-8 sm:min-h-8 sm:min-w-8 active:scale-90 active:brightness-90"
 									style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
 									onclick={() => incrementHome()}
 								>
@@ -395,12 +400,12 @@
 								{/if}
 							</div>
 						{:else}
-							<!-- Interactive prediction controls -->
+							<!-- Interactive prediction controls - Enhanced touch targets -->
 							<div class="flex items-center">
 								<button
 									aria-label="Decrement Away Score"
 									type="button"
-									class="bg-accent hover:bg-accent/80 flex h-7 w-7 cursor-pointer items-center justify-center sm:h-8 sm:w-8"
+									class="bg-accent flex h-10 w-10 min-h-10 min-w-10 touch-manipulation cursor-pointer items-center justify-center transition-all duration-150 select-none sm:h-8 sm:w-8 sm:min-h-8 sm:min-w-8 active:scale-90 active:brightness-90"
 									style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
 									onclick={() => decrementAway()}
 								>
@@ -411,9 +416,11 @@
 								</button>
 								<input
 									type="number"
+									inputmode="numeric"
+									pattern="[0-9]*"
 									min="0"
 									max="20"
-									class="h-7 w-8 text-center text-sm text-white sm:h-8 sm:w-10 sm:text-base"
+									class="h-10 w-10 touch-manipulation text-center text-base text-white sm:h-8 sm:w-10 sm:text-base"
 									value={awayScore}
 									oninput={(e) => {
 										const target = e.target as HTMLInputElement;
@@ -425,7 +432,7 @@
 								<button
 									aria-label="Increment Away Score"
 									type="button"
-									class="bg-accent hover:bg-accent/80 flex h-7 w-7 cursor-pointer items-center justify-center text-black sm:h-8 sm:w-8"
+									class="bg-accent flex h-10 w-10 min-h-10 min-w-10 touch-manipulation cursor-pointer items-center justify-center text-black transition-all duration-150 select-none sm:h-8 sm:w-8 sm:min-h-8 sm:min-w-8 active:scale-90 active:brightness-90"
 									style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
 									onclick={() => incrementAway()}
 								>

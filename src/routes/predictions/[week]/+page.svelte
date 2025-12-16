@@ -39,6 +39,11 @@
 		};
 	}>();
 
+	// svelte-ignore state_referenced_locally
+	const initialData = data;
+	// svelte-ignore state_referenced_locally
+	const initialForm = form;
+
 	// Initialize the predictions hook with all functionality
 	const {
 		state: predictionsState,
@@ -49,10 +54,10 @@
 		isPredictionInvalid,
 		canSubmitForm,
 		manualRefresh
-	} = usePredictions(data, form);
+	} = usePredictions(initialData, initialForm);
 
 	// Track current displayed week for comparison
-	let currentDisplayedWeek = $state(data.week);
+	let currentDisplayedWeek = $derived(data.week);
 
 	// Effect to handle week changes
 	$effect(() => {

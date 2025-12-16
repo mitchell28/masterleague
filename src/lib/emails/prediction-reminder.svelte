@@ -36,8 +36,8 @@
 		fixtures = []
 	}: Props = $props();
 
-	const previewText = `${missingCount} predictions needed for Week ${week} - Master League`;
-	const predictionsUrl = `https://masterleague.app/predictions/${week}`;
+	let previewText = $derived(`${missingCount} predictions needed for Week ${week} - Master League`);
+	let predictionsUrl = $derived(`https://masterleague.app/predictions/${week}`);
 	const unsubscribeUrl = 'https://masterleague.app/settings';
 
 	// Site colors - Master League green

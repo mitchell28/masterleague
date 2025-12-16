@@ -5,8 +5,9 @@
 	import { Loader2 } from '@lucide/svelte';
 	import logo from '$lib/assets/logo/masterleague.svg';
 
-	const { data } = $props();
+	let { data } = $props();
 
+	// svelte-ignore state_referenced_locally
 	const { form, errors, message, submitting, enhance } = superForm(data.form, {
 		validators: zod(authSignupSchema),
 		onResult: ({ result }) => {

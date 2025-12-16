@@ -10,13 +10,8 @@
 		onNavigate: (direction: 'prev' | 'next') => void;
 	}>();
 
-	// State
-	let selectedWeek = $state(week);
-
-	// Update selectedWeek when week prop changes
-	$effect(() => {
-		selectedWeek = week;
-	});
+	// Derived state that tracks the week prop
+	let selectedWeek = $derived(week);
 
 	// Handle select change
 	function handleSelectChange(event: Event) {
@@ -29,23 +24,23 @@
 </script>
 
 <div class="week-selector flex items-center gap-2 sm:gap-4">
-	<!-- Previous week button -->
+	<!-- Previous week button - Enhanced touch target -->
 	<button
-		class="bg-accent hover:bg-accent/80 flex h-8 w-8 items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10"
+		class="bg-accent flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center transition-all duration-150 select-none disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10 sm:min-h-10 sm:min-w-10 active:scale-90 active:brightness-90"
 		onclick={() => onNavigate('prev')}
 		style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
 		disabled={!weeks.includes(week - 1)}
 		aria-label="Previous week"
 	>
-		<ChevronLeft class="text-black" size={16} />
+		<ChevronLeft class="text-black" size={20} />
 	</button>
 
-	<!-- Week Selector -->
+	<!-- Week Selector - Enhanced for touch -->
 	<div class="relative">
 		<select
 			bind:value={selectedWeek}
 			onchange={handleSelectChange}
-			class="custom-select border-accent w-full appearance-none border-2 px-3 py-2 text-sm font-medium text-white transition-colors focus:outline-none"
+			class="custom-select border-accent min-h-11 w-full touch-manipulation appearance-none border-2 px-4 py-2.5 text-sm font-medium text-white transition-colors focus:outline-none sm:min-h-10 sm:py-2"
 		>
 			{#each weeks as weekNumber}
 				<option value={weekNumber} class=" text-white">
@@ -53,16 +48,20 @@
 				</option>
 			{/each}
 		</select>
+		<!-- Custom dropdown indicator -->
+		<div class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2">
+			<ChevronDown class="size-4 text-slate-400" />
+		</div>
 	</div>
-	<!-- Next week button -->
+	<!-- Next week button - Enhanced touch target -->
 	<button
-		class="bg-accent hover:bg-accent/80 flex h-8 w-8 items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10"
+		class="bg-accent flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center transition-all duration-150 select-none disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10 sm:min-h-10 sm:min-w-10 active:scale-90 active:brightness-90"
 		onclick={() => onNavigate('next')}
 		disabled={!weeks.includes(week + 1)}
 		style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
 		aria-label="Next week"
 	>
-		<ChevronRight class="text-black" size={16} />
+		<ChevronRight class="text-black" size={20} />
 	</button>
 </div>
 
@@ -86,7 +85,8 @@
 		color: white;
 		font-weight: 500;
 		transition: all 0.2s;
-		min-width: 100px;
+		min-width: 120px;
+		padding-right: 2.5rem; /* Space for custom dropdown icon */
 	}
 
 	/* Additional browser-specific rules */
@@ -102,6 +102,11 @@
 		outline: none;
 		border-color: var(--color-accent);
 		box-shadow: 0 0 0 2px rgb(from var(--color-accent) r g b / 0.3);
+	}
+
+	/* Active state for touch feedback */
+	.custom-select:active {
+		transform: scale(0.98);
 	}
 
 	/* Option styling for supporting browsers */

@@ -2,6 +2,7 @@
 export { useAutoRefresh } from './useAutoRefresh.svelte';
 export { useSearch } from './useSearch.svelte';
 export { useSorting } from './useSorting.svelte';
+export { useSwipe, swipeAction, type SwipeDirection, type SwipeOptions } from './useSwipe.svelte';
 
 // Organization management hooks
 export {

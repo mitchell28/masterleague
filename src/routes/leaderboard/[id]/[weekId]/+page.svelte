@@ -157,11 +157,13 @@
 	}
 
 	// Compute if there are any predictions being processed
-	const hasProcessingPredictions = data.weekData.predictions.some(
-		(p: { fixture: { status: string }; prediction?: { totalPoints: number | null } }) =>
-			p.fixture.status === 'FINISHED' &&
-			p.prediction &&
-			(p.prediction.totalPoints === null || p.prediction.totalPoints === undefined)
+	const hasProcessingPredictions = $derived(
+		data.weekData.predictions.some(
+			(p: { fixture: { status: string }; prediction?: { totalPoints: number | null } }) =>
+				p.fixture.status === 'FINISHED' &&
+				p.prediction &&
+				(p.prediction.totalPoints === null || p.prediction.totalPoints === undefined)
+		)
 	);
 </script>
 

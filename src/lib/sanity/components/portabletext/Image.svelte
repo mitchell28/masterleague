@@ -26,12 +26,12 @@
 	}
 
 	let { portableText }: ImageProps = $props();
-	const value = portableText.value;
-	const size = value.size || 'large';
-	const alignment = value.alignment || 'center';
+	let value = $derived(portableText.value);
+	let size = $derived(value.size || 'large');
+	let alignment = $derived(value.alignment || 'center');
 
-	// Size configurations
-	const sizeConfig = {
+	// Size configurations - derive to handle custom width reactively
+	let sizeConfig = $derived({
 		small: { mobile: 300, desktop: 400, maxWidth: 'max-w-sm' },
 		medium: { mobile: 400, desktop: 600, maxWidth: 'max-w-2xl' },
 		large: { mobile: 500, desktop: 800, maxWidth: 'max-w-4xl' },
@@ -41,12 +41,12 @@
 			desktop: value.customWidth || 400,
 			maxWidth: `max-w-[${value.customWidth || 400}px]`
 		}
-	};
+	});
 
-	const config = sizeConfig[size];
+	let config = $derived(sizeConfig[size as keyof typeof sizeConfig]);
 
 	// Alignment classes
-	const alignmentClasses = {
+	const alignmentClasses: Record<string, string> = {
 		start: 'ml-0 mr-auto',
 		center: 'mx-auto',
 		end: 'ml-auto mr-0'

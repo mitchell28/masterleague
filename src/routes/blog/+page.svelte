@@ -6,8 +6,12 @@
 
 	let { data }: { data: PageData } = $props();
 
+	// svelte-ignore state_referenced_locally
+	// Capture initial posts for hook (hook manages its own derived state)
+	const initialPosts = data.posts;
+
 	// Initialize pagination hook
-	const pagination = useBlogPagination(data.posts, { postsPerPage: 3 });
+	const pagination = useBlogPagination(initialPosts, { postsPerPage: 3 });
 
 	let headerRef = $state<HTMLElement>();
 	let postsListRef = $state<HTMLElement>();

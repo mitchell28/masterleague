@@ -6,7 +6,16 @@
 	import { goto } from '$app/navigation';
 	import logo from '$lib/assets/logo/masterleague.svg';
 
-	const { data } = $props();
+	let { data } = $props();
+
+	// svelte-ignore state_referenced_locally
+	const initialRequestForm = data.requestForm;
+	// svelte-ignore state_referenced_locally
+	const initialVerifyForm = data.verifyForm;
+	// svelte-ignore state_referenced_locally
+	const initialEmail = data.email;
+	// svelte-ignore state_referenced_locally
+	const initialCodeSent = data.codeSent;
 
 	// Setup forms for both request and verify actions
 	const {
@@ -15,7 +24,7 @@
 		message: requestMessage,
 		enhance: requestEnhance,
 		submitting: requestSubmitting
-	} = superForm(data.requestForm, {
+	} = superForm(initialRequestForm, {
 		validators: zod(otpRequestSchema),
 		onResult: ({ result }) => {
 			if (result.type === 'success') {
@@ -33,7 +42,7 @@
 		message: verifyMessage,
 		enhance: verifyEnhance,
 		submitting: verifySubmitting
-	} = superForm(data.verifyForm, {
+	} = superForm(initialVerifyForm, {
 		validators: zod(emailVerificationSchema),
 		onResult: ({ result }) => {
 			console.log('🔍 [Verify Email] onResult called:', result);
@@ -47,12 +56,12 @@
 	});
 
 	// Simple state management
-	let step: 'request' | 'verify' | 'success' = $state(data.email ? 'verify' : 'request');
+	let step: 'request' | 'verify' | 'success' = $state(initialEmail ? 'verify' : 'request');
 	let statusMessage = $state(
-		data.email
-			? data.codeSent
-				? `We've sent a 6-digit code to ${data.email}`
-				: `Enter the 6-digit code sent to ${data.email}`
+		initialEmail
+			? initialCodeSent
+				? `We've sent a 6-digit code to ${initialEmail}`
+				: `Enter the 6-digit code sent to ${initialEmail}`
 			: ''
 	);
 
@@ -74,9 +83,9 @@
 	});
 
 	// Initialize email if provided from URL
-	if (data.email) {
-		$requestForm.email = data.email;
-		$verifyForm.email = data.email;
+	if (initialEmail) {
+		$requestForm.email = initialEmail;
+		$verifyForm.email = initialEmail;
 	}
 
 	// Handle step navigation

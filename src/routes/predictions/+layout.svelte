@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { Info } from '@lucide/svelte';
+	import { Info, ChevronLeft, ChevronRight } from '@lucide/svelte';
 	import WeekSelector from '$lib/components/WeekSelector.svelte';
+	import { swipeAction } from '$lib/hooks';
 
 	// Correct way to handle slots in SvelteKit 5
 	let { children } = $props();
@@ -23,6 +24,10 @@
 	let isValidWeek = $state(true);
 	let weekStatus = $state<'current' | 'past' | 'future'>('current');
 	let showFutureWeekMessage = $state(false);
+
+	// Swipe navigation state
+	let swipeDelta = $state(0);
+	let isSwipeNavigating = $state(false);
 
 	// Effect to handle week validation and status updates
 	$effect(() => {
@@ -70,29 +75,102 @@
 			goto(`/predictions/${targetWeek}`);
 		}
 	}
+
+	// Swipe handlers for mobile week navigation
+	function handleSwipeLeft() {
+		// Swipe left = go to next week
+		if (weeks?.includes(week + 1)) {
+			isSwipeNavigating = true;
+			goto(`/predictions/${week + 1}`).then(() => {
+				isSwipeNavigating = false;
+			});
+		}
+	}
+
+	function handleSwipeRight() {
+		// Swipe right = go to previous week
+		if (weeks?.includes(week - 1)) {
+			isSwipeNavigating = true;
+			goto(`/predictions/${week - 1}`).then(() => {
+				isSwipeNavigating = false;
+			});
+		}
+	}
+
+	function handleSwipeMove(deltaX: number) {
+		// Only show indicator if there's a valid target week
+		const canGoLeft = weeks?.includes(week + 1);
+		const canGoRight = weeks?.includes(week - 1);
+
+		if ((deltaX < 0 && canGoLeft) || (deltaX > 0 && canGoRight)) {
+			swipeDelta = deltaX;
+		} else {
+			swipeDelta = deltaX * 0.2; // Resistance when can't navigate
+		}
+	}
+
+	function handleSwipeEnd() {
+		swipeDelta = 0;
+	}
+
+	// Check if navigation is possible
+	let canNavigatePrev = $derived(weeks?.includes(week - 1) ?? false);
+	let canNavigateNext = $derived(weeks?.includes(week + 1) ?? false);
 </script>
 
-<div class="mx-auto mt-22">
+<!-- Swipe container for mobile week navigation -->
+<div
+	class="mx-auto mt-22 touch-pan-y"
+	use:swipeAction={{
+		onSwipeLeft: handleSwipeLeft,
+		onSwipeRight: handleSwipeRight,
+		onSwipeMove: handleSwipeMove,
+		onSwipeEnd: handleSwipeEnd,
+		threshold: 80,
+		enabled: true
+	}}
+>
+	<!-- Swipe Indicators (mobile only) -->
+	<div class="pointer-events-none fixed top-1/2 right-0 left-0 z-50 -translate-y-1/2 md:hidden">
+		<!-- Left indicator (previous week) -->
+		{#if swipeDelta > 30 && canNavigatePrev}
+			<div
+				class="bg-accent/90 absolute left-2 flex items-center gap-2 px-4 py-2 text-sm font-medium text-black shadow-lg transition-all duration-150"
+				style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%); opacity: {Math.min(1, (swipeDelta - 30) / 50)}; transform: translateX({Math.min(20, (swipeDelta - 30) / 3)}px)"
+			>
+				<ChevronLeft class="size-4" />
+				Week {week - 1}
+			</div>
+		{/if}
+		<!-- Right indicator (next week) -->
+		{#if swipeDelta < -30 && canNavigateNext}
+			<div
+				class="bg-accent/90 absolute right-2 flex items-center gap-2 px-4 py-2 text-sm font-medium text-black shadow-lg transition-all duration-150"
+				style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%); opacity: {Math.min(1, (Math.abs(swipeDelta) - 30) / 50)}; transform: translateX({Math.max(-20, (swipeDelta + 30) / 3)}px)"
+			>
+				Week {week + 1}
+				<ChevronRight class="size-4" />
+			</div>
+		{/if}
+	</div>
+
+	<!-- Mobile swipe hint (shown on first visit) -->
+	<div class="border-accent/20 mb-4 flex items-center justify-center gap-2 border-b bg-slate-900/50 px-4 py-2 text-xs text-slate-400 sm:hidden">
+		<ChevronLeft class="size-3" />
+		<span>Swipe to navigate weeks</span>
+		<ChevronRight class="size-3" />
+	</div>
+
 	<!-- Main Header with clean geometric design and mobile responsive layout -->
 	<div class="relative mb-4 sm:mb-6">
 		<div class="font-display w-full overflow-hidden bg-slate-900">
-			<!-- Current League Week Status Bar -->
-			<div class="bg-accent/10 border-accent/20 border-b px-4 py-2 sm:px-6">
-				<div class="mx-auto flex max-w-6xl items-center justify-center gap-2 text-center">
-					<span class="text-xs font-medium text-slate-300 sm:text-sm"> Current League Week: </span>
-					<span class="bg-accent px-2 py-1 text-xs font-bold text-black sm:px-3">
-						Week {currentWeek}
-					</span>
-				</div>
-			</div>
-
 			<!-- Main Header Content -->
 			<div class="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
 				<!-- Mobile Layout: Stack vertically -->
 				<div class="flex flex-col gap-4 sm:hidden">
 					<div class="text-center">
 						<h1 class="text-2xl font-bold text-white">Week {week}</h1>
-						<div class="mt-2 flex items-center justify-center gap-2">
+						<div class="mt-2 flex flex-wrap items-center justify-center gap-2">
 							{#if weekStatus === 'current'}
 								<span class="bg-accent px-2 py-1 text-xs font-bold text-black"> CURRENT WEEK </span>
 							{:else if weekStatus === 'future'}
@@ -101,6 +179,9 @@
 								</span>
 							{:else if weekStatus === 'past'}
 								<span class=" bg-gray-500 px-2 py-1 text-xs font-bold text-white"> PAST WEEK </span>
+							{/if}
+							{#if weekStatus !== 'current'}
+								<span class="text-xs text-slate-400">(Current: Week {currentWeek})</span>
 							{/if}
 						</div>
 						<div class="mt-2 text-center">
@@ -133,6 +214,9 @@
 								</span>
 							{:else if weekStatus === 'past'}
 								<span class=" bg-gray-500 px-3 py-1 text-xs font-bold text-white"> PAST WEEK </span>
+							{/if}
+							{#if weekStatus !== 'current'}
+								<span class="text-xs text-slate-400">(Current: Week {currentWeek})</span>
 							{/if}
 							<span class="text-xs text-slate-400"> Predictions close 30 mins before kickoff </span>
 						</div>

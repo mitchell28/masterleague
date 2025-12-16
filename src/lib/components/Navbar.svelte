@@ -32,6 +32,10 @@
 	let isMoreDropdownOpen = $state(false);
 	let isMobileMenuOpen = $state(false);
 
+	// References for click outside detection
+	let mobileMenuRef = $state<HTMLElement | null>(null);
+	let mobileButtonRef = $state<HTMLElement | null>(null);
+
 	function isNavItemActive(href: string): boolean {
 		return href === '/' ? page.url.pathname === href : page.url.pathname.startsWith(href);
 	}
@@ -49,8 +53,27 @@
 		goto('/auth/login');
 	}
 
-	// Simple click outside handler
-	function handleClickOutside(event: MouseEvent) {
+	// Toggle mobile menu with explicit state management
+	function toggleMobileMenu(event: MouseEvent | TouchEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+		isMobileMenuOpen = !isMobileMenuOpen;
+	}
+
+	// Close mobile menu
+	function closeMobileMenu() {
+		isMobileMenuOpen = false;
+	}
+
+	// Close all dropdowns
+	function closeAllDropdowns() {
+		isDropdownOpen = false;
+		isAdminDropdownOpen = false;
+		isMoreDropdownOpen = false;
+	}
+
+	// Click outside handler using refs for reliability
+	function handleClickOutside(event: MouseEvent | TouchEvent) {
 		const target = event.target as HTMLElement;
 
 		// Close dropdown if clicked outside
@@ -95,29 +118,55 @@
 			}
 		}
 
-		// Close mobile menu if clicked outside
-		if (isMobileMenuOpen) {
-			const mobileMenu = document.querySelector('[data-mobile-menu]');
-			const mobileButton = document.querySelector('[data-mobile-button]');
-			if (
-				mobileMenu &&
-				mobileButton &&
-				!mobileMenu.contains(target) &&
-				!mobileButton.contains(target)
-			) {
+		// Close mobile menu if clicked outside - use refs for reliability
+		if (isMobileMenuOpen && mobileMenuRef && mobileButtonRef) {
+			if (!mobileMenuRef.contains(target) && !mobileButtonRef.contains(target)) {
 				isMobileMenuOpen = false;
 			}
 		}
 	}
 
-	// Always listen for clicks - simpler and more reliable
+	// Handle escape key to close menus
+	function handleKeyDown(event: KeyboardEvent) {
+		if (event.key === 'Escape') {
+			closeMobileMenu();
+			closeAllDropdowns();
+		}
+	}
+
+	// Close mobile menu on route change
+	$effect(() => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		page.url.pathname;
+		closeMobileMenu();
+	});
+
+	// Listen for clicks and touch events
 	$effect(() => {
 		document.addEventListener('click', handleClickOutside);
-		return () => document.removeEventListener('click', handleClickOutside);
+		document.addEventListener('touchend', handleClickOutside);
+		document.addEventListener('keydown', handleKeyDown);
+		return () => {
+			document.removeEventListener('click', handleClickOutside);
+			document.removeEventListener('touchend', handleClickOutside);
+			document.removeEventListener('keydown', handleKeyDown);
+		};
+	});
+
+	// Prevent body scroll when mobile menu is open
+	$effect(() => {
+		if (isMobileMenuOpen) {
+			document.body.style.overflow = 'hidden';
+		} else {
+			document.body.style.overflow = '';
+		}
+		return () => {
+			document.body.style.overflow = '';
+		};
 	});
 </script>
 
-<header class="fixed top-0 left-0 z-50 w-full">
+<header class="fixed top-0 left-0 z-[9999] w-full">
 	{#if !isStudioPage}
 		<!-- Main navbar container -->
 		<div class="relative w-full bg-[#090e1e] md:min-h-20">
@@ -157,7 +206,7 @@
 							{#if isMoreDropdownOpen}
 								<div
 									data-more-dropdown
-									class="border-accent/30 absolute top-full left-0 z-60 mt-2 w-40 border bg-[#0D1326] shadow-xl"
+									class="border-accent/30 absolute top-full left-0 z-[10000] mt-2 w-40 border bg-[#0D1326] shadow-xl"
 								>
 									<div class="p-2">
 										{#each moreItems as item}
@@ -200,7 +249,7 @@
 								{#if isAdminDropdownOpen}
 									<div
 										data-admin-dropdown
-										class="border-accent/30 absolute top-full right-0 z-60 mt-2 w-48 border bg-[#0D1326] shadow-xl"
+										class="border-accent/30 absolute top-full right-0 z-[10000] mt-2 w-48 border bg-[#0D1326] shadow-xl"
 									>
 										<div class="p-2">
 											{#each adminItems as item}
@@ -238,7 +287,7 @@
 								{#if isDropdownOpen}
 									<div
 										data-dropdown
-										class="border-accent/30 absolute top-full right-0 z-[60] mt-2 w-64 border bg-[#0D1326] shadow-xl"
+										class="border-accent/30 absolute top-full right-0 z-[10000] mt-2 w-64 border bg-[#0D1326] shadow-xl"
 									>
 										<div class="border-accent/30 border-b p-4">
 											<p class="font-medium text-white">{user?.name}</p>
@@ -284,34 +333,54 @@
 					</div>
 				</nav>
 
-				<!-- Mobile Menu Button -->
+				<!-- Mobile Menu Button - Enhanced touch feedback -->
 				<button
+					bind:this={mobileButtonRef}
 					data-mobile-button
 					style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
-					class="hover:bg-accent/20 bg-accent/30 flex size-10 items-center justify-center text-white transition-colors md:hidden"
-					onclick={() => (isMobileMenuOpen = !isMobileMenuOpen)}
-					aria-label="Toggle menu"
+					class="relative flex size-12 min-h-12 min-w-12 touch-manipulation items-center justify-center text-white transition-all duration-150 select-none md:hidden
+					{isMobileMenuOpen ? 'bg-accent text-black' : 'bg-accent/30 hover:bg-accent/50 active:bg-accent active:text-black active:scale-95'}"
+					onclick={toggleMobileMenu}
+					ontouchend={toggleMobileMenu}
+					aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+					aria-expanded={isMobileMenuOpen}
+					aria-controls="mobile-menu"
 				>
-					<Menu class="size-6 {isMobileMenuOpen ? 'hidden' : 'block'}" />
-					<X class="size-6 {isMobileMenuOpen ? 'block' : 'hidden'}" />
+					<span class="sr-only">{isMobileMenuOpen ? 'Close' : 'Open'} navigation menu</span>
+					<Menu class="size-6 transition-transform duration-200 {isMobileMenuOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'} absolute" />
+					<X class="size-6 transition-transform duration-200 {isMobileMenuOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0'} absolute" />
 				</button>
 			</div>
 		</div>
 
-		<!-- Mobile Menu -->
+		<!-- Mobile Menu Overlay -->
 		{#if isMobileMenuOpen}
-			<div
-				data-mobile-menu
-				class="border-accent/30 absolute top-full left-0 w-full border-t bg-[#0D1326] shadow-2xl md:hidden"
-			>
-				<nav class="container mx-auto flex flex-col gap-2 px-4 py-6 text-sm">
-					{#each navItems as item}
-						{@const isActive = isNavItemActive(item.href)}
+			<!-- Backdrop -->
+			<button
+				type="button"
+				class="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm md:hidden"
+				onclick={closeMobileMenu}
+				aria-label="Close menu"
+			></button>
+		{/if}
+
+		<!-- Mobile Menu -->
+		<div
+			bind:this={mobileMenuRef}
+			data-mobile-menu
+			id="mobile-menu"
+			class="border-accent/30 fixed top-[68px] right-0 left-0 z-[9999] max-h-[calc(100dvh-68px)] overflow-y-auto border-t bg-[#0D1326] shadow-2xl transition-all duration-300 ease-out md:hidden
+			{isMobileMenuOpen ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0 pointer-events-none'}"
+			aria-hidden={!isMobileMenuOpen}
+		>
+			<nav class="container mx-auto flex flex-col gap-1 px-4 py-6 text-sm">
+				{#each navItems as item}
+					{@const isActive = isNavItemActive(item.href)}
 						<a
 							href={item.href}
-							class="flex items-center gap-3 px-4 py-3 transition-all duration-200
-							{isActive ? 'bg-accent font-medium text-black' : 'hover:bg-accent/20 text-white'}"
-							onclick={() => (isMobileMenuOpen = false)}
+							class="flex min-h-12 touch-manipulation items-center gap-3 px-4 py-3 transition-all duration-150
+							{isActive ? 'bg-accent font-medium text-black' : 'text-white active:bg-accent/40 active:scale-[0.98]'}"
+							onclick={closeMobileMenu}
 						>
 							{item.label}
 						</a>
@@ -326,9 +395,9 @@
 							{@const isActive = isNavItemActive(item.href)}
 							<a
 								href={item.href}
-								class="flex items-center gap-3 px-4 py-3 transition-all duration-200
-								{isActive ? 'bg-accent font-medium text-black' : 'hover:bg-accent/20 text-white'}"
-								onclick={() => (isMobileMenuOpen = false)}
+								class="flex min-h-12 touch-manipulation items-center gap-3 px-4 py-3 transition-all duration-150
+								{isActive ? 'bg-accent font-medium text-black' : 'text-white active:bg-accent/40 active:scale-[0.98]'}"
+								onclick={closeMobileMenu}
 							>
 								{item.label}
 							</a>
@@ -344,9 +413,9 @@
 								{@const isActive = isNavItemActive(item.href)}
 								<a
 									href={item.href}
-									class="flex items-center gap-3 px-4 py-3 transition-all duration-200
-									{isActive ? 'bg-accent font-medium text-black' : 'hover:bg-accent/20 text-white'}"
-									onclick={() => (isMobileMenuOpen = false)}
+									class="flex min-h-12 touch-manipulation items-center gap-3 px-4 py-3 transition-all duration-150
+									{isActive ? 'bg-accent font-medium text-black' : 'text-white active:bg-accent/40 active:scale-[0.98]'}"
+									onclick={closeMobileMenu}
 								>
 									{item.label}
 								</a>
@@ -367,10 +436,10 @@
 									<p class="font-medium text-white">{user?.name}</p>
 								</div>
 								<button
-									class="hover:bg-accent/20 border-accent/30 flex w-full items-center justify-center gap-2 border py-3 text-center font-medium text-white transition-all"
+									class="border-accent/30 flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 border py-3 text-center font-medium text-white transition-all duration-150 active:bg-accent/30 active:scale-[0.98]"
 									onclick={() => {
 										handleSignOut();
-										isMobileMenuOpen = false;
+										closeMobileMenu();
 									}}
 								>
 									<LogOut class="size-4" />
@@ -381,16 +450,16 @@
 							<div class="flex flex-col gap-3">
 								<a
 									href="/auth/login"
-									class="bg-accent flex w-full items-center justify-center gap-2 py-3 text-center font-medium text-black shadow-md transition-all hover:opacity-90 hover:shadow-lg"
-									onclick={() => (isMobileMenuOpen = false)}
+									class="bg-accent flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 py-3 text-center font-medium text-black shadow-md transition-all duration-150 active:opacity-80 active:scale-[0.98]"
+									onclick={closeMobileMenu}
 								>
 									<LogIn class="size-4" />
 									Login
 								</a>
 								<a
 									href="/auth/signup"
-									class="hover:bg-accent/20 border-accent/30 flex w-full items-center justify-center gap-2 border py-3 text-center font-medium text-white transition-all"
-									onclick={() => (isMobileMenuOpen = false)}
+									class="border-accent/30 flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 border py-3 text-center font-medium text-white transition-all duration-150 active:bg-accent/30 active:scale-[0.98]"
+									onclick={closeMobileMenu}
 								>
 									<UserPlus class="size-4" />
 									Sign Up
@@ -400,6 +469,5 @@
 					</div>
 				</nav>
 			</div>
-		{/if}
 	{/if}
 </header>
