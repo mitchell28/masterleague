@@ -56,13 +56,14 @@
 		manualRefresh
 	} = usePredictions(initialData, initialForm);
 
-	// Track current displayed week for comparison
-	let currentDisplayedWeek = $derived(data.week);
+	// Track the last displayed week to detect changes
+	let lastDisplayedWeek = $state(data.week);
 
-	// Effect to handle week changes
+	// Effect to handle week changes - updates when data.week changes
 	$effect(() => {
-		if (data && data.week !== currentDisplayedWeek) {
-			currentDisplayedWeek = data.week;
+		const newWeek = data.week;
+		if (newWeek !== lastDisplayedWeek) {
+			lastDisplayedWeek = newWeek;
 			updatePredictionsData(data);
 		}
 	});

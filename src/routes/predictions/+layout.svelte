@@ -76,24 +76,46 @@
 		}
 	}
 
+	// Reference to content container for view transitions
+	let contentContainer: HTMLElement;
+
+	// Track swipe direction for CSS view transition
+	let swipeDirection = $state<'left' | 'right' | null>(null);
+
+	// Navigate with View Transitions API
+	async function navigateWithTransition(targetWeek: number, direction: 'left' | 'right') {
+		swipeDirection = direction;
+		
+		// Check if View Transitions API is supported
+		if (document.startViewTransition) {
+			const transition = document.startViewTransition(async () => {
+				await goto(`/predictions/${targetWeek}`);
+			});
+			await transition.finished;
+		} else {
+			// Fallback for unsupported browsers
+			await goto(`/predictions/${targetWeek}`);
+		}
+		
+		swipeDirection = null;
+	}
+
 	// Swipe handlers for mobile week navigation
-	function handleSwipeLeft() {
+	async function handleSwipeLeft() {
 		// Swipe left = go to next week
 		if (weeks?.includes(week + 1)) {
 			isSwipeNavigating = true;
-			goto(`/predictions/${week + 1}`).then(() => {
-				isSwipeNavigating = false;
-			});
+			await navigateWithTransition(week + 1, 'left');
+			isSwipeNavigating = false;
 		}
 	}
 
-	function handleSwipeRight() {
+	async function handleSwipeRight() {
 		// Swipe right = go to previous week
 		if (weeks?.includes(week - 1)) {
 			isSwipeNavigating = true;
-			goto(`/predictions/${week - 1}`).then(() => {
-				isSwipeNavigating = false;
-			});
+			await navigateWithTransition(week - 1, 'right');
+			isSwipeNavigating = false;
 		}
 	}
 
@@ -236,7 +258,13 @@
 	</div>
 
 	<!-- Main Content Area with responsive padding -->
-	<div class="mx-auto max-w-6xl px-4">
+	<div
+		bind:this={contentContainer}
+		class="mx-auto max-w-6xl px-4"
+		class:slide-left={swipeDirection === 'left'}
+		class:slide-right={swipeDirection === 'right'}
+		style="view-transition-name: predictions-content;"
+	>
 		<!-- Future Week Message -->
 		{#if showFutureWeekMessage}
 			<div class="mt-6 mb-6">
@@ -265,3 +293,46 @@
 		{@render children()}
 	</div>
 </div>
+
+<style>
+	/* View Transitions CSS - slide animations */
+	@keyframes slide-out-left {
+		from { transform: translateX(0); opacity: 1; }
+		to { transform: translateX(-100px); opacity: 0; }
+	}
+	
+	@keyframes slide-in-left {
+		from { transform: translateX(100px); opacity: 0; }
+		to { transform: translateX(0); opacity: 1; }
+	}
+	
+	@keyframes slide-out-right {
+		from { transform: translateX(0); opacity: 1; }
+		to { transform: translateX(100px); opacity: 0; }
+	}
+	
+	@keyframes slide-in-right {
+		from { transform: translateX(-100px); opacity: 0; }
+		to { transform: translateX(0); opacity: 1; }
+	}
+	
+	/* Apply animations to view transition pseudo-elements */
+	:global(::view-transition-old(predictions-content)) {
+		animation: slide-out-left 150ms ease-in forwards;
+	}
+	
+	:global(::view-transition-new(predictions-content)) {
+		animation: slide-in-left 150ms ease-out forwards;
+	}
+	
+	/* Reverse direction for right swipe */
+	:global(.slide-right ~ ::view-transition-old(predictions-content)),
+	:global(html:has(.slide-right) ::view-transition-old(predictions-content)) {
+		animation: slide-out-right 150ms ease-in forwards;
+	}
+	
+	:global(.slide-right ~ ::view-transition-new(predictions-content)),
+	:global(html:has(.slide-right) ::view-transition-new(predictions-content)) {
+		animation: slide-in-right 150ms ease-out forwards;
+	}
+</style>
