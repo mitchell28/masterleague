@@ -155,7 +155,7 @@
 	</div>
 
 	<!-- Mobile swipe hint (shown on first visit) -->
-	<div class="border-accent/20 mb-4 flex items-center justify-center gap-2 border-b bg-slate-900/50 px-4 py-2 text-xs text-slate-400 sm:hidden">
+	<div class="border-accent/20 flex items-center justify-center gap-2 border-b bg-slate-900/50 px-4 py-2 text-xs text-slate-400 sm:hidden">
 		<ChevronLeft class="size-3" />
 		<span>Swipe to navigate weeks</span>
 		<ChevronRight class="size-3" />
