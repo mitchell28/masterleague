@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { superForm } from 'sveltekit-superforms';
-	import { zod } from 'sveltekit-superforms/adapters';
+	import { zod4Client } from 'sveltekit-superforms/adapters';
 	import { authSignupSchema } from '$lib/validation/auth-schemas';
 	import { Loader2 } from '@lucide/svelte';
 	import logo from '$lib/assets/logo/masterleague.svg';
@@ -9,7 +9,7 @@
 
 	// svelte-ignore state_referenced_locally
 	const { form, errors, message, submitting, enhance } = superForm(data.form, {
-		validators: zod(authSignupSchema),
+		validators: zod4Client(authSignupSchema),
 		onResult: ({ result }) => {
 			if (result.type === 'redirect') {
 				// Store credentials for later use after email verification

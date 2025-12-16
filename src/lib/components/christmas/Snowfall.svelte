@@ -11,7 +11,7 @@
 	}[] = $state([]);
 
 	$effect(() => {
-		const count = 30; // Reduced for subtler effect
+		const count = 15; // Reduced for better performance
 		const newSnowflakes = [];
 		for (let i = 0; i < count; i++) {
 			const size = Math.random() * 2 + 1; // 1-3px - smaller
@@ -39,7 +39,6 @@
 				opacity: {flake.opacity};
 				width: {flake.size}px;
 				height: {flake.size}px;
-				filter: blur({flake.size > 3 ? 0.5 : 0}px);
 				--fall-duration: {flake.animationDuration}s;
 				--fall-delay: -{flake.delay}s;
 				--drift: {flake.drift}px;

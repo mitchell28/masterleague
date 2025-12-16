@@ -340,8 +340,7 @@
 					style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
 					class="relative flex size-12 min-h-12 min-w-12 touch-manipulation items-center justify-center text-white transition-all duration-150 select-none md:hidden
 					{isMobileMenuOpen ? 'bg-accent text-black' : 'bg-accent/30 hover:bg-accent/50 active:bg-accent active:text-black active:scale-95'}"
-					onclick={toggleMobileMenu}
-					ontouchend={toggleMobileMenu}
+					onclick={() => isMobileMenuOpen = !isMobileMenuOpen}
 					aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
 					aria-expanded={isMobileMenuOpen}
 					aria-controls="mobile-menu"
@@ -358,7 +357,7 @@
 			<!-- Backdrop -->
 			<button
 				type="button"
-				class="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm md:hidden"
+				class="fixed inset-0 z-[9998] bg-black/70 md:hidden"
 				onclick={closeMobileMenu}
 				aria-label="Close menu"
 			></button>

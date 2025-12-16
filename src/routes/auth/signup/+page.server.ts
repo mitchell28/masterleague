@@ -1,6 +1,6 @@
 import { redirect, fail } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms';
-import { zod } from 'sveltekit-superforms/adapters';
+import { zod4 } from 'sveltekit-superforms/adapters';
 import { authSignupSchema } from '$lib/validation/auth-schemas';
 import type { PageServerLoad, Actions } from './$types';
 import type { MetaTagsProps } from 'svelte-meta-tags';
@@ -31,14 +31,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	}) satisfies MetaTagsProps;
 
 	return {
-		form: await superValidate(zod(authSignupSchema)),
+		form: await superValidate(zod4(authSignupSchema)),
 		pageMetaTags
 	};
 };
 
 export const actions: Actions = {
 	default: async ({ request, url, cookies, getClientAddress }) => {
-		const form = await superValidate(request, zod(authSignupSchema));
+		const form = await superValidate(request, zod4(authSignupSchema));
 
 		if (!form.valid) {
 			return fail(400, { form });

@@ -1,6 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms';
-import { zod } from 'sveltekit-superforms/adapters';
+import { zod4 } from 'sveltekit-superforms/adapters';
 import auth from '$lib/server/db/auth/auth';
 import { otpRequestSchema, emailVerificationSchema } from '$lib/validation/auth-schemas';
 import type { Actions, PageServerLoad } from './$types';
@@ -16,8 +16,8 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const codeSent = url.searchParams.get('codeSent') === 'true';
 
 	// Initialize forms
-	const requestForm = await superValidate(zod(otpRequestSchema));
-	const verifyForm = await superValidate(zod(emailVerificationSchema));
+	const requestForm = await superValidate(zod4(otpRequestSchema));
+	const verifyForm = await superValidate(zod4(emailVerificationSchema));
 
 	// Pre-populate email if provided
 	if (email) {
@@ -35,7 +35,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 
 export const actions: Actions = {
 	sendOtp: async ({ request, getClientAddress }) => {
-		const form = await superValidate(request, zod(otpRequestSchema));
+		const form = await superValidate(request, zod4(otpRequestSchema));
 
 		if (!form.valid) {
 			return fail(400, { form });
@@ -95,7 +95,7 @@ export const actions: Actions = {
 	},
 
 	verifyEmail: async ({ request, cookies }) => {
-		const form = await superValidate(request, zod(emailVerificationSchema));
+		const form = await superValidate(request, zod4(emailVerificationSchema));
 
 		if (!form.valid) {
 			return fail(400, { form });

@@ -1,71 +1,41 @@
 <script lang="ts">
-	import { animate, stagger } from 'motion';
-
-	let heroRef = $state<HTMLElement>();
-	let titleRef = $state<HTMLElement>();
-	let subtitleRef = $state<HTMLElement>();
-	let statsRef = $state<HTMLElement>();
-	let ctaRef = $state<HTMLElement>();
-	let featuresRef = $state<HTMLElement>();
-	let pitchLinesRef = $state<HTMLElement>();
-
-	// Effect for animations
-	$effect(() => {
-		if (pitchLinesRef) {
-			animate(
-				pitchLinesRef,
-				{ opacity: [0, 1], scale: [0.95, 1] },
-				{ duration: 1.5, ease: 'easeOut' }
-			);
-		}
-
-		if (titleRef) {
-			animate(
-				titleRef,
-				{ opacity: [0, 1], y: [40, 0], scale: [0.95, 1] },
-				{ duration: 0.8, delay: 0.2, ease: 'easeOut' }
-			);
-		}
-
-		if (subtitleRef) {
-			animate(
-				subtitleRef,
-				{ opacity: [0, 1], y: [30, 0] },
-				{ duration: 0.7, delay: 0.4, ease: 'easeOut' }
-			);
-		}
-
-		if (ctaRef) {
-			animate(
-				ctaRef,
-				{ opacity: [0, 1], y: [20, 0] },
-				{ duration: 0.6, delay: 0.6, ease: 'easeOut' }
-			);
-		}
-
-		if (statsRef) {
-			animate(
-				statsRef,
-				{ opacity: [0, 1], y: [30, 0] },
-				{ duration: 0.7, delay: 0.8, ease: 'easeOut' }
-			);
-		}
-
-		if (featuresRef) {
-			const cards = featuresRef.querySelectorAll('.feature-card');
-			animate(
-				cards,
-				{ opacity: [0, 1], y: [40, 0], scale: [0.9, 1] },
-				{ duration: 0.5, delay: stagger(0.15), ease: 'easeOut' }
-			);
-		}
-	});
+	// Using CSS animations instead of JS for better performance
 </script>
 
+<style>
+	/* CSS-based animations for better performance */
+	@keyframes fadeInUp {
+		from {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+	
+	@keyframes fadeIn {
+		from { opacity: 0; }
+		to { opacity: 1; }
+	}
+	
+	.animate-fade-in-up {
+		animation: fadeInUp 0.6s ease-out forwards;
+	}
+	
+	.animate-fade-in {
+		animation: fadeIn 0.8s ease-out forwards;
+	}
+	
+	.delay-100 { animation-delay: 0.1s; opacity: 0; }
+	.delay-200 { animation-delay: 0.2s; opacity: 0; }
+</style>
+
 <!-- Hero Section with Football Pitch Aesthetic -->
-<div bind:this={heroRef} class="relative min-h-screen overflow-hidden">
+<div class="relative min-h-screen overflow-hidden">
 	<!-- Animated Football Pitch Lines Background -->
-	<div bind:this={pitchLinesRef} class="pointer-events-none absolute inset-0 opacity-0">
+	<div class="pointer-events-none absolute inset-0 animate-fade-in">
 		<!-- Center circle -->
 		<div
 			class="absolute top-1/2 left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10 md:h-96 md:w-96"
@@ -88,23 +58,13 @@
 		></div>
 	</div>
 
-	<!-- Glowing accent orbs -->
-	<div class="pointer-events-none absolute inset-0">
-		<div
-			class="bg-accent/5 absolute top-1/4 left-1/4 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[120px]"
-		></div>
-		<div
-			class="bg-accent/8 absolute right-1/4 bottom-1/4 h-[400px] w-[400px] translate-x-1/2 translate-y-1/2 rounded-full blur-[100px]"
-		></div>
-	</div>
-
 	<!-- Main Content -->
 	<div class="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 py-20">
 		<div class="container mx-auto max-w-6xl">
 			<!-- Badge -->
 			<div class="mb-8 flex justify-center">
 				<div
-					class="inline-flex items-center gap-2 border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-sm"
+					class="inline-flex items-center gap-2 border border-white/10 bg-white/5 px-4 py-2"
 				>
 					<span class="relative flex h-2 w-2">
 						<span
@@ -117,7 +77,7 @@
 			</div>
 
 			<!-- Title -->
-			<div bind:this={titleRef} class="mb-6 text-center opacity-0">
+			<div class="animate-fade-in-up mb-6 text-center delay-100">
 				<h1
 					class="text-5xl font-black tracking-tight sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl"
 				>
@@ -140,7 +100,7 @@
 			</div>
 
 			<!-- Subtitle -->
-			<div bind:this={subtitleRef} class="mb-10 text-center opacity-0">
+			<div class="animate-fade-in-up mb-10 text-center delay-200">
 				<p class="mx-auto max-w-2xl text-lg font-light text-white/70 sm:text-xl md:text-2xl">
 					Join the ultimate Premier League prediction arena. Test your football IQ against friends
 					and climb the leaderboard.

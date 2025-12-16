@@ -1,15 +1,23 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { animate } from 'motion';
-
-	let errorRef = $state<HTMLElement>();
-
-	$effect(() => {
-		if (errorRef) {
-			animate(errorRef, { opacity: [0, 1], y: [30, 0] }, { duration: 0.8, ease: 'easeOut' });
-		}
-	});
 </script>
+
+<style>
+	@keyframes fadeInUp {
+		from {
+			opacity: 0;
+			transform: translateY(30px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+	
+	.animate-fade-in-up {
+		animation: fadeInUp 0.6s ease-out forwards;
+	}
+</style>
 
 <svelte:head>
 	<title>Post Not Found - Master League</title>
@@ -17,7 +25,7 @@
 </svelte:head>
 
 <main class="relative mx-auto mt-22 max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
-	<div bind:this={errorRef} class="text-center opacity-0">
+	<div class="text-center animate-fade-in-up">
 		<div class="mb-8">
 			<span
 				class="bg-accent font-display relative mb-4 inline-block px-4 pt-2 pb-1.5 text-sm font-medium text-black sm:text-base"

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { animate, stagger } from 'motion';
 	import { Trophy } from '@lucide/svelte';
 
 	// Hall of Fame data from the image
@@ -35,44 +34,44 @@
 			rank: 5
 		}
 	];
-
-	let containerRef = $state<HTMLElement>();
-	let heroRef = $state<HTMLElement>();
-	let cardsRef = $state<HTMLElement>();
-	let pitchLinesRef = $state<HTMLElement>();
-	let orbsRef = $state<HTMLElement>();
-
-	$effect(() => {
-		if (pitchLinesRef) {
-			animate(
-				pitchLinesRef,
-				{ opacity: [0, 1], scale: [0.95, 1] },
-				{ duration: 1.5, ease: 'easeOut' }
-			);
-		}
-
-		if (orbsRef) {
-			animate(orbsRef, { opacity: [0, 1], scale: [0.8, 1] }, { duration: 2, ease: 'easeOut' });
-		}
-
-		if (heroRef) {
-			animate(
-				heroRef,
-				{ opacity: [0, 1], y: [40, 0], scale: [0.95, 1] },
-				{ duration: 0.8, delay: 0.2, ease: 'easeOut' }
-			);
-		}
-
-		if (cardsRef) {
-			const cards = cardsRef.querySelectorAll('.legend-card');
-			animate(
-				cards,
-				{ opacity: [0, 1], y: [60, 0], scale: [0.9, 1] },
-				{ duration: 0.6, delay: stagger(0.12), ease: 'easeOut' }
-			);
-		}
-	});
 </script>
+
+<style>
+	@keyframes fadeInUp {
+		from {
+			opacity: 0;
+			transform: translateY(40px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+	
+	@keyframes fadeIn {
+		from { opacity: 0; }
+		to { opacity: 1; }
+	}
+	
+	.animate-fade-in-up {
+		animation: fadeInUp 0.6s ease-out forwards;
+	}
+	
+	.animate-fade-in {
+		animation: fadeIn 0.8s ease-out forwards;
+	}
+	
+	.legend-card {
+		animation: fadeInUp 0.6s ease-out forwards;
+	}
+	
+	.legend-card:nth-child(1) { animation-delay: 0.2s; opacity: 0; }
+	.legend-card:nth-child(2) { animation-delay: 0.3s; opacity: 0; }
+	.legend-card:nth-child(3) { animation-delay: 0.4s; opacity: 0; }
+	.legend-card:nth-child(4) { animation-delay: 0.5s; opacity: 0; }
+	.legend-card:nth-child(5) { animation-delay: 0.6s; opacity: 0; }
+	
+</style>
 
 <svelte:head>
 	<title>Hall of Fame | Master League</title>
@@ -82,9 +81,9 @@
 	/>
 </svelte:head>
 
-<div bind:this={containerRef} class="relative min-h-screen overflow-hidden">
+<div class="relative min-h-screen overflow-hidden">
 	<!-- Football Pitch Lines Background -->
-	<div bind:this={pitchLinesRef} class="pointer-events-none absolute inset-0 opacity-0">
+	<div class="pointer-events-none absolute inset-0 animate-fade-in">
 		<!-- Center circle -->
 		<div
 			class="absolute top-1/2 left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10 md:h-96 md:w-96"
@@ -95,36 +94,23 @@
 
 		<!-- Horizontal pitch lines -->
 		<div
-			class="absolute top-1/2 right-0 left-0 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+			class="absolute top-1/2 right-0 left-0 h-px -translate-y-1/2 bg-linear-to-r from-transparent via-white/10 to-transparent"
 		></div>
 
 		<!-- Vertical accent lines -->
 		<div
-			class="absolute top-0 bottom-0 left-1/4 w-px bg-gradient-to-b from-transparent via-white/5 to-transparent"
+			class="absolute top-0 bottom-0 left-1/4 w-px bg-linear-to-b from-transparent via-white/5 to-transparent"
 		></div>
 		<div
-			class="absolute top-0 right-1/4 bottom-0 w-px bg-gradient-to-b from-transparent via-white/5 to-transparent"
+			class="absolute top-0 right-1/4 bottom-0 w-px bg-linear-to-b from-transparent via-white/5 to-transparent"
 		></div>
 
 		<!-- Diagonal lines (artsy touch) -->
 		<div
-			class="via-accent/20 absolute top-0 -left-20 h-[800px] w-px rotate-[35deg] bg-gradient-to-b from-transparent to-transparent"
+			class="via-accent/20 absolute top-0 -left-20 h-[800px] w-px rotate-[35deg] bg-linear-to-b from-transparent to-transparent"
 		></div>
 		<div
-			class="via-accent/10 absolute top-0 right-1/3 h-[900px] w-px rotate-[-35deg] bg-gradient-to-b from-transparent to-transparent"
-		></div>
-	</div>
-
-	<!-- Glowing accent orbs -->
-	<div bind:this={orbsRef} class="pointer-events-none absolute inset-0 opacity-0">
-		<div
-			class="bg-accent/10 absolute -top-32 -left-32 h-[600px] w-[600px] rounded-full blur-[150px]"
-		></div>
-		<div
-			class="absolute -right-48 -bottom-48 h-[500px] w-[500px] rounded-full bg-emerald-500/8 blur-[120px]"
-		></div>
-		<div
-			class="bg-accent/5 absolute top-1/3 left-1/2 h-[300px] w-[300px] -translate-x-1/2 rounded-full blur-[100px]"
+			class="via-accent/10 absolute top-0 right-1/3 h-[900px] w-px rotate-[-35deg] bg-linear-to-b from-transparent to-transparent"
 		></div>
 	</div>
 
@@ -141,7 +127,7 @@
 	<!-- Content -->
 	<div class="relative z-10 mx-auto max-w-6xl px-4 pt-28 pb-20 sm:px-6">
 		<!-- Hero Section -->
-		<div bind:this={heroRef} class="mb-16 text-center opacity-0">
+		<div class="mb-16 text-center animate-fade-in-up">
 			<!-- Crown icon with glow -->
 			<div class="mb-8 flex justify-center">
 				<div class="relative">
@@ -150,7 +136,7 @@
 						style="animation-duration: 3s;"
 					></div>
 					<div
-						class="border-accent/30 from-accent/20 relative flex h-20 w-20 items-center justify-center border bg-gradient-to-br to-emerald-500/10 backdrop-blur-sm"
+						class="border-accent/30 from-accent/20 relative flex h-20 w-20 items-center justify-center border bg-linear-to-br to-emerald-500/10 backdrop-blur-sm"
 						style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);"
 					>
 						<svg class="text-accent h-10 w-10" viewBox="0 0 24 24" fill="currentColor">
@@ -165,12 +151,12 @@
 			<!-- Title -->
 			<h1 class="text-5xl font-black tracking-tight sm:text-6xl md:text-7xl lg:text-8xl">
 				<span
-					class="block bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent"
+					class="block bg-linear-to-r from-white via-white to-white/60 bg-clip-text text-transparent"
 				>
 					Hall
 				</span>
 				<span
-					class="from-accent via-accent relative -mt-2 block bg-gradient-to-r to-emerald-400 bg-clip-text text-transparent sm:-mt-4"
+					class="from-accent via-accent relative -mt-2 block bg-linear-to-r to-emerald-400 bg-clip-text text-transparent sm:-mt-4"
 				>
 					of Fame
 				</span>
@@ -178,7 +164,7 @@
 
 			<!-- Decorative underline -->
 			<div
-				class="via-accent mx-auto mt-4 h-1 w-32 bg-gradient-to-r from-transparent to-transparent sm:w-48"
+				class="via-accent mx-auto mt-4 h-1 w-32 bg-linear-to-r from-transparent to-transparent sm:w-48"
 			></div>
 
 			<p class="mx-auto mt-8 max-w-2xl text-lg font-light text-slate-400 sm:text-xl">
@@ -204,22 +190,22 @@
 		</div>
 
 		<!-- Champions Grid -->
-		<div bind:this={cardsRef} class="space-y-6">
+		<div class="space-y-6">
 			<!-- Featured Champion (GOAT) -->
-			<div class="legend-card opacity-0">
+			<div class="legend-card">
 				<div
-					class="group border-accent/20 hover:border-accent/40 hover:shadow-accent/10 relative overflow-hidden border bg-gradient-to-br from-slate-800/80 via-slate-800/50 to-slate-900/80 backdrop-blur-xl transition-all duration-500 hover:shadow-2xl"
+					class="group border-accent/20 hover:border-accent/40 hover:shadow-accent/10 relative overflow-hidden border bg-linear-to-br from-slate-800/80 via-slate-800/50 to-slate-900/80 backdrop-blur-xl transition-all duration-500 hover:shadow-2xl"
 				>
 					<!-- GOAT Banner -->
 					<div
-						class="from-accent absolute top-6 -right-12 z-20 rotate-45 bg-gradient-to-r to-emerald-400 px-16 py-1.5 text-xs font-bold tracking-widest text-slate-900 uppercase shadow-lg"
+						class="from-accent absolute top-6 -right-12 z-20 rotate-45 bg-linear-to-r to-emerald-400 px-16 py-1.5 text-xs font-bold tracking-widest text-slate-900 uppercase shadow-lg"
 					>
 						GOAT
 					</div>
 
 					<!-- Glow effect on hover -->
 					<div
-						class="from-accent/10 pointer-events-none absolute inset-0 bg-gradient-to-br via-transparent to-emerald-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+						class="from-accent/10 pointer-events-none absolute inset-0 bg-linear-to-br via-transparent to-emerald-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
 					></div>
 
 					<div class="relative p-8 sm:p-12">
@@ -232,14 +218,14 @@
 										style="animation-duration: 2s;"
 									></div>
 									<div
-										class="from-accent/20 relative flex h-28 w-28 items-center justify-center bg-gradient-to-br to-emerald-500/20 sm:h-32 sm:w-32"
+										class="from-accent/20 relative flex h-28 w-28 items-center justify-center bg-linear-to-br to-emerald-500/20 sm:h-32 sm:w-32"
 										style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);"
 									>
 										<Trophy class="text-accent h-12 w-12 sm:h-14 sm:w-14" />
 									</div>
 								</div>
 								<h2
-									class="from-accent to-accent bg-gradient-to-r via-emerald-300 bg-clip-text text-5xl font-black tracking-tight text-transparent sm:text-6xl lg:text-7xl"
+									class="from-accent to-accent bg-linear-to-r via-emerald-300 bg-clip-text text-5xl font-black tracking-tight text-transparent sm:text-6xl lg:text-7xl"
 								>
 									{legends[0].name}
 								</h2>
@@ -277,13 +263,13 @@
 			<!-- Other Champions Grid -->
 			<div class="grid gap-6 md:grid-cols-2">
 				{#each legends.slice(1) as legend}
-					<div class="legend-card opacity-0">
+					<div class="legend-card">
 						<div
-							class="group relative h-full overflow-hidden border border-slate-700/50 bg-gradient-to-br from-slate-800/60 via-slate-800/40 to-slate-900/60 backdrop-blur-lg transition-all duration-500 hover:border-slate-600/80 hover:shadow-xl hover:shadow-slate-900/50"
+							class="group relative h-full overflow-hidden border border-slate-700/50 bg-linear-to-br from-slate-800/60 via-slate-800/40 to-slate-900/60 backdrop-blur-lg transition-all duration-500 hover:border-slate-600/80 hover:shadow-xl hover:shadow-slate-900/50"
 						>
 							<!-- Subtle glow on hover -->
 							<div
-								class="to-accent/5 pointer-events-none absolute inset-0 bg-gradient-to-br from-white/5 via-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+								class="to-accent/5 pointer-events-none absolute inset-0 bg-linear-to-br from-white/5 via-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
 							></div>
 
 							<div class="relative p-6 sm:p-8">
@@ -291,7 +277,7 @@
 									<!-- Rank Hexagon -->
 									<div class="shrink-0">
 										<div
-											class="flex h-16 w-16 items-center justify-center bg-gradient-to-br from-slate-700/50 to-slate-800/50 text-3xl font-black text-slate-300 transition-all duration-300 group-hover:text-white sm:h-20 sm:w-20 sm:text-4xl"
+											class="flex h-16 w-16 items-center justify-center bg-linear-to-br from-slate-700/50 to-slate-800/50 text-3xl font-black text-slate-300 transition-all duration-300 group-hover:text-white sm:h-20 sm:w-20 sm:text-4xl"
 											style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);"
 										>
 											{legend.rank}
@@ -335,7 +321,7 @@
 
 							<!-- Bottom accent line -->
 							<div
-								class="from-accent absolute bottom-0 left-0 h-0.5 w-0 bg-gradient-to-r to-emerald-500 transition-all duration-500 group-hover:w-full"
+								class="from-accent absolute bottom-0 left-0 h-0.5 w-0 bg-linear-to-r to-emerald-500 transition-all duration-500 group-hover:w-full"
 							></div>
 						</div>
 					</div>

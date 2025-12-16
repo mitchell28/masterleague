@@ -1,7 +1,6 @@
 <script lang="ts">
 	// import { useQuery } from '@sanity/svelte-loader';
 	import { urlFor } from '$lib/sanity/lib/image';
-	import { animate } from 'motion';
 	import PortableTextRenderer from '$lib/sanity/components/PortableTextRenderer.svelte';
 	import type { Post } from '$lib/sanity/lib/queries';
 	import type { PageData } from './$types';
@@ -20,39 +19,40 @@
 
 	// let post = $derived($q.data);
 	let post = $derived(data.post);
-
-	let announcementRef = $state<HTMLElement>();
-	let titleRef = $state<HTMLElement>();
-	let imageRef = $state<HTMLElement>();
-
-	// Effect for animations
-	$effect(() => {
-		// Animate elements on load
-		if (announcementRef) {
-			animate(
-				announcementRef,
-				{ opacity: [0, 1], y: [-20, 0], scale: [0.95, 1] },
-				{ duration: 0.8, ease: 'easeOut' }
-			);
-		}
-
-		if (titleRef) {
-			animate(
-				titleRef,
-				{ opacity: [0, 1], y: [30, 0] },
-				{ duration: 0.8, delay: 0.2, ease: 'easeOut' }
-			);
-		}
-
-		if (imageRef) {
-			animate(
-				imageRef,
-				{ opacity: [0, 1], x: [30, 0], scale: [0.9, 1] },
-				{ duration: 1, delay: 0.4, ease: 'easeOut' }
-			);
-		}
-	});
 </script>
+
+<style>
+	@keyframes fadeInUp {
+		from {
+			opacity: 0;
+			transform: translateY(30px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+	
+	@keyframes fadeInRight {
+		from {
+			opacity: 0;
+			transform: translateX(30px) scale(0.95);
+		}
+		to {
+			opacity: 1;
+			transform: translateX(0) scale(1);
+		}
+	}
+	
+	.animate-fade-in-up {
+		animation: fadeInUp 0.6s ease-out forwards;
+	}
+	
+	.animate-fade-in-right {
+		animation: fadeInRight 0.8s ease-out forwards;
+	}
+	
+</style>
 
 <main class="mx-auto mt-22 flex max-w-7xl px-4 sm:px-6 lg:px-10">
 	<article class="w-full py-8 sm:pt-12">
@@ -81,7 +81,7 @@
 
 		<div class="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-12">
 			<div class="flex flex-col gap-4 lg:gap-6">
-				<div bind:this={announcementRef} class="opacity-0">
+				<div class="animate-fade-in-up">
 					<span
 						class="bg-accent font-display relative mb-4 flex w-fit items-center gap-2 px-3 pt-2 pb-1.5 text-sm font-medium text-black sm:px-4 sm:text-base"
 						style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
@@ -94,7 +94,7 @@
 						>
 					</span>
 				</div>
-				<div bind:this={titleRef} class="opacity-0">
+				<div class="animate-fade-in-up delay-100">
 					<h1 class="mb-3 text-3xl leading-tight font-bold sm:mb-4 sm:text-4xl lg:text-5xl">
 						{post?.title || 'Blog Post Title'}
 					</h1>
@@ -106,7 +106,7 @@
 				</div>
 			</div>
 
-			<div bind:this={imageRef} class="flex flex-col gap-3 opacity-0">
+			<div class="flex flex-col gap-3 animate-fade-in-right delay-200">
 				{#if post?.mainImage}
 					<img
 						src={urlFor(post.mainImage).width(800).height(500).url()}
@@ -115,7 +115,7 @@
 					/>
 				{:else}
 					<div
-						class="mx-auto flex h-auto w-full max-w-lg items-center justify-center rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 shadow-2xl transition-transform duration-300 hover:scale-105 lg:max-w-none"
+						class="mx-auto flex h-auto w-full max-w-lg items-center justify-center rounded-lg bg-linear-to-br from-slate-800 to-slate-900 shadow-2xl transition-transform duration-300 hover:scale-105 lg:max-w-none"
 						style="aspect-ratio: 4/3;"
 					>
 						<div class="text-6xl text-slate-400">📝</div>

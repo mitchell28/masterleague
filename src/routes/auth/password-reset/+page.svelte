@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { superForm } from 'sveltekit-superforms';
-	import { zod } from 'sveltekit-superforms/adapters';
+	import { zod4Client } from 'sveltekit-superforms/adapters';
 	import { authResetPasswordSchema, passwordValidation } from '$lib/validation/auth-schemas';
 	import { Loader2, CheckCircle } from '@lucide/svelte';
 	import logo from '$lib/assets/logo/masterleague.svg';
@@ -9,7 +9,7 @@
 
 	// svelte-ignore state_referenced_locally
 	const { form, errors, message, enhance, submitting } = superForm(data.form, {
-		validators: zod(authResetPasswordSchema)
+		validators: zod4Client(authResetPasswordSchema)
 	});
 
 	// Use centralized validation functions with $derived

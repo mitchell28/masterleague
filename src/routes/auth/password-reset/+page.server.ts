@@ -1,6 +1,6 @@
 import { redirect, fail } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms';
-import { zod } from 'sveltekit-superforms/adapters';
+import { zod4 } from 'sveltekit-superforms/adapters';
 import { authResetPasswordSchema } from '$lib/validation/auth-schemas';
 import type { PageServerLoad, Actions } from './$types';
 import type { MetaTagsProps } from 'svelte-meta-tags';
@@ -36,7 +36,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	}) satisfies MetaTagsProps;
 
 	return {
-		form: await superValidate(zod(authResetPasswordSchema)),
+		form: await superValidate(zod4(authResetPasswordSchema)),
 		pageMetaTags,
 		success
 	};
@@ -45,7 +45,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 export const actions: Actions = {
 	default: async ({ request, getClientAddress, url }) => {
 		console.log(`🔄 [Password Reset] received`);
-		const form = await superValidate(request, zod(authResetPasswordSchema));
+		const form = await superValidate(request, zod4(authResetPasswordSchema));
 		const token = new URLSearchParams(url.searchParams).get('token');
 
 		if (!form.valid) {

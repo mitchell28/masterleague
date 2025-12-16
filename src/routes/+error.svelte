@@ -2,30 +2,41 @@
 	import { page } from '$app/state';
 	import { ChevronLeft, AlertCircle, Home } from '@lucide/svelte';
 	import { fade, scale } from 'svelte/transition';
-	import { animate } from 'motion';
-
-	let errorIconRef = $state<HTMLElement>();
-	let contentRef = $state<HTMLElement>();
-
-	// Effect for animations
-	$effect(() => {
-		if (errorIconRef) {
-			animate(
-				errorIconRef,
-				{ opacity: [0, 1], scale: [0.5, 1], rotate: [180, 0] },
-				{ duration: 0.8, ease: 'easeOut' }
-			);
-		}
-
-		if (contentRef) {
-			animate(
-				contentRef,
-				{ opacity: [0, 1], y: [30, 0] },
-				{ duration: 0.8, delay: 0.2, ease: 'easeOut' }
-			);
-		}
-	});
 </script>
+
+<style>
+	@keyframes fadeInUp {
+		from {
+			opacity: 0;
+			transform: translateY(30px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+	
+	@keyframes bounceIn {
+		from {
+			opacity: 0;
+			transform: scale(0.5);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+	
+	.animate-bounce-in {
+		animation: bounceIn 0.6s ease-out forwards;
+	}
+	
+	.animate-fade-in-up {
+		animation: fadeInUp 0.6s ease-out forwards;
+	}
+	
+	.delay-200 { animation-delay: 0.2s; opacity: 0; }
+</style>
 
 <div class="relative flex min-h-screen items-center justify-center px-4">
 	<div
@@ -33,7 +44,7 @@
 		class="container mx-auto flex max-w-4xl flex-col items-center justify-center text-center"
 	>
 		<!-- Error Icon -->
-		<div bind:this={errorIconRef} class="mb-8 opacity-0">
+		<div class="mb-8 animate-bounce-in">
 			<div
 				class="bg-accent/20 border-accent/30 text-accent flex size-24 items-center justify-center rounded-full border-2"
 			>
@@ -42,7 +53,7 @@
 		</div>
 
 		<!-- Content -->
-		<div bind:this={contentRef} class="opacity-0">
+		<div class="animate-fade-in-up delay-200">
 			<!-- Error Code Badge -->
 			<div class="mb-6">
 				<span
@@ -56,7 +67,7 @@
 			<!-- Main Error Message -->
 			<h1 class="mb-4 text-4xl leading-tight font-bold sm:text-5xl lg:text-6xl">
 				<span
-					class="from-accent to-accent bg-gradient-to-r via-white bg-clip-text text-transparent"
+					class="from-accent to-accent bg-linear-to-r via-white bg-clip-text text-transparent"
 				>
 					Something Went Wrong
 				</span>

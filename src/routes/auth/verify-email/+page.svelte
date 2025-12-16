@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { superForm } from 'sveltekit-superforms';
-	import { zod } from 'sveltekit-superforms/adapters';
+	import { zod4Client } from 'sveltekit-superforms/adapters';
 	import { otpRequestSchema, emailVerificationSchema } from '$lib/validation/auth-schemas';
 	import { Loader2 } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
@@ -25,7 +25,7 @@
 		enhance: requestEnhance,
 		submitting: requestSubmitting
 	} = superForm(initialRequestForm, {
-		validators: zod(otpRequestSchema),
+		validators: zod4Client(otpRequestSchema),
 		onResult: ({ result }) => {
 			if (result.type === 'success') {
 				step = 'verify';
@@ -43,7 +43,7 @@
 		enhance: verifyEnhance,
 		submitting: verifySubmitting
 	} = superForm(initialVerifyForm, {
-		validators: zod(emailVerificationSchema),
+		validators: zod4Client(emailVerificationSchema),
 		onResult: ({ result }) => {
 			console.log('🔍 [Verify Email] onResult called:', result);
 
