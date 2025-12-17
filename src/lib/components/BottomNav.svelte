@@ -76,7 +76,7 @@
 		class="fixed bottom-0 left-0 right-0 z-9999 border-t border-accent/30 bg-[#090e1e] pb-safe md:hidden"
 		style="view-transition-name: bottom-nav;"
 	>
-		<div class="flex items-center justify-around pt-2 pb-5">
+		<div class="flex items-center justify-around pt-2 pb-5 [@media(display-mode:standalone)]:pb-8">
 			{#each bottomNavItems as item}
 				{@const isActive = isNavItemActive(item.href)}
 				{@const Icon = item.icon}
