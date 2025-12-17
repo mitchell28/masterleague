@@ -18,7 +18,7 @@
 <Toaster />
 <Snowfall />
 <Navbar />
-<main class="min-h-screen pb-12 md:pb-0" style="view-transition-name: bottom-nav-content;">
+<main class="min-h-screen pb-28 md:pb-0" style="view-transition-name: bottom-nav-content;">
 	{@render children()}
 </main>
 <BottomNav />
