@@ -47,13 +47,20 @@
 	navigation: auto;
 }
 
-/* Exclude header and bottom nav from transitions - they stay fixed */
+/* Exclude header and bottom nav from transitions - they stay completely fixed */
 ::view-transition-old(header),
 ::view-transition-new(header),
 ::view-transition-old(bottom-nav),
 ::view-transition-new(bottom-nav) {
-	animation: none;
+	animation: none !important;
 	mix-blend-mode: normal;
+	position: fixed;
+}
+
+/* Keep the view transition group for fixed elements in place */
+::view-transition-group(header),
+::view-transition-group(bottom-nav) {
+	animation: none !important;
 }
 
 /* Main content transitions */

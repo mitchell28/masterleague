@@ -236,9 +236,9 @@
 				{#if !isFixtureLive && !isFixtureCompleted}
 					<div
 						style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
-						class="bg-accent flex max-w-[120px] items-center sm:translate-y-0 -translate-y-[70%] justify-center px-2 pt-[6px] pb-[4px] text-center sm:max-w-none sm:px-3 sm:pt-[8px] sm:pb-[6px]"
+						class="bg-accent flex max-w-[120px] items-center sm:translate-y-0 -translate-y-[70%] justify-center px-2 pt-1.5 pb-1 text-center sm:max-w-none sm:px-3 sm:pt-2 sm:pb-1.5"
 					>
-						<span class="text-[10px] leading-[11px] text-black sm:text-sm sm:leading-[14px]">
+						<span class="text-[10px] leading-[11px] text-black sm:text-sm sm:leading-3.5">
 							{formattedMatchDate}
 						</span>
 					</div>
@@ -316,7 +316,7 @@
 								>
 									<div
 										aria-label="Decrement Home Score"
-										class="h-[3px] w-4 bg-black sm:h-[4px] sm:w-5"
+										class="h-[3px] w-4 bg-black sm:h-1 sm:w-5"
 									></div>
 								</button>
 								<input
@@ -343,10 +343,10 @@
 								>
 									<div class="relative h-4 w-4 sm:h-5 sm:w-5">
 										<div
-											class="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 bg-black sm:h-[4px]"
+											class="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 bg-black sm:h-1"
 										></div>
 										<div
-											class="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 bg-black sm:w-[4px]"
+											class="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 bg-black sm:w-1"
 										></div>
 									</div>
 								</button>
@@ -358,7 +358,7 @@
 				<!-- Center section -->
 
 				<div
-					class="absolute inset-x-0 top-13 flex h-[4px] -translate-y-1/2 flex-col items-center gap-3"
+					class="absolute inset-x-0 top-13 flex h-1 -translate-y-1/2 flex-col items-center gap-3"
 				>
 					<!-- Only show "No prediction made" message for completed matches without predictions -->
 					{#if showActualScore && !prediction}
@@ -411,7 +411,7 @@
 								>
 									<div
 										aria-label="Decrement Away Score"
-										class="h-[3px] w-4 bg-black sm:h-[4px] sm:w-5"
+										class="h-[3px] w-4 bg-black sm:h-1 sm:w-5"
 									></div>
 								</button>
 								<input
@@ -438,10 +438,10 @@
 								>
 									<div class="relative h-4 w-4 sm:h-5 sm:w-5">
 										<div
-											class="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 bg-black sm:h-[4px]"
+											class="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 bg-black sm:h-1"
 										></div>
 										<div
-											class="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 bg-black sm:w-[4px]"
+											class="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 bg-black sm:w-1"
 										></div>
 									</div>
 								</button>

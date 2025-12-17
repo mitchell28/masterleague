@@ -15,7 +15,7 @@
 		return href === '/' ? page.url.pathname === href : page.url.pathname.startsWith(href);
 	}
 
-	async function handleNavigation(href: string, event: MouseEvent) {
+	function handleNavigation(href: string, event: MouseEvent) {
 		event.preventDefault();
 		
 		// Don't navigate if already on the page
@@ -23,18 +23,11 @@
 
 		// Check if View Transitions API is supported (Chrome 111+, Safari 18+)
 		if (document.startViewTransition) {
-			const transition = document.startViewTransition(async () => {
-				await goto(href);
+			document.startViewTransition(() => {
+				goto(href);
 			});
-			
-			// Wait for the transition to be ready (captures snapshots)
-			await transition.ready;
-			
-			// The transition will now animate
-			await transition.finished;
 		} else {
-			// Fallback for browsers without View Transitions support
-			await goto(href);
+			goto(href);
 		}
 	}
 </script>
@@ -51,17 +44,11 @@
 				<a
 					href={item.href}
 					onclick={(e) => handleNavigation(item.href, e)}
-					class="flex flex-col items-center gap-1.5 px-4 py-2 transition-all duration-200
-					{isActive ? 'text-black' : 'text-slate-400 hover:text-white active:text-accent'}"
+					class="flex items-center justify-center p-2
+					{isActive ? 'text-accent' : 'text-slate-400 active:text-accent'}"
+					aria-label={item.label}
 				>
-					<div
-						class="flex size-11 items-center justify-center transition-all duration-200
-						{isActive ? 'bg-accent' : 'bg-accent/20'}"
-						style="clip-path: polygon(15% 0%, 100% 0%, 100% 80%, 85% 100%, 0% 100%, 0% 20%);"
-					>
-						<Icon class="size-5" />
-					</div>
-					<span class="text-xs font-medium {isActive ? 'text-accent' : ''}">{item.label}</span>
+					<Icon class="size-6" />
 				</a>
 			{/each}
 		</div>
