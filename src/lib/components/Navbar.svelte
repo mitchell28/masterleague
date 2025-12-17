@@ -8,11 +8,17 @@
 	let { user } = $derived(page.data);
 	let isStudioPage = $derived(page.url.pathname.includes('studio'));
 
+	// Desktop nav items (includes all main items)
 	const navItems = [
 		{ href: '/', label: 'Home', adminOnly: false },
 		{ href: '/predictions', label: 'Predictions', adminOnly: false },
 		{ href: '/leaderboard', label: 'Leaderboard', adminOnly: false },
 		{ href: '/blog', label: 'Blog', adminOnly: false }
+	];
+
+	// Mobile menu items (excludes items in bottom nav)
+	const mobileMenuItems = [
+		{ href: '/blog', label: 'Blog' }
 	];
 
 	const moreItems = [
@@ -166,7 +172,7 @@
 	});
 </script>
 
-<header class="fixed top-0 left-0 z-[9999] w-full">
+<header class="fixed top-0 left-0 z-9999 w-full" style="view-transition-name: header;">
 	{#if !isStudioPage}
 		<!-- Main navbar container -->
 		<div class="relative w-full bg-[#090e1e] md:min-h-20">
@@ -206,7 +212,7 @@
 							{#if isMoreDropdownOpen}
 								<div
 									data-more-dropdown
-									class="border-accent/30 absolute top-full left-0 z-[10000] mt-2 w-40 border bg-[#0D1326] shadow-xl"
+									class="border-accent/30 absolute top-full left-0 z-10000 mt-2 w-40 border bg-[#0D1326] shadow-xl"
 								>
 									<div class="p-2">
 										{#each moreItems as item}
@@ -249,7 +255,7 @@
 								{#if isAdminDropdownOpen}
 									<div
 										data-admin-dropdown
-										class="border-accent/30 absolute top-full right-0 z-[10000] mt-2 w-48 border bg-[#0D1326] shadow-xl"
+										class="border-accent/30 absolute top-full right-0 z-10000 mt-2 w-48 border bg-[#0D1326] shadow-xl"
 									>
 										<div class="p-2">
 											{#each adminItems as item}
@@ -287,7 +293,7 @@
 								{#if isDropdownOpen}
 									<div
 										data-dropdown
-										class="border-accent/30 absolute top-full right-0 z-[10000] mt-2 w-64 border bg-[#0D1326] shadow-xl"
+										class="border-accent/30 absolute top-full right-0 z-10000 mt-2 w-64 border bg-[#0D1326] shadow-xl"
 									>
 										<div class="border-accent/30 border-b p-4">
 											<p class="font-medium text-white">{user?.name}</p>
@@ -346,18 +352,21 @@
 					aria-controls="mobile-menu"
 				>
 					<span class="sr-only">{isMobileMenuOpen ? 'Close' : 'Open'} navigation menu</span>
-					<Menu class="size-6 transition-transform duration-200 {isMobileMenuOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'} absolute" />
-					<X class="size-6 transition-transform duration-200 {isMobileMenuOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0'} absolute" />
+					{#if isMobileMenuOpen}
+						<X class="size-6" />
+					{:else}
+						<Menu class="size-6" />
+					{/if}
 				</button>
 			</div>
 		</div>
 
 		<!-- Mobile Menu Overlay -->
 		{#if isMobileMenuOpen}
-			<!-- Backdrop -->
+			<!-- Backdrop - starts below header -->
 			<button
 				type="button"
-				class="fixed inset-0 z-[9998] bg-black/70 md:hidden"
+				class="fixed top-[80px] right-0 bottom-0 left-0 z-9998 bg-black/70 md:hidden"
 				onclick={closeMobileMenu}
 				aria-label="Close menu"
 			></button>
@@ -368,13 +377,31 @@
 			bind:this={mobileMenuRef}
 			data-mobile-menu
 			id="mobile-menu"
-			class="border-accent/30 fixed top-[68px] right-0 left-0 z-[9999] max-h-[calc(100dvh-68px)] overflow-y-auto border-t bg-[#0D1326] shadow-2xl transition-all duration-300 ease-out md:hidden
+			class="border-accent/30 fixed top-[80px] right-0 left-0 z-9999 max-h-[calc(100dvh-80px-80px)] overflow-y-auto border-t bg-[#0D1326] shadow-2xl transition-all duration-300 ease-out md:hidden
 			{isMobileMenuOpen ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0 pointer-events-none'}"
 			aria-hidden={!isMobileMenuOpen}
 		>
-			<nav class="container mx-auto flex flex-col gap-1 px-4 py-6 text-sm">
-				{#each navItems as item}
+			<nav class="container mx-auto flex flex-col gap-1 px-4 py-4 text-sm">
+				<!-- Blog and other items not in bottom nav -->
+				{#each mobileMenuItems as item}
 					{@const isActive = isNavItemActive(item.href)}
+					<a
+						href={item.href}
+						class="flex min-h-12 touch-manipulation items-center gap-3 px-4 py-3 transition-all duration-150
+						{isActive ? 'bg-accent font-medium text-black' : 'text-white active:bg-accent/40 active:scale-[0.98]'}"
+						onclick={closeMobileMenu}
+					>
+						{item.label}
+					</a>
+				{/each}
+
+				<!-- More Items -->
+				<div class="border-accent/30 mt-4 border-t pt-4">
+					<p class="mb-2 px-4 text-xs font-medium tracking-wider text-slate-400 uppercase">
+						More
+					</p>
+					{#each moreItems as item}
+						{@const isActive = isNavItemActive(item.href)}
 						<a
 							href={item.href}
 							class="flex min-h-12 touch-manipulation items-center gap-3 px-4 py-3 transition-all duration-150
@@ -384,13 +411,14 @@
 							{item.label}
 						</a>
 					{/each}
+				</div>
 
-					<!-- More Items -->
+				{#if user?.role === 'admin'}
 					<div class="border-accent/30 mt-4 border-t pt-4">
 						<p class="mb-2 px-4 text-xs font-medium tracking-wider text-slate-400 uppercase">
-							More
+							Admin
 						</p>
-						{#each moreItems as item}
+						{#each adminItems as item}
 							{@const isActive = isNavItemActive(item.href)}
 							<a
 								href={item.href}
@@ -402,71 +430,53 @@
 							</a>
 						{/each}
 					</div>
+				{/if}
 
-					{#if user?.role === 'admin'}
-						<div class="border-accent/30 mt-4 border-t pt-4">
-							<p class="mb-2 px-4 text-xs font-medium tracking-wider text-slate-400 uppercase">
-								Admin
-							</p>
-							{#each adminItems as item}
-								{@const isActive = isNavItemActive(item.href)}
-								<a
-									href={item.href}
-									class="flex min-h-12 touch-manipulation items-center gap-3 px-4 py-3 transition-all duration-150
-									{isActive ? 'bg-accent font-medium text-black' : 'text-white active:bg-accent/40 active:scale-[0.98]'}"
-									onclick={closeMobileMenu}
+				<div class="border-accent/30 mt-6 border-t pt-6">
+					{#if user?.emailVerified}
+						<div class="flex flex-col gap-4">
+							<div class="flex items-center gap-3 px-4">
+								<div
+									class="bg-accent flex size-10 items-center justify-center text-black shadow-md"
+									style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
 								>
-									{item.label}
-								</a>
-							{/each}
+									{user?.name.charAt(0).toUpperCase()}
+								</div>
+								<p class="font-medium text-white">{user?.name}</p>
+							</div>
+							<button
+								class="border-accent/30 flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 border py-3 text-center font-medium text-white transition-all duration-150 active:bg-accent/30 active:scale-[0.98]"
+								onclick={() => {
+									handleSignOut();
+									closeMobileMenu();
+								}}
+							>
+								<LogOut class="size-4" />
+								Logout
+							</button>
+						</div>
+					{:else}
+						<div class="flex flex-col gap-3">
+							<a
+								href="/auth/login"
+								class="bg-accent flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 py-3 text-center font-medium text-black shadow-md transition-all duration-150 active:opacity-80 active:scale-[0.98]"
+								onclick={closeMobileMenu}
+							>
+								<LogIn class="size-4" />
+								Login
+							</a>
+							<a
+								href="/auth/signup"
+								class="border-accent/30 flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 border py-3 text-center font-medium text-white transition-all duration-150 active:bg-accent/30 active:scale-[0.98]"
+								onclick={closeMobileMenu}
+							>
+								<UserPlus class="size-4" />
+								Sign Up
+							</a>
 						</div>
 					{/if}
-
-					<div class="border-accent/30 mt-6 border-t pt-6">
-						{#if user?.emailVerified}
-							<div class="flex flex-col gap-4">
-								<div class="flex items-center gap-3 px-4">
-									<div
-										class="bg-accent flex size-10 items-center justify-center text-black shadow-md"
-										style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
-									>
-										{user?.name.charAt(0).toUpperCase()}
-									</div>
-									<p class="font-medium text-white">{user?.name}</p>
-								</div>
-								<button
-									class="border-accent/30 flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 border py-3 text-center font-medium text-white transition-all duration-150 active:bg-accent/30 active:scale-[0.98]"
-									onclick={() => {
-										handleSignOut();
-										closeMobileMenu();
-									}}
-								>
-									<LogOut class="size-4" />
-									Logout
-								</button>
-							</div>
-						{:else}
-							<div class="flex flex-col gap-3">
-								<a
-									href="/auth/login"
-									class="bg-accent flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 py-3 text-center font-medium text-black shadow-md transition-all duration-150 active:opacity-80 active:scale-[0.98]"
-									onclick={closeMobileMenu}
-								>
-									<LogIn class="size-4" />
-									Login
-								</a>
-								<a
-									href="/auth/signup"
-									class="border-accent/30 flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 border py-3 text-center font-medium text-white transition-all duration-150 active:bg-accent/30 active:scale-[0.98]"
-									onclick={closeMobileMenu}
-								>
-									<UserPlus class="size-4" />
-									Sign Up
-								</a>
-							</div>
-						{/if}
-					</div>
-				</nav>
-			</div>
+				</div>
+			</nav>
+		</div>
 	{/if}
 </header>

@@ -57,7 +57,7 @@
 	} = usePredictions(initialData, initialForm);
 
 	// Track the last displayed week to detect changes
-	let lastDisplayedWeek = $state(data.week);
+	let lastDisplayedWeek = $state(initialData.week);
 
 	// Effect to handle week changes - updates when data.week changes
 	$effect(() => {

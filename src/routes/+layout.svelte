@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import Navbar from '$lib/components/Navbar.svelte';
+	import BottomNav from '$lib/components/BottomNav.svelte';
 	import { page } from '$app/state';
 	import { MetaTags, deepMerge } from 'svelte-meta-tags';
 	import { Toaster } from 'svelte-sonner';
@@ -17,6 +18,7 @@
 <Toaster />
 <Snowfall />
 <Navbar />
-<main class="min-h-screen">
+<main class="min-h-screen pb-24 md:pb-0" style="view-transition-name: bottom-nav-content;">
 	{@render children()}
 </main>
+<BottomNav />

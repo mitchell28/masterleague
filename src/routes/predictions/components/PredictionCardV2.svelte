@@ -230,13 +230,13 @@
 	>
 		<div class="relative h-full px-4 py-8 sm:px-10">
 			<div
-				class="absolute top-1/2 left-1/2 flex -translate-x-1/2 sm:-translate-y-1/2 -translate-y-[110%] flex-col items-center gap-1 text-center sm:gap-2"
+				class="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2  flex-col items-center gap-1 text-center sm:gap-2"
 			>
 				<!-- Date badge - hidden during live matches -->
 				{#if !isFixtureLive && !isFixtureCompleted}
 					<div
 						style="clip-path: polygon(8% 0%, 100% 0%, 100% 76%, 91% 100%, 0% 100%, 0% 29%);"
-						class="bg-accent flex max-w-[120px] items-center justify-center px-2 pt-[6px] pb-[4px] text-center sm:max-w-none sm:px-3 sm:pt-[8px] sm:pb-[6px]"
+						class="bg-accent flex max-w-[120px] items-center sm:translate-y-0 -translate-y-[70%] justify-center px-2 pt-[6px] pb-[4px] text-center sm:max-w-none sm:px-3 sm:pt-[8px] sm:pb-[6px]"
 					>
 						<span class="text-[10px] leading-[11px] text-black sm:text-sm sm:leading-[14px]">
 							{formattedMatchDate}

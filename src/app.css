@@ -41,3 +41,80 @@
 		font-weight: 900;
 	}
 }
+
+/* CSS View Transitions - Latest API (Chrome 126+, Safari 18.2+) */
+@view-transition {
+	navigation: auto;
+}
+
+/* Exclude header and bottom nav from transitions - they stay fixed */
+::view-transition-old(header),
+::view-transition-new(header),
+::view-transition-old(bottom-nav),
+::view-transition-new(bottom-nav) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+
+/* Main content transitions */
+::view-transition-old(root) {
+	animation: page-fade-out 0.15s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+::view-transition-new(root) {
+	animation: page-fade-in 0.15s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+/* Smooth page transition animations */
+@keyframes page-fade-out {
+	from {
+		opacity: 1;
+		transform: scale(1);
+	}
+	to {
+		opacity: 0;
+		transform: scale(0.98);
+	}
+}
+
+@keyframes page-fade-in {
+	from {
+		opacity: 0;
+		transform: scale(1.02);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+/* Content area specific slide transition */
+::view-transition-old(bottom-nav-content) {
+	animation: content-slide-out 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+::view-transition-new(bottom-nav-content) {
+	animation: content-slide-in 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes content-slide-out {
+	from {
+		opacity: 1;
+		transform: translateX(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateX(-30px);
+	}
+}
+
+@keyframes content-slide-in {
+	from {
+		opacity: 0;
+		transform: translateX(30px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
