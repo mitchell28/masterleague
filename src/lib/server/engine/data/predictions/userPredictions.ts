@@ -1,6 +1,6 @@
 import { db, member, session } from '$lib/server/db';
 import { teams, predictions, fixtures, type Fixture } from '$lib/server/db/schema';
-import { inArray, eq, and } from 'drizzle-orm';
+import { inArray, eq, and, aliasedTable, sql } from 'drizzle-orm';
 import { getFixturesByWeek } from '../fixtures';
 import { randomUUID } from 'crypto';
 
@@ -136,11 +136,40 @@ export async function getFixturesWithPredictions(
 		}
 	}
 
-	// Get fixtures for the selected week
-	const fixtures = await getFixturesByWeek(week);
+	// Get active organization if not provided
+	let userOrganizationId = organizationId;
+	if (!userOrganizationId) {
+		userOrganizationId = (await getUserActiveOrganization(userId)) || undefined;
+	}
+
+	// Create aliases for home and away teams to join them in one query
+	const homeTeam = aliasedTable(teams, 'home_team');
+	const awayTeam = aliasedTable(teams, 'away_team');
+
+	// Single optimized query to fetch fixtures, predictions, and teams
+	const rows = await db
+		.select({
+			fixture: fixtures,
+			prediction: predictions,
+			homeTeam: homeTeam,
+			awayTeam: awayTeam
+		})
+		.from(fixtures)
+		.leftJoin(
+			predictions,
+			and(
+				eq(predictions.fixtureId, fixtures.id),
+				eq(predictions.userId, userId),
+				userOrganizationId ? eq(predictions.organizationId, userOrganizationId) : sql`1 = 0` // If no org, don't match any predictions
+			)
+		)
+		.leftJoin(homeTeam, eq(fixtures.homeTeamId, homeTeam.id))
+		.leftJoin(awayTeam, eq(fixtures.awayTeamId, awayTeam.id))
+		.where(eq(fixtures.weekId, week))
+		.orderBy(fixtures.matchDate);
 
 	// Skip processing if no fixtures
-	if (!fixtures.length) {
+	if (!rows.length) {
 		return {
 			fixturesWithPrediction: [],
 			predictionsMap: {},
@@ -150,23 +179,32 @@ export async function getFixturesWithPredictions(
 		};
 	}
 
-	// Sort fixtures by date server-side
-	const sortedFixtures = [...fixtures].sort(
-		(a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
-	);
+	// Process the rows into the expected format
+	const fixturesList: any[] = [];
+	const predictionsList: any[] = [];
+	const teamsMap: Record<string, any> = {};
 
-	// Get user's predictions for this week
-	const userPredictions = await getUserPredictionsByWeek(userId, week, organizationId);
+	for (const row of rows) {
+		fixturesList.push(row.fixture);
 
-	// Get teams data
-	const teamsMap = await getTeamsForFixtures(sortedFixtures);
+		if (row.prediction) {
+			predictionsList.push(row.prediction);
+		}
+
+		if (row.homeTeam) {
+			teamsMap[row.homeTeam.id] = row.homeTeam;
+		}
+		if (row.awayTeam) {
+			teamsMap[row.awayTeam.id] = row.awayTeam;
+		}
+	}
 
 	// Prepare fixtures with prediction info
 	const isPastWeek = week < currentWeek;
-	const fixturesWithPrediction = prepareFixturesWithPredictionInfo(sortedFixtures, isPastWeek);
+	const fixturesWithPrediction = prepareFixturesWithPredictionInfo(fixturesList, isPastWeek);
 
 	// Convert predictions to a map
-	const predictionsMap = convertPredictionsToMap(userPredictions);
+	const predictionsMap = convertPredictionsToMap(predictionsList);
 
 	// Cache the processed data
 	fixturesCache.set(cacheKey, {

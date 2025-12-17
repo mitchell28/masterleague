@@ -263,7 +263,6 @@
 		class="mx-auto max-w-6xl px-4"
 		class:slide-left={swipeDirection === 'left'}
 		class:slide-right={swipeDirection === 'right'}
-		style="view-transition-name: predictions-content;"
 	>
 		<!-- Future Week Message -->
 		{#if showFutureWeekMessage}

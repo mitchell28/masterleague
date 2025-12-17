@@ -61,6 +61,7 @@
 ::view-transition-group(header),
 ::view-transition-group(bottom-nav) {
 	animation: none !important;
+	z-index: 100;
 }
 
 /* Main content transitions */
