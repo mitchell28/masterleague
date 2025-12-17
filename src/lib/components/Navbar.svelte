@@ -18,6 +18,9 @@
 
 	// Mobile menu items (excludes items in bottom nav)
 	const mobileMenuItems = [
+		{ href: '/', label: 'Home' },
+		{ href: '/predictions', label: 'Predictions' },
+		{ href: '/leaderboard', label: 'Leaderboard' },
 		{ href: '/blog', label: 'Blog' }
 	];
 
@@ -176,7 +179,7 @@
 	{#if !isStudioPage}
 		<!-- Main navbar container -->
 		<div class="relative w-full bg-[#090e1e] md:min-h-20">
-			<div class="mx-auto flex max-w-7xl items-center justify-between gap-5 px-4 py-4">
+			<div class="mx-auto flex max-w-7xl items-center justify-between gap-5 px-4 py-2 md:py-4">
 				<div class="hidden items-center justify-center gap-10 md:flex">
 					<a href="/" class="group relative flex items-center gap-3">
 						<img src={logo} height="56" alt="Master League Logo" class="h-14 min-h-14 min-w-14" />
@@ -235,7 +238,7 @@
 
 				<!-- Mobile Logo -->
 				<a href="/" class="group relative flex items-center gap-3 md:hidden">
-					<img src={logo} height="56" alt="Master League Logo" class="h-12" />
+					<img src={logo} height="56" alt="Master League Logo" class="h-9" />
 				</a>
 
 				<!-- Desktop Navigation -->
@@ -346,7 +349,7 @@
 					style="clip-path: polygon(19% 0%, 100% 0%, 100% 85%, 81% 100%, 0% 100%, 0% 15%);"
 					class="relative flex size-12 min-h-12 min-w-12 touch-manipulation items-center justify-center text-white transition-all duration-150 select-none md:hidden
 					{isMobileMenuOpen ? 'bg-accent text-black' : 'bg-accent/30 hover:bg-accent/50 active:bg-accent active:text-black active:scale-95'}"
-					onclick={() => isMobileMenuOpen = !isMobileMenuOpen}
+					onclick={toggleMobileMenu}
 					aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
 					aria-expanded={isMobileMenuOpen}
 					aria-controls="mobile-menu"
