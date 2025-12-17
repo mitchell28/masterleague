@@ -21,15 +21,15 @@
 	<!-- Backdrop -->
 	<button
 		type="button"
-		class="fixed inset-0 z-10000 bg-black/80 backdrop-blur-[1px] transition-all"
-		transition:fade={{ duration: 200 }}
+		class="fixed inset-0 z-10000 bg-black/80 backdrop-blur-[1px]"
+		transition:fade={{ duration: 300 }}
 		onclick={close}
 		aria-label="Close drawer"
 	></button>
 
 	<!-- Drawer Content -->
 	<div
-		class="fixed bottom-0 left-0 right-0 z-10001 flex max-h-[85vh] flex-col rounded-t-[20px] border-t border-accent/30 bg-[#0D1326] shadow-2xl outline-none"
+		class="fixed bottom-4 left-4 right-4 z-10001 flex max-h-[85vh] flex-col rounded-[26px] border border-accent/30 bg-[#0D1326] shadow-2xl outline-none"
 		transition:fly={{ y: '100%', duration: 300, opacity: 1, easing: cubicOut }}
 		role="dialog"
 		aria-modal="true"

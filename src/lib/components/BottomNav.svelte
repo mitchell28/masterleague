@@ -30,11 +30,18 @@
 	async function handleNavigation(href: string, event: MouseEvent) {
 		event.preventDefault();
 		
-		// Close drawer if open
-		if (isDrawerOpen) isDrawerOpen = false;
+		const wasDrawerOpen = isDrawerOpen;
+		if (isDrawerOpen) {
+			isDrawerOpen = false;
+		}
 
 		// Don't navigate if already on the page or currently navigating
 		if (isNavItemActive(href) || isNavigating) return;
+
+		// If drawer was open, wait for animation to finish to avoid View Transition flash
+		if (wasDrawerOpen) {
+			await new Promise((resolve) => setTimeout(resolve, 300));
+		}
 
 		isNavigating = true;
 		navigatingTo = href;
