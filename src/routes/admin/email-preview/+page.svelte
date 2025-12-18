@@ -11,7 +11,7 @@
 	}
 </script>
 
-<div class="min-h-screen bg-slate-950 p-8 pt-28">
+<div class="min-h-screen bg-slate-950 p-8">
 	<div class="mx-auto max-w-4xl">
 		<!-- Header -->
 		<div class="mb-8">

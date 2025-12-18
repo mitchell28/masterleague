@@ -38,7 +38,7 @@
 	}
 </script>
 
-<div class="mx-auto mt-22">
+<div class="mx-auto">
 	<!-- Main Header with title and week selector -->
 	<div class="relative mb-8">
 		<div class="font-display relative w-full overflow-hidden bg-slate-900">

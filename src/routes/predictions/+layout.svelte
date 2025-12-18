@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, preloadData } from '$app/navigation';
 	import { page } from '$app/state';
 	import { Info, ChevronLeft, ChevronRight } from '@lucide/svelte';
 	import WeekSelector from '$lib/components/WeekSelector.svelte';
@@ -59,6 +59,24 @@
 			// Redirect to current week if invalid week is accessed
 			console.warn(`Invalid week ${week}, redirecting to current week ${currentWeek}`);
 			goto(`/predictions/${currentWeek}`, { replaceState: true });
+		}
+	});
+
+	// Prefetch adjacent weeks for instant swipe transitions
+	$effect(() => {
+		if (weeks && week !== undefined) {
+			const prevWeek = week - 1;
+			const nextWeek = week + 1;
+			
+			// Prefetch previous week (non-blocking)
+			if (weeks.includes(prevWeek)) {
+				preloadData(`/predictions/${prevWeek}`);
+			}
+			
+			// Prefetch next week (non-blocking)
+			if (weeks.includes(nextWeek)) {
+				preloadData(`/predictions/${nextWeek}`);
+			}
 		}
 	});
 
@@ -142,7 +160,7 @@
 
 <!-- Swipe container for mobile week navigation -->
 <div
-	class="mx-auto mt-22 touch-pan-y"
+	class="mx-auto touch-pan-y"
 	use:swipeAction={{
 		onSwipeLeft: handleSwipeLeft,
 		onSwipeRight: handleSwipeRight,
@@ -264,30 +282,7 @@
 		class:slide-left={swipeDirection === 'left'}
 		class:slide-right={swipeDirection === 'right'}
 	>
-		<!-- Future Week Message -->
-		{#if showFutureWeekMessage}
-			<div class="mt-6 mb-6">
-				<div class="font-display w-full border-l-4 border-l-blue-500 bg-slate-900 p-4 sm:p-6">
-					<div class="flex items-start gap-3">
-						<div>
-							<div class="mb-2 flex items-center gap-2">
-								<span
-									class=" bg-blue-500 px-2 py-1 text-xs font-bold text-white sm:px-3 sm:text-sm"
-								>
-									FUTURE WEEK
-								</span>
-							</div>
-							<div class=" text-sm text-blue-200 sm:text-base">
-								<p class="font-medium text-white">You're viewing a future week</p>
-								<p class="mt-1 font-sans text-blue-300">
-									Predictions may not be available yet. Current week is {currentWeek}.
-								</p>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		{/if}
+		
 
 		{@render children()}
 	</div>

@@ -54,7 +54,7 @@
 	
 </style>
 
-<main class="mx-auto mt-22 flex max-w-7xl px-4 sm:px-6 lg:px-10">
+<main class="mx-auto flex max-w-7xl px-4 sm:px-6 lg:px-10">
 	<article class="w-full py-8 sm:pt-12">
 		<!-- Back Button -->
 		<div class="mb-8">

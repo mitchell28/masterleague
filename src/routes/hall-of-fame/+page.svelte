@@ -125,7 +125,7 @@
 	</div>
 
 	<!-- Content -->
-	<div class="relative z-10 mx-auto max-w-6xl px-4 pt-28 pb-20 sm:px-6">
+	<div class="relative z-10 mx-auto max-w-6xl px-4 pt-8 pb-20 sm:px-6">
 		<!-- Hero Section -->
 		<div class="mb-16 text-center animate-fade-in-up">
 			<!-- Crown icon with glow -->

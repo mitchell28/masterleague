@@ -24,7 +24,7 @@
 	<meta name="description" content="The post you're looking for could not be found." />
 </svelte:head>
 
-<main class="relative mx-auto mt-22 max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
+<main class="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
 	<div class="text-center animate-fade-in-up">
 		<div class="mb-8">
 			<span

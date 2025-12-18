@@ -29,18 +29,18 @@
 
 	<!-- Drawer Content -->
 	<div
-		class="fixed bottom-4 left-4 right-4 z-10001 flex max-h-[85vh] flex-col rounded-[26px] border border-accent/30 bg-[#0D1326] shadow-2xl outline-none"
+		class="fixed right-0 bottom-0 left-0 z-10001 flex max-h-[85vh] flex-col rounded-t-[26px] border-t border-accent/30 bg-[#0D1326] shadow-2xl outline-none"
 		transition:fly={{ y: '100%', duration: 300, opacity: 1, easing: cubicOut }}
 		role="dialog"
 		aria-modal="true"
 	>
 		<!-- Handle -->
-		<div class="flex w-full justify-center pt-4 pb-2" onclick={close} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && close()}>
+		<div class="flex w-full justify-center pt-2.5 pb-1" onclick={close} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && close()}>
 			<div class="h-1.5 w-12 rounded-full bg-slate-700/50"></div>
 		</div>
 
 		<!-- Scrollable Content -->
-		<div class="flex-1 overflow-y-auto px-4 pb-8">
+		<div class="flex-1 overflow-y-auto px-4 py-2">
 			{@render children()}
 		</div>
 	</div>

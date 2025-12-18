@@ -46,7 +46,7 @@
 	.post-card:nth-child(3) { animation-delay: 0.3s; opacity: 0; }
 </style>
 
-<main class="relative mx-auto mt-22 max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
+<main class="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
 	<!-- Back Button -->
 	<div class="mb-8">
 		<a

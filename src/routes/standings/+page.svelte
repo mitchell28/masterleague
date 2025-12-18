@@ -47,7 +47,7 @@
 	}
 </script>
 
-<div class="mx-auto mt-22">
+<div class="mx-auto">
 	<!-- Header Section -->
 	<div class="relative mb-4 sm:mb-6">
 		<div class="font-display w-full overflow-hidden bg-slate-900">

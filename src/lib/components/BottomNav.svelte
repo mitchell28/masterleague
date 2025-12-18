@@ -1,9 +1,24 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto, preloadData } from '$app/navigation';
-	import { Home, Trophy, Target, Loader2, Menu, BookOpen, Table, Award, Shield } from '@lucide/svelte';
+	import {
+		Home,
+		Trophy,
+		Target,
+		Loader2,
+		MoreHorizontal,
+		BookOpen,
+		Table,
+		Award,
+		Shield,
+		LayoutGrid,
+		Mail,
+		Users,
+		LogOut
+	} from '@lucide/svelte';
 	import { tick } from 'svelte';
 	import Drawer from './Drawer.svelte';
+	import { authClient } from '$lib/client/auth-client';
 
 	const bottomNavItems = [
 		{ href: '/', label: 'Home', icon: Home },
@@ -69,6 +84,13 @@
 			navigatingTo = null;
 		}
 	}
+
+	async function handleSignOut(event: MouseEvent) {
+		event.preventDefault();
+		isDrawerOpen = false;
+		await authClient.signOut();
+		await goto('/auth/login');
+	}
 </script>
 
 {#if !isStudioPage}
@@ -104,19 +126,20 @@
 				{isDrawerOpen ? 'text-accent' : 'text-slate-400 active:text-accent'}"
 				onclick={() => isDrawerOpen = true}
 			>
-				<Menu class="size-5" />
+				<MoreHorizontal class="size-5" />
 				<span class="text-[10px] font-medium leading-none">Extra</span>
 			</button>
 
 			<!-- Custom Drawer -->
 			<Drawer bind:open={isDrawerOpen}>
-				<div class="flex flex-col gap-2">
+				<div class="flex flex-col gap-1 pb-4">
+					<!-- Main items -->
 					{#each extraItems as item}
 						{@const isActive = isNavItemActive(item.href)}
 						{@const Icon = item.icon}
 						<a
 							href={item.href}
-							class="flex items-center gap-3 rounded-lg p-3 transition-colors
+							class="flex items-center gap-2.5 rounded-lg px-3 py-2 transition-colors
 							{isActive ? 'bg-accent text-black' : 'text-white hover:bg-white/5'}"
 							onclick={(e) => handleNavigation(item.href, e)}
 						>
@@ -126,17 +149,55 @@
 					{/each}
 
 					{#if user?.role === 'admin'}
-						<div class="my-2 border-t border-white/10 pt-2">
-							<p class="px-3 text-xs font-medium text-slate-400 uppercase">Admin</p>
+						<!-- Admin Section -->
+						<div class="mt-2 border-t border-white/10 pt-2">
+							<p class="px-3 pb-1 text-xs font-medium text-slate-400 uppercase">Admin</p>
 						</div>
 						<a
+							href="/studio"
+							class="flex items-center gap-2.5 rounded-lg px-3 py-2 transition-colors text-white hover:bg-white/5"
+							onclick={(e) => handleNavigation('/studio', e)}
+						>
+							<LayoutGrid class="size-5" />
+							<span class="font-medium">Studio</span>
+						</a>
+						<a
+							href="/admin/email-preview"
+							class="flex items-center gap-2.5 rounded-lg px-3 py-2 transition-colors text-white hover:bg-white/5"
+							onclick={(e) => handleNavigation('/admin/email-preview', e)}
+						>
+							<Mail class="size-5" />
+							<span class="font-medium">Email Preview</span>
+						</a>
+						<a
+							href="/groups"
+							class="flex items-center gap-2.5 rounded-lg px-3 py-2 transition-colors text-white hover:bg-white/5"
+							onclick={(e) => handleNavigation('/groups', e)}
+						>
+							<Users class="size-5" />
+							<span class="font-medium">Groups</span>
+						</a>
+						<a
 							href="/admin"
-							class="flex items-center gap-3 rounded-lg p-3 transition-colors text-white hover:bg-white/5"
+							class="flex items-center gap-2.5 rounded-lg px-3 py-2 transition-colors text-white hover:bg-white/5"
 							onclick={(e) => handleNavigation('/admin', e)}
 						>
 							<Shield class="size-5" />
 							<span class="font-medium">Admin Dashboard</span>
 						</a>
+					{/if}
+
+					{#if user}
+						<!-- Logout at bottom -->
+						<div class=" border-t border-white/10 pt-2">
+							<button
+								class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-white transition-colors hover:bg-white/5"
+								onclick={handleSignOut}
+							>
+								<LogOut class="size-5" />
+								<span class="font-medium">Logout</span>
+							</button>
+						</div>
 					{/if}
 				</div>
 			</Drawer>
