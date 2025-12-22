@@ -36,10 +36,6 @@
 		return href === '/' ? page.url.pathname === href : page.url.pathname.startsWith(href);
 	}
 
-	function isAnyAdminItemActive(): boolean {
-		return adminItems.some((item) => isNavItemActive(item.href));
-	}
-
 	function isAnyMoreItemActive(): boolean {
 		return moreItems.some((item) => isNavItemActive(item.href));
 	}
@@ -132,7 +128,7 @@
 
 </script>
 
-<header class="relative z-50 w-full" style="view-transition-name: header;">
+<header class="z-50 w-full fixed top-0 left-0 right-0" style="view-transition-name: header;">
 	{#if !isStudioPage}
 		<!-- Main navbar container -->
 		<div class="relative w-full bg-[#090e1e] py-2 md:min-h-20">

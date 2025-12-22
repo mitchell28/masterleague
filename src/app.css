@@ -2,12 +2,14 @@
 @import './fonts.css';
 @import 'tailwindcss';
 @plugin "@tailwindcss/typography";
+@plugin '@toolwind/corner-shape';
 
 @theme {
 	--font-sans: 'Work Sans Variable', sans-serif;
 	--font-display: 'Gunterz', sans-serif;
 	--color-accent: oklch(88.266% 0.20737 155.248);
 	--color-background: oklch(20.992% 0.03416 263.451);
+
 }
 
 @layer base {

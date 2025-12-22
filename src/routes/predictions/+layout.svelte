@@ -202,8 +202,8 @@
 	</div>
 
 	<!-- Main Header with clean geometric design and mobile responsive layout -->
-	<div class="relative mb-4 sm:mb-6">
-		<div class="font-display w-full overflow-hidden bg-slate-900">
+	<div class="relative">
+		<div class="w-full overflow-hidden bg-slate-900">
 			<!-- Main Header Content -->
 			<div class="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
 				<!-- Mobile Layout: Stack vertically -->

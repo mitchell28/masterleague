@@ -5,7 +5,6 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit(), devtoolsJson()],
-	logLevel: 'warn',
 	optimizeDeps: {
 		include: ['@lucide/svelte', 'motion'],
 		exclude: ['@vinejs/vine', '@fontsource-variable/work-sans']

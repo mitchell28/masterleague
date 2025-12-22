@@ -33,7 +33,7 @@
 </style>
 
 <!-- Hero Section with Football Pitch Aesthetic -->
-<div class="relative min-h-screen overflow-hidden">
+<div class="relative overflow-hidden">
 	<!-- Animated Football Pitch Lines Background -->
 	<div class="pointer-events-none absolute inset-0 animate-fade-in">
 		<!-- Center circle -->
@@ -59,7 +59,7 @@
 	</div>
 
 	<!-- Main Content -->
-	<div class="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 py-20">
+	<div class="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 -mt-20">
 		<div class="container mx-auto max-w-6xl">
 			<!-- Badge -->
 			<div class="mb-8 flex justify-center">
