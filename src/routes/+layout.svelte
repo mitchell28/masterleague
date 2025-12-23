@@ -18,7 +18,7 @@
 <Toaster />
 <Snowfall />
 <Navbar />
-<main class="min-h-screen sm:pt-26 pt-20" style="view-transition-name: bottom-nav-content;">
+<main class="min-h-screen sm:py-26 py-20" style="view-transition-name: bottom-nav-content;">
 	{@render children()}
 </main>
 <BottomNav />
