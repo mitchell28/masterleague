@@ -86,7 +86,9 @@ export const load = (async ({ params, locals }) => {
 		totalPoints: 0,
 		correctScorelines: 0,
 		correctOutcomes: 0,
-		incorrectPredictions: 0
+		incorrectPredictions: 0,
+		correctScorePoints: 0,
+		correctOutcomePoints: 0
 	};
 
 	// Get all weeks that have fixtures
@@ -374,6 +376,8 @@ export const load = (async ({ params, locals }) => {
 		let correctOutcomes = 0;
 		let incorrectPredictions = 0;
 		let totalPoints = 0;
+		let correctScorePoints = 0;
+		let correctOutcomePoints = 0;
 
 		completedPlayedPredictions.forEach((pred) => {
 			const points = pred.points || 0;
@@ -386,8 +390,10 @@ export const load = (async ({ params, locals }) => {
 				incorrectPredictions++;
 			} else if (points === 3 * multiplier) {
 				correctScorelines++; // Perfect score
+				correctScorePoints += points;
 			} else if (points === 1 * multiplier) {
 				correctOutcomes++; // Correct outcome but wrong score
+				correctOutcomePoints += points;
 			}
 		});
 
@@ -398,7 +404,9 @@ export const load = (async ({ params, locals }) => {
 			totalPoints,
 			correctScorelines,
 			correctOutcomes,
-			incorrectPredictions
+			incorrectPredictions,
+			correctScorePoints,
+			correctOutcomePoints
 		};
 
 		console.log(`Weekly stats for user ${userId}, week ${weekId}:`, stats);

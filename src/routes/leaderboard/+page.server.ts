@@ -1,12 +1,28 @@
 import { db } from '$lib/server/db';
 import { user as authUser, organization } from '$lib/server/db/auth/auth-schema';
 import { leagueTable, predictions, fixtures } from '$lib/server/db/schema';
-import { eq, and, sum } from 'drizzle-orm';
+import { eq, and, sum, sql, desc, asc } from 'drizzle-orm';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { MetaTagsProps } from 'svelte-meta-tags';
 import { getLeaderboardWeek, getCurrentWeek } from '$lib/server/engine/data/fixtures';
 import { getLeaderboard } from '$lib/server/engine/analytics/leaderboard.js';
+
+// Type for weekly points breakdown
+interface WeeklyPointsData {
+	weekId: number;
+	points: number;
+	correctScorelines: number;
+	correctOutcomes: number;
+	totalPredictions: number;
+}
+
+interface UserWeeklyBreakdown {
+	userId: string;
+	username: string;
+	totalPoints: number;
+	weeklyBreakdown: WeeklyPointsData[];
+}
 
 // Simple cache for frequently accessed data
 const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
@@ -33,7 +49,12 @@ export const load = (async ({ locals, url }) => {
 	}
 
 	const userId = locals.user.id;
-	const cacheKey = `leaderboard:${userId}`;
+
+	// Get week filter from URL params (null = overview/all weeks)
+	const weekParam = url.searchParams.get('week');
+	const selectedWeek = weekParam ? parseInt(weekParam, 10) : null;
+
+	const cacheKey = `leaderboard:${userId}:week-${selectedWeek || 'all'}`;
 
 	// Try cache first (5 minute TTL)
 	const cached = getCached(cacheKey);
@@ -61,7 +82,10 @@ export const load = (async ({ locals, url }) => {
 			selectedOrganization: null,
 			user: locals.user,
 			currentSeason: '2025-26',
-			leaderboardMeta: null
+			leaderboardMeta: null,
+			availableWeeks: [],
+			selectedWeek: null,
+			weeklyPointsBreakdown: []
 		};
 		setCache(cacheKey, fallbackData, 60000); // 1 minute for empty state
 		return fallbackData;
@@ -70,58 +94,164 @@ export const load = (async ({ locals, url }) => {
 	const selectedOrganization = defaultOrganization[0];
 
 	try {
-		// Parallel data fetching for better performance
-		const [currentWeek, leaderboard] = await Promise.all([
-			getLeaderboardWeek(),
-			getLeaderboard(selectedOrganization.id, '2025-26')
-		]);
+		// Get current week first (cached internally)
+		const currentWeek = await getLeaderboardWeek();
 
-		// Only calculate weekly points if we have leaderboard data
-		let enhancedLeaderboard = leaderboard;
-		if (leaderboard.length > 0) {
-			// Get weekly points for current week in parallel
-			const weeklyPointsData = await db
-				.select({
-					userId: predictions.userId,
-					weeklyPoints: sum(predictions.points)
-				})
-				.from(predictions)
-				.innerJoin(fixtures, eq(predictions.fixtureId, fixtures.id))
-				.where(
-					and(
-						eq(predictions.organizationId, selectedOrganization.id),
-						eq(fixtures.season, '2025-26'),
-						eq(fixtures.weekId, currentWeek)
-					)
-				)
-				.groupBy(predictions.userId);
+		// Cache keys for shared data
+		const weeksCacheKey = `weeks:${selectedOrganization.id}`;
+		const weeklyPointsCacheKey = `weekly-points:${selectedOrganization.id}`;
 
-			// Create optimized lookup map
-			const weeklyPointsMap = new Map(
-				weeklyPointsData.map((wp) => [wp.userId, wp.weeklyPoints || 0])
+		// Try to get cached weeks data
+		let availableWeeksData = getCached<{ weekId: number }[]>(weeksCacheKey);
+		let allWeeklyPoints = getCached<any[]>(weeklyPointsCacheKey);
+
+		// Parallel fetch only what we need
+		const fetchPromises: Promise<any>[] = [getLeaderboard(selectedOrganization.id, '2025-26')];
+
+		if (!availableWeeksData) {
+			fetchPromises.push(
+				db
+					.selectDistinct({ weekId: fixtures.weekId })
+					.from(fixtures)
+					.where(eq(fixtures.season, '2025-26'))
+					.orderBy(asc(fixtures.weekId))
 			);
+		}
 
-			// Enhance leaderboard with weekly points
-			enhancedLeaderboard = leaderboard.map((entry) => ({
-				...entry,
-				weeklyPoints: weeklyPointsMap.get(entry.userId) || 0
-			}));
+		if (!allWeeklyPoints) {
+			fetchPromises.push(
+				db
+					.select({
+						userId: predictions.userId,
+						weekId: fixtures.weekId,
+						points: sum(predictions.points),
+						// A correct scoreline gives 3 base points, so with multiplier it could be 3, 6, 9, etc. (divisible by 3 and >= 3)
+						// A correct outcome gives 1 base point, so with multiplier it could be 1, 2, 3, etc. but NOT divisible by 3 (unless it's 3 which is also a scoreline)
+						// We can check: if points >= 3 AND points % 3 = 0, it's a correct score. Otherwise if points > 0, it's a correct outcome.
+						correctScorelines: sql<number>`COUNT(CASE WHEN ${predictions.points} >= 3 AND ${predictions.points} % 3 = 0 THEN 1 END)`,
+						correctOutcomes: sql<number>`COUNT(CASE WHEN ${predictions.points} > 0 AND (${predictions.points} < 3 OR ${predictions.points} % 3 != 0) THEN 1 END)`,
+						totalPredictions: sql<number>`COUNT(*)`
+					})
+					.from(predictions)
+					.innerJoin(fixtures, eq(predictions.fixtureId, fixtures.id))
+					.where(
+						and(
+							eq(predictions.organizationId, selectedOrganization.id),
+							eq(fixtures.season, '2025-26'),
+							eq(fixtures.status, 'FINISHED')
+						)
+					)
+					.groupBy(predictions.userId, fixtures.weekId)
+			);
+		}
+
+		const results = await Promise.all(fetchPromises);
+		const leaderboard = results[0];
+
+		// Assign fetched data or use cached
+		let resultIndex = 1;
+		if (!availableWeeksData) {
+			availableWeeksData = results[resultIndex++];
+			setCache(weeksCacheKey, availableWeeksData, 600000); // 10 min cache for weeks
+		}
+		if (!allWeeklyPoints) {
+			allWeeklyPoints = results[resultIndex++];
+			setCache(weeklyPointsCacheKey, allWeeklyPoints, 120000); // 2 min cache for points (updates more often)
+		}
+
+		const availableWeeks = (availableWeeksData || [])
+			.map((w) => w.weekId)
+			.filter((w) => w <= currentWeek);
+
+		// Create a map of userId -> weekId -> points data
+		const userWeeklyMap = new Map<string, Map<number, WeeklyPointsData>>();
+		for (const row of allWeeklyPoints || []) {
+			if (!userWeeklyMap.has(row.userId)) {
+				userWeeklyMap.set(row.userId, new Map());
+			}
+			userWeeklyMap.get(row.userId)!.set(row.weekId, {
+				weekId: row.weekId,
+				points: Number(row.points) || 0,
+				correctScorelines: Number(row.correctScorelines) || 0,
+				correctOutcomes: Number(row.correctOutcomes) || 0,
+				totalPredictions: Number(row.totalPredictions) || 0
+			});
+		}
+
+		// Enhance leaderboard with weekly data (optimized - minimal object creation)
+		let enhancedLeaderboard: any[] = leaderboard;
+		if (leaderboard.length > 0) {
+			enhancedLeaderboard = leaderboard.map((entry: any) => {
+				const userWeeks = userWeeklyMap.get(entry.userId);
+				const currentWeekData = userWeeks?.get(currentWeek);
+
+				// Build weekly breakdown array (only for weeks up to current)
+				const weeklyBreakdown: WeeklyPointsData[] = [];
+				if (userWeeks) {
+					for (const weekId of availableWeeks) {
+						const weekData = userWeeks.get(weekId);
+						weeklyBreakdown.push({
+							weekId,
+							points: weekData?.points || 0,
+							correctScorelines: weekData?.correctScorelines || 0,
+							correctOutcomes: weekData?.correctOutcomes || 0,
+							totalPredictions: weekData?.totalPredictions || 0
+						});
+					}
+				}
+
+				return {
+					...entry,
+					weeklyPoints: currentWeekData?.points || 0,
+					weeklyBreakdown
+				};
+			});
+
+			// If a specific week is selected, calculate that week's points AND cumulative up to that week
+			if (selectedWeek !== null) {
+				enhancedLeaderboard = enhancedLeaderboard
+					.map((entry: any) => {
+						const weekData = entry.weeklyBreakdown?.find(
+							(w: WeeklyPointsData) => w.weekId === selectedWeek
+						);
+
+						// Calculate cumulative points up to and including selected week
+						let cumulativePoints = 0;
+						let cumulativeCorrect = 0;
+						for (const w of entry.weeklyBreakdown || []) {
+							if (w.weekId <= selectedWeek) {
+								cumulativePoints += w.points;
+								cumulativeCorrect += w.correctScorelines;
+							}
+						}
+
+						return {
+							...entry,
+							weeklyFilteredScore: weekData?.points || 0,
+							weeklyFilteredCorrect: weekData?.correctScorelines || 0,
+							cumulativePoints,
+							cumulativeCorrect
+						};
+					})
+					.sort((a: any, b: any) => (b.weeklyFilteredScore || 0) - (a.weeklyFilteredScore || 0));
+			}
 		}
 
 		// Meta tags for SEO
+		const pageTitle = selectedWeek ? `Week ${selectedWeek} Standings` : 'Overall Standings';
 		const pageMetaTags = Object.freeze({
-			title: 'Leaderboard',
+			title: pageTitle,
 			description:
 				'View the current leaderboard standings and see how you rank against other players in your prediction groups.',
 			canonical: new URL(url.pathname, url.origin).href,
 			openGraph: {
-				title: 'Leaderboard - Master League',
+				title: `${pageTitle} - Master League`,
 				description:
 					'View the current leaderboard standings and see how you rank against other players.',
 				url: new URL(url.pathname, url.origin).href
 			},
 			twitter: {
-				title: 'Leaderboard - Master League',
+				title: `${pageTitle} - Master League`,
 				description:
 					'View the current leaderboard standings and see how you rank against other players.'
 			}
@@ -134,7 +264,9 @@ export const load = (async ({ locals, url }) => {
 			user: locals.user,
 			currentSeason: '2025-26',
 			leaderboardMeta: null,
-			pageMetaTags
+			pageMetaTags,
+			availableWeeks,
+			selectedWeek
 		};
 
 		// Cache the result for 5 minutes
@@ -142,10 +274,11 @@ export const load = (async ({ locals, url }) => {
 		return result;
 	} catch (error) {
 		console.error('Error loading leaderboard:', error);
+		const currentWeek = await getLeaderboardWeek();
 
 		// Return minimal data on error
 		const errorResult = {
-			currentWeek: await getLeaderboardWeek(),
+			currentWeek,
 			leaderboard: [],
 			selectedOrganization,
 			user: locals.user,
@@ -154,7 +287,9 @@ export const load = (async ({ locals, url }) => {
 			pageMetaTags: {
 				title: 'Leaderboard - Error',
 				description: 'Leaderboard temporarily unavailable'
-			}
+			},
+			availableWeeks: [] as number[],
+			selectedWeek: null as number | null
 		};
 
 		// Short cache for error state

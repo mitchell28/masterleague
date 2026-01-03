@@ -401,3 +401,59 @@ export const predictionSafetyCheck = schedules.task({
 		};
 	}
 });
+
+// Leaderboard integrity check - verifies points match between predictions and leaderboard
+// This catches any drift caused by bugs like the multiplier issue
+export const leaderboardIntegrityCheck = schedules.task({
+	id: 'leaderboard-integrity-check',
+	cron: '0 4 * * *', // Daily at 4 AM UTC (quiet time, after all matches)
+	run: async (payload) => {
+		console.log('🔍 Running leaderboard integrity check...');
+		console.log('Scheduled for:', payload.timestamp);
+		console.log('Last run:', payload.lastTimestamp);
+
+		const baseUrl = getBaseUrl();
+
+		const requestPayload = {
+			autoFix: true, // Automatically fix any mismatches
+			threshold: 0 // Alert on any difference
+		};
+
+		const response = await fetch(`${baseUrl}/api/cron/leaderboard-integrity-check`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(requestPayload)
+		});
+
+		if (!response.ok) {
+			throw new Error(`Leaderboard integrity check failed: ${response.statusText}`);
+		}
+
+		const result = await response.json();
+		console.log('🔍 Leaderboard integrity check completed:', result);
+
+		// Log summary
+		if (result.mismatches?.length > 0) {
+			console.warn(
+				`⚠️ Found ${result.mismatches.length} point mismatches! Auto-fixed: ${result.fixedCount} orgs`
+			);
+			// Log details of mismatches for debugging
+			for (const mismatch of result.mismatches.slice(0, 5)) {
+				console.warn(
+					`   User ${mismatch.userId}: expected ${mismatch.expectedPoints}, got ${mismatch.actualPoints} (diff: ${mismatch.difference})`
+				);
+			}
+		} else {
+			console.log('✅ All leaderboard points match prediction totals');
+		}
+
+		return {
+			success: true,
+			timestamp: new Date().toISOString(),
+			scheduleId: payload.scheduleId,
+			result
+		};
+	}
+});

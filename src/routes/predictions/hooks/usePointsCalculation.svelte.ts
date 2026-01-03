@@ -282,8 +282,13 @@ export function usePointsCalculation() {
 	function calculatePredictionStats(predictions: Prediction[]) {
 		const withPoints = predictions.filter((p) => p.points !== undefined);
 		const totalPoints = withPoints.reduce((sum, p) => sum + (p.points || 0), 0);
-		const perfectScores = withPoints.filter((p) => p.points && p.points >= 3).length;
-		const correctOutcomes = withPoints.filter((p) => p.points === 1).length;
+		// With multipliers: correct score = 3, 6, 9... (divisible by 3), correct outcome = 1, 2, 4, 5... (not divisible by 3)
+		const perfectScores = withPoints.filter(
+			(p) => p.points && p.points >= 3 && p.points % 3 === 0
+		).length;
+		const correctOutcomes = withPoints.filter(
+			(p) => p.points && p.points > 0 && (p.points < 3 || p.points % 3 !== 0)
+		).length;
 
 		return {
 			total: predictions.length,
@@ -292,7 +297,7 @@ export function usePointsCalculation() {
 			totalPoints,
 			perfectScores,
 			correctOutcomes,
-			incorrectPredictions: withPoints.length - correctOutcomes,
+			incorrectPredictions: withPoints.length - perfectScores - correctOutcomes,
 			averagePoints: withPoints.length > 0 ? totalPoints / withPoints.length : 0
 		};
 	}

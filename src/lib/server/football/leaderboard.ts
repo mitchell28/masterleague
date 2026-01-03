@@ -160,15 +160,18 @@ export async function recalculateLeaderboard(
 					if (fixture.homeScore !== null && fixture.awayScore !== null) {
 						completedFixtures++;
 
-						// Perfect score
+						// Get the multiplier (default to 1 if not set)
+						const multiplier = fixture.pointsMultiplier || 1;
+
+						// Perfect score (3 points * multiplier)
 						if (
 							prediction.predictedHomeScore === fixture.homeScore &&
 							prediction.predictedAwayScore === fixture.awayScore
 						) {
 							correctScorelines++;
-							totalPoints += 3;
+							totalPoints += 3 * multiplier;
 						}
-						// Correct outcome
+						// Correct outcome (1 point * multiplier)
 						else if (
 							(prediction.predictedHomeScore > prediction.predictedAwayScore &&
 								fixture.homeScore > fixture.awayScore) ||
@@ -178,7 +181,7 @@ export async function recalculateLeaderboard(
 								fixture.homeScore === fixture.awayScore)
 						) {
 							correctOutcomes++;
-							totalPoints += 1;
+							totalPoints += 1 * multiplier;
 						}
 					}
 				}

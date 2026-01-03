@@ -43,7 +43,7 @@
 			class="custom-select border-accent min-h-11 w-full touch-manipulation appearance-none border-2 px-4 py-2.5 text-sm font-medium text-white transition-colors focus:outline-none sm:min-h-10 sm:py-2"
 		>
 			{#each weeks as weekNumber}
-				<option value={weekNumber} class=" text-white">
+				<option value={weekNumber} class="text-white">
 					Week {weekNumber}
 				</option>
 			{/each}

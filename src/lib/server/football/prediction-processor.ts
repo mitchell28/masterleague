@@ -3,7 +3,6 @@ import { fixtures, predictions, leagueTable } from '../db/schema.js';
 import { eq, and, isNull, inArray, isNotNull, sql } from 'drizzle-orm';
 import { recalculateLeaderboard } from './leaderboard.js';
 import { calculatePredictionPoints } from './utils.js';
-import { randomUUID } from 'crypto';
 
 /**
  * Prediction update result interface
@@ -17,16 +16,6 @@ export interface PredictionUpdateResult {
 	leaderboardsUpdated: string[];
 	executionTime: number;
 	message: string;
-}
-
-/**
- * User stats tracking for batch updates
- */
-interface UserStatsUpdate {
-	organizationId: string;
-	correctScore: number;
-	correctOutcome: number;
-	points: number;
 }
 
 /**
@@ -77,7 +66,7 @@ export async function updatePredictions(
 
 		// Process each finished fixture
 		for (const fixture of finishedFixtures) {
-			console.log(`Processing fixture: ${fixture.homeTeam} vs ${fixture.awayTeam}`);
+			console.log(`Processing fixture: ${fixture.homeTeamId} vs ${fixture.awayTeamId}`);
 
 			// Get all predictions for this fixture
 			const fixturePredictions = await db
@@ -97,20 +86,21 @@ export async function updatePredictions(
 			// Calculate points for each prediction
 			for (const prediction of fixturePredictions) {
 				const points = calculatePredictionPoints(
-					prediction.homeScore,
-					prediction.awayScore,
+					prediction.predictedHomeScore,
+					prediction.predictedAwayScore,
 					fixture.homeScore!,
 					fixture.awayScore!,
 					fixture.pointsMultiplier || 1
 				);
 
 				const isCorrectScore =
-					prediction.homeScore === fixture.homeScore && prediction.awayScore === fixture.awayScore;
+					prediction.predictedHomeScore === fixture.homeScore &&
+					prediction.predictedAwayScore === fixture.awayScore;
 
 				const predictedOutcome =
-					prediction.homeScore > prediction.awayScore
+					prediction.predictedHomeScore > prediction.predictedAwayScore
 						? 'home'
-						: prediction.homeScore < prediction.awayScore
+						: prediction.predictedHomeScore < prediction.predictedAwayScore
 							? 'away'
 							: 'draw';
 
@@ -135,33 +125,29 @@ export async function updatePredictions(
 					affectedUsers.add(prediction.userId);
 				}
 
+				// Track affected organizations from predictions
+				affectedOrganizations.add(prediction.organizationId);
+
 				predictionsProcessed++;
 			}
 
-			// Batch update predictions
+			// Batch update predictions (only update points - isCorrectScore/isCorrectOutcome not in schema)
 			for (const update of batchPredictionUpdates) {
 				await db
 					.update(predictions)
 					.set({
-						points: update.points,
-						isCorrectScore: update.isCorrectScore,
-						isCorrectOutcome: update.isCorrectOutcome,
-						lastUpdated: new Date()
+						points: update.points
 					})
 					.where(eq(predictions.id, update.id));
 			}
 
-			// Mark fixture as processed by setting points
+			// Mark fixture as processed by updating lastUpdated
 			await db
 				.update(fixtures)
 				.set({
-					points: true, // Mark as processed
 					lastUpdated: new Date()
 				})
 				.where(eq(fixtures.id, fixture.id));
-
-			// Track affected organizations
-			affectedOrganizations.add(fixture.organizationId);
 
 			console.log(
 				`✅ Processed ${batchPredictionUpdates.length} predictions for fixture ${fixture.id}`
@@ -244,16 +230,16 @@ export async function analyzePredictions(
 	const startTime = Date.now();
 
 	try {
-		// Build query conditions
+		// Build query conditions - filter by organization on predictions, season/week on fixtures
 		const whereConditions = [
-			eq(fixtures.organizationId, organizationId),
+			eq(predictions.organizationId, organizationId),
 			eq(fixtures.season, season),
-			isNull(fixtures.homeScore) === false,
-			isNull(fixtures.awayScore) === false
+			isNotNull(fixtures.homeScore),
+			isNotNull(fixtures.awayScore)
 		];
 
 		if (gameWeek) {
-			whereConditions.push(eq(fixtures.gameWeek, gameWeek));
+			whereConditions.push(eq(fixtures.weekId, gameWeek));
 		}
 
 		// Get all finished fixtures with predictions
@@ -286,8 +272,8 @@ export async function analyzePredictions(
 			totalPredictions++;
 
 			const points = calculatePredictionPoints(
-				prediction.homeScore,
-				prediction.awayScore,
+				prediction.predictedHomeScore,
+				prediction.predictedAwayScore,
 				fixture.homeScore!,
 				fixture.awayScore!,
 				fixture.pointsMultiplier || 1
@@ -296,7 +282,8 @@ export async function analyzePredictions(
 			totalPointsAwarded += points;
 
 			const isCorrectScore =
-				prediction.homeScore === fixture.homeScore && prediction.awayScore === fixture.awayScore;
+				prediction.predictedHomeScore === fixture.homeScore &&
+				prediction.predictedAwayScore === fixture.awayScore;
 			const isCorrectOutcome = points > 0;
 
 			if (isCorrectScore) correctScorelines++;

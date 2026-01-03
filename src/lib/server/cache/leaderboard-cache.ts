@@ -6,11 +6,26 @@
 import { cache, CacheKeys as SimpleCacheKeys, CacheHelpers } from './simple-cache.js';
 
 /**
+ * Leaderboard entry type
+ */
+export interface LeaderboardEntry {
+	userId: string;
+	userName: string;
+	userEmail: string;
+	totalPoints: number;
+	correctScorelines: number;
+	correctOutcomes: number;
+	predictedFixtures: number;
+	completedFixtures: number;
+	lastUpdated: string;
+}
+
+/**
  * Simple leaderboard cache interface
  */
 export interface LeaderboardData {
 	totalUsers: number;
-	entries: any[];
+	entries: LeaderboardEntry[];
 	lastUpdate: string;
 }
 
@@ -27,11 +42,35 @@ export interface LeaderboardMeta {
  */
 export class LeaderboardCache {
 	// Get cached leaderboard data
+	static async get(
+		organizationId: string,
+		season: string
+	): Promise<{ data: LeaderboardEntry[]; totalUsers: number } | null> {
+		const cached = cache.get<LeaderboardData>(SimpleCacheKeys.leaderboard(organizationId, season));
+		if (!cached) return null;
+		return { data: cached.entries || [], totalUsers: cached.totalUsers };
+	}
+
+	// Cache leaderboard data
+	static async set(
+		organizationId: string,
+		season: string,
+		leaderboardData: LeaderboardEntry[]
+	): Promise<void> {
+		const data: LeaderboardData = {
+			totalUsers: leaderboardData.length,
+			entries: leaderboardData,
+			lastUpdate: new Date().toISOString()
+		};
+		cache.set(SimpleCacheKeys.leaderboard(organizationId, season), data, 15); // 15 minutes TTL
+	}
+
+	// Legacy alias for getData
 	static async getData(organizationId: string, season: string): Promise<LeaderboardData | null> {
 		return cache.get<LeaderboardData>(SimpleCacheKeys.leaderboard(organizationId, season));
 	}
 
-	// Cache leaderboard data
+	// Legacy alias for setData
 	static async setData(
 		organizationId: string,
 		season: string,

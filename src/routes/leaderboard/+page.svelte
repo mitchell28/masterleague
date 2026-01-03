@@ -1,21 +1,78 @@
 <script lang="ts">
 	import { type PageData } from './$types';
-	import { ChevronUp, TrendingUp } from '@lucide/svelte';
+	import { ChevronUp, TrendingUp, Loader2 } from '@lucide/svelte';
 	import { useLeaderboardSorting } from './hooks';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { navigating } from '$app/stores';
+	import WeekSelector from '$lib/components/WeekSelector.svelte';
 
 	// Props and state
 	let { data } = $props<{ data: PageData }>();
 
 	// Update leaderboard when data changes (reactive to server load updates)
 	let leaderboard = $derived(data.leaderboard || []);
+	let availableWeeks = $derived(data.availableWeeks || []);
+	let selectedWeek = $derived(data.selectedWeek);
+	let isWeekView = $derived(selectedWeek !== null);
+	
+	// Loading state derived from navigating store
+	let isLoading = $derived($navigating !== null);
 
-	// Use custom hooks
+	// Use custom hooks - reactive to view mode changes
+	// The server pre-sorts data based on view mode, so we just use the appropriate default
 	const sorting = useLeaderboardSorting(() => leaderboard, {
 		defaultSortKey: 'score',
 		defaultSortDirection: 'desc'
 	});
 
-	$inspect(sorting.sortedData);
+	// Week selector handlers
+	function handleWeekChange(newWeek: number) {
+		if (newWeek !== selectedWeek) {
+			goto(`/leaderboard?week=${newWeek}`);
+		}
+	}
+
+	function handleNavigate(direction: 'prev' | 'next') {
+		const currentWeekIndex = selectedWeek ? availableWeeks.indexOf(selectedWeek) : -1;
+		let targetWeek: number;
+
+		if (direction === 'prev') {
+			targetWeek = availableWeeks[currentWeekIndex - 1];
+		} else {
+			targetWeek = availableWeeks[currentWeekIndex + 1];
+		}
+
+		if (targetWeek && availableWeeks.includes(targetWeek)) {
+			goto(`/leaderboard?week=${targetWeek}`);
+		}
+	}
+
+	// Toggle between all weeks and week view
+	function toggleViewMode() {
+		if (isWeekView) {
+			goto('/leaderboard');
+		} else {
+			const latestWeek = availableWeeks[availableWeeks.length - 1] || data.currentWeek;
+			goto(`/leaderboard?week=${latestWeek}`);
+		}
+	}
+
+	// Get display score based on view mode
+	function getDisplayScore(entry: any): number {
+		if (isWeekView) {
+			return entry.weeklyFilteredScore || 0;
+		}
+		return entry.score || 0;
+	}
+
+	// Get display correct score count based on view mode
+	function getDisplayCorrect(entry: any): number {
+		if (isWeekView) {
+			return entry.weeklyFilteredCorrect || 0;
+		}
+		return entry.correctScorelines || 0;
+	}
 </script>
 
 <div class="mx-auto">
@@ -27,7 +84,9 @@
 				<!-- Mobile Layout: Stack vertically -->
 				<div class="flex flex-col gap-4 sm:hidden">
 					<div class="text-center">
-						<h1 class="text-2xl font-bold text-white">Overall Standings</h1>
+						<h1 class="text-2xl font-bold text-white">
+							{isWeekView ? `Week ${selectedWeek} Standings` : 'Overall Standings'}
+						</h1>
 						<div class="mt-2 flex flex-col items-center gap-2">
 							<span class="text-xs font-medium text-slate-300">
 								{data.selectedOrganization?.name || 'Master League'}
@@ -40,23 +99,83 @@
 							</div>
 						</div>
 					</div>
+					
+					<!-- Mobile Week Selector -->
+					<div class="flex items-center justify-center gap-2">
+						<!-- Segmented Toggle -->
+						<div class="inline-flex border-2 border-slate-700 bg-slate-800">
+							<button
+								onclick={toggleViewMode}
+								class="min-h-11 px-3 text-xs font-medium transition-all {!isWeekView ? 'bg-accent text-black' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}"
+							>
+								Overall
+							</button>
+							<button
+								onclick={toggleViewMode}
+								class="min-h-11 px-3 text-xs font-medium transition-all {isWeekView ? 'bg-accent text-black' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}"
+							>
+								Weekly
+							</button>
+						</div>
+						
+						{#if isWeekView && selectedWeek}
+							<WeekSelector
+								weeks={availableWeeks}
+								currentWeek={data.currentWeek}
+								week={selectedWeek}
+								onWeekChange={handleWeekChange}
+								onNavigate={handleNavigate}
+							/>
+						{/if}
+					</div>
 				</div>
 
 				<!-- Desktop Layout: Side by side -->
 				<div class="hidden sm:block">
 					<div class="mb-3 flex items-center justify-between">
 						<div>
-							<h1 class="text-3xl font-bold text-white lg:text-4xl">Overall Standings</h1>
+							<h1 class="text-3xl font-bold text-white lg:text-4xl">
+								{isWeekView ? `Week ${selectedWeek} Standings` : 'Overall Standings'}
+							</h1>
 							<div class="mt-2 flex items-center gap-3">
 								<span class="text-sm font-medium text-slate-300">
 									{data.selectedOrganization?.name || 'Master League'}
 								</span>
 							</div>
 						</div>
-						<div class="flex items-center gap-4 text-base text-slate-400">
-							<div>Week <span class="font-semibold text-white">{data.currentWeek}</span></div>
-							<div>
-								Total Players <span class="font-semibold text-white">{leaderboard.length}</span>
+						<div class="flex items-center gap-4">
+							<!-- Segmented Toggle -->
+							<div class="inline-flex border-2 border-slate-700 bg-slate-800">
+								<button
+									onclick={toggleViewMode}
+									class="min-h-10 px-4 text-sm font-medium transition-all {!isWeekView ? 'bg-accent text-black' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}"
+								>
+									Overall
+								</button>
+								<button
+									onclick={toggleViewMode}
+									class="min-h-10 px-4 text-sm font-medium transition-all {isWeekView ? 'bg-accent text-black' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}"
+								>
+									Weekly
+								</button>
+							</div>
+							
+							<!-- Week Selector - Only show when in week view -->
+							{#if isWeekView && selectedWeek}
+								<WeekSelector
+									weeks={availableWeeks}
+									currentWeek={data.currentWeek}
+									week={selectedWeek}
+									onWeekChange={handleWeekChange}
+									onNavigate={handleNavigate}
+								/>
+							{/if}
+							
+							<div class="flex items-center gap-4 text-base text-slate-400">
+								<div>Week <span class="font-semibold text-white">{data.currentWeek}</span></div>
+								<div>
+									Total Players <span class="font-semibold text-white">{leaderboard.length}</span>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -67,7 +186,17 @@
 
 	<div class="mx-auto max-w-6xl px-4 sm:px-6">
 		<!-- Leaderboard table clean card with mobile responsive design -->
-		<div class="overflow-hidden bg-slate-800/50">
+		<div class="relative overflow-hidden bg-slate-800/50">
+			<!-- Loading Overlay -->
+			{#if isLoading}
+				<div class="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
+					<div class="flex flex-col items-center gap-3">
+						<Loader2 size={32} class="animate-spin text-indigo-400" />
+						<span class="text-sm font-medium text-slate-300">Loading...</span>
+					</div>
+				</div>
+			{/if}
+			
 			<!-- Mobile Card View (visible on small screens) -->
 			<div class="block sm:hidden">
 				{#if sorting.sortedData && sorting.sortedData.length > 0}
@@ -96,9 +225,9 @@
 									<!-- Right side: Total points -->
 									<div class="ml-4 text-right">
 										<div class="text-lg font-bold text-indigo-300">
-											{entry.score || 0}
+											{getDisplayScore(entry)}
 										</div>
-										<div class="text-xs text-slate-400">points</div>
+										<div class="text-xs text-slate-400">{isWeekView ? 'week pts' : 'points'}</div>
 									</div>
 								</div>
 
@@ -107,19 +236,28 @@
 									<div class="flex items-center space-x-1">
 										<span class="text-slate-400">Correct:</span>
 										<span class="font-medium text-green-400">
-											{entry.correctScorelines || 0}
+											{getDisplayCorrect(entry)}
 										</span>
 									</div>
-									<div class="flex items-center space-x-1">
-										<span class="text-slate-400">Week {data.currentWeek}:</span>
-										<span
-											class="font-medium {entry.weeklyPoints > 0
-												? 'text-blue-400'
-												: 'text-slate-500'}"
-										>
-											{entry.weeklyPoints > 0 ? `+${entry.weeklyPoints}` : '0'}
-										</span>
-									</div>
+									{#if isWeekView}
+										<div class="flex items-center space-x-1">
+											<span class="text-slate-400">Total (Wk 1-{selectedWeek}):</span>
+											<span class="font-medium text-slate-300">
+												{entry.cumulativePoints || 0}
+											</span>
+										</div>
+									{:else}
+										<div class="flex items-center space-x-1">
+											<span class="text-slate-400">Week {data.currentWeek}:</span>
+											<span
+												class="font-medium {entry.weeklyPoints > 0
+													? 'text-blue-400'
+													: 'text-slate-500'}"
+											>
+												{entry.weeklyPoints > 0 ? `+${entry.weeklyPoints}` : '0'}
+											</span>
+										</div>
+									{/if}
 								</div>
 							</div>
 
@@ -154,40 +292,49 @@
 							</th>
 							<th
 								class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
-								onclick={() => sorting.toggleSort('score')}
+								onclick={() => sorting.toggleSort(isWeekView ? 'weeklyFilteredScore' : 'score')}
 							>
 								<div class="flex items-center justify-center">
-									<span>Points</span>
+									<span>{isWeekView ? 'Week Points' : 'Total Points'}</span>
 									<ChevronUp
 										size={16}
-										class={`ml-1 text-slate-400 ${sorting.sortKey === 'score' ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+										class={`ml-1 text-slate-400 ${(isWeekView ? sorting.sortKey === 'weeklyFilteredScore' : sorting.sortKey === 'score') ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
 									/>
 								</div>
 							</th>
 							<th
 								class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
-								onclick={() => sorting.toggleSort('correctScorelines')}
+								onclick={() => sorting.toggleSort(isWeekView ? 'weeklyFilteredCorrect' : 'correctScorelines')}
 							>
 								<div class="flex items-center justify-center">
 									<span>Correct</span>
 									<ChevronUp
 										size={16}
-										class={`ml-1 text-slate-400 ${sorting.sortKey === 'correctScorelines' ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+										class={`ml-1 text-slate-400 ${(isWeekView ? sorting.sortKey === 'weeklyFilteredCorrect' : sorting.sortKey === 'correctScorelines') ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
 									/>
 								</div>
 							</th>
-							<th
-								class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
-								onclick={() => sorting.toggleSort('weeklyPoints')}
-							>
-								<div class="flex items-center justify-center">
-									<span>Week {data.currentWeek}</span>
-									<ChevronUp
-										size={16}
-										class={`ml-1 text-slate-400 ${sorting.sortKey === 'weeklyPoints' ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
-									/>
-								</div>
-							</th>
+							{#if !isWeekView}
+								<th
+									class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
+									onclick={() => sorting.toggleSort('weeklyPoints')}
+								>
+									<div class="flex items-center justify-center">
+										<span>Week {data.currentWeek}</span>
+										<ChevronUp
+											size={16}
+											class={`ml-1 text-slate-400 ${sorting.sortKey === 'weeklyPoints' ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+										/>
+									</div>
+								</th>
+							{:else}
+								<th
+									class="px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase"
+									title="Cumulative points through Week {selectedWeek}"
+								>
+									<span>Total (Wk 1-{selectedWeek})</span>
+								</th>
+							{/if}
 							<th
 								class="px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase"
 							>
@@ -203,7 +350,7 @@
 								>
 									<td colspan="5" class="p-0">
 										<a
-											href={`/leaderboard/${entry.userId}/${data.currentWeek}`}
+											href={`/leaderboard/${entry.userId}/${isWeekView ? selectedWeek : data.currentWeek}`}
 											class="flex w-full cursor-pointer"
 											aria-label="View predictions for {entry.username}"
 										>
@@ -225,28 +372,34 @@
 													</div>
 												</div>
 											</div>
-											<!-- Total points -->
+											<!-- Points (total or week depending on view) -->
 											<div
 												class="flex w-1/5 flex-none items-center justify-center px-4 py-3 text-center text-base font-bold whitespace-nowrap text-indigo-300 transition-colors group-hover:text-indigo-200"
 											>
-												{entry.score || 0}
+												{getDisplayScore(entry)}
 											</div>
-											<!-- Correct predictions -->
-											<div
-												class="flex w-1/5 flex-none items-center justify-center px-4 py-3 text-center text-base font-medium whitespace-nowrap text-green-400 transition-colors group-hover:text-green-300"
-											>
-												{entry.correctScorelines || 0}
+												<!-- Correct predictions -->
+												<div
+													class="flex w-1/5 flex-none items-center justify-center px-4 py-3 text-center text-base font-medium whitespace-nowrap text-green-400 transition-colors group-hover:text-green-300"
+												>
+													{getDisplayCorrect(entry)}
 											</div>
-											<!-- Weekly points -->
+											<!-- Context column (current week points or cumulative total) -->
 											<div
 												class="flex w-1/5 flex-none items-center justify-center px-4 py-3 text-center text-base font-medium whitespace-nowrap transition-colors group-hover:text-blue-300"
 											>
-												{#if entry.weeklyPoints > 0}
-													<div class="flex items-center justify-center text-blue-400">
-														<span class="font-semibold">+{entry.weeklyPoints}</span>
-													</div>
+												{#if isWeekView}
+													<!-- Show cumulative total up to selected week -->
+													<span class="text-slate-400" title="Total through Week {selectedWeek}">{entry.cumulativePoints || 0}</span>
 												{:else}
-													<span class="text-slate-500">0</span>
+													<!-- Show current week points when in overview -->
+													{#if entry.weeklyPoints > 0}
+														<div class="flex items-center justify-center text-blue-400">
+															<span class="font-semibold">+{entry.weeklyPoints}</span>
+														</div>
+													{:else}
+														<span class="text-slate-500">0</span>
+													{/if}
 												{/if}
 											</div>
 											<!-- View Stats Button -->
@@ -285,10 +438,10 @@
 					</p>
 					<ul class="grid gap-2 text-sm text-slate-300 sm:grid-cols-3 sm:text-base">
 						<li class="flex items-center">
-							<span class="mr-2 inline-block h-2.5 w-2.5 bg-green-500"></span>Perfect Score: 3 pts
+							<span class="mr-2 inline-block h-2.5 w-2.5 bg-green-500"></span>Correct Score: 3 pts
 						</li>
 						<li class="flex items-center">
-							<span class="mr-2 inline-block h-2.5 w-2.5 bg-blue-500"></span>Correct Outcome: 1 pt
+							<span class="mr-2 inline-block h-2.5 w-2.5 bg-blue-500"></span>Outcome: 1 pt
 						</li>
 						<li class="flex items-center">
 							<span class="mr-2 inline-block h-2.5 w-2.5 bg-red-500"></span>Incorrect: 0 pts

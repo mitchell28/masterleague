@@ -79,17 +79,20 @@
 			<div class="grid grid-cols-3 gap-4">
 				<div class="border-b-accent border-b-4 bg-slate-900 p-4">
 					<div class="text-accent text-lg font-bold sm:text-2xl">{stats.correctScorelines}</div>
-					<div class="text-xs text-slate-400 sm:text-sm">Perfect Scores</div>
+					<div class="text-xs text-slate-400 sm:text-sm">Correct Scores</div>
+					<div class="mt-1 text-xs font-medium text-green-400">+{stats.correctScorePoints || 0} pts</div>
 				</div>
 
 				<div class="border-b-4 border-b-blue-500 bg-slate-900 p-4">
 					<div class="text-lg font-bold text-blue-400 sm:text-2xl">{stats.correctOutcomes}</div>
-					<div class="text-xs text-slate-400 sm:text-sm">Correct</div>
+					<div class="text-xs text-slate-400 sm:text-sm">Outcomes</div>
+					<div class="mt-1 text-xs font-medium text-blue-400">+{stats.correctOutcomePoints || 0} pts</div>
 				</div>
 
 				<div class="border-b-4 border-b-red-500 bg-slate-900 p-4">
 					<div class="text-lg font-bold text-red-400 sm:text-2xl">{stats.incorrectPredictions}</div>
 					<div class="text-xs text-slate-400 sm:text-sm">Incorrect</div>
+					<div class="mt-1 text-xs font-medium text-slate-500">0 pts</div>
 				</div>
 			</div>
 		</div>
