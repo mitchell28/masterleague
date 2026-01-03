@@ -150,17 +150,66 @@ export const POST: RequestHandler = async ({ request }) => {
 			});
 		}
 
+		// Check if the week has already started (i.e. the first upcoming fixture is NOT the first fixture of the week)
+		// We only want to send reminders before the FIRST game of the week.
+		// We look at ALL fixtures for the week (including finished ones) to find the true start of the week.
+		const firstFixtureOfWeek = await db
+			.select({ id: fixtures.id, matchDate: fixtures.matchDate })
+			.from(fixtures)
+			.where(and(eq(fixtures.weekId, currentWeek), eq(fixtures.season, '2025-26')))
+			.orderBy(fixtures.matchDate)
+			.limit(1)
+			.then((rows) => rows[0]);
+
+		// Use timestamp comparison to handle multiple fixtures starting at the same time
+		if (
+			firstFixtureOfWeek &&
+			new Date(upcomingFixtures[0].matchDate).getTime() >
+				new Date(firstFixtureOfWeek.matchDate).getTime() &&
+			!force
+		) {
+			console.log('⏭️ Week has already started (first fixture passed) - skipping reminders');
+			return json({
+				success: true,
+				skipped: true,
+				reason: 'week-already-started',
+				week: currentWeek
+			});
+		}
+
 		// Get first kickoff time
-		const firstKickoff = upcomingFixtures[0]?.matchDate
-			? new Date(upcomingFixtures[0].matchDate).toLocaleString('en-GB', {
-					weekday: 'long',
-					day: 'numeric',
-					month: 'long',
-					hour: '2-digit',
-					minute: '2-digit',
-					timeZone: 'Europe/London'
-				})
-			: 'Soon';
+		const firstFixture = upcomingFixtures[0];
+		const firstKickoffDate = new Date(firstFixture.matchDate);
+		const now = new Date();
+		const diffInHours = (firstKickoffDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+		console.log(
+			`First kickoff: ${firstKickoffDate.toISOString()}, Diff: ${diffInHours.toFixed(2)} hours`
+		);
+
+		if (!force) {
+			// Check if we are in the 5 hour window (4.5 to 5.5 hours)
+			// This assumes the cron runs hourly
+			if (diffInHours < 4.5 || diffInHours >= 5.5) {
+				console.log('⏳ Not time yet (or too late) for reminders');
+				return json({
+					success: true,
+					skipped: true,
+					reason: 'not-time-window',
+					diffInHours,
+					week: currentWeek
+				});
+			}
+		}
+
+		const firstKickoff = firstKickoffDate.toLocaleString('en-GB', {
+			weekday: 'long',
+			day: 'numeric',
+			month: 'long',
+			hour: '2-digit',
+			minute: '2-digit',
+			timeZone: 'Europe/London'
+		});
 
 		// Get users with missing predictions
 		const usersToNotify = await getUsersWithMissingPredictions(currentWeek);

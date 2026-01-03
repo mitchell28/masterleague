@@ -1,6 +1,7 @@
 @import '@fontsource-variable/work-sans';
 @import './fonts.css';
 @import 'tailwindcss';
+@source '../node_modules/layerchart/dist';
 @plugin "@tailwindcss/typography";
 @plugin '@toolwind/corner-shape';
 
@@ -10,6 +11,13 @@
 	--color-accent: oklch(88.266% 0.20737 155.248);
 	--color-background: oklch(20.992% 0.03416 263.451);
 
+	/* LayerChart color scheme - matches site's slate/dark theme */
+	--color-primary: oklch(70% 0.15 260);
+	--color-secondary: oklch(88.266% 0.20737 155.248);
+	--color-surface-100: oklch(25% 0.02 260);
+	--color-surface-200: oklch(30% 0.02 260);
+	--color-surface-300: oklch(35% 0.02 260);
+	--color-surface-content: oklch(95% 0.01 260);
 }
 
 @layer base {

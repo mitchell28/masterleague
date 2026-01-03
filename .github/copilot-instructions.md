@@ -118,7 +118,7 @@ export const actions = {
 
 - **3 points**: Exact score prediction
 - **1 point**: Correct outcome (win/draw/loss)
-- **Multipliers**: Random 2x-5x on selected fixtures per week
+- **Multipliers**: 1 2x-multiplier and 1 3x-multiplier on selected fixtures per week
 
 Processing flow: `finished-fixtures-checker` → `prediction-processor.ts` → `leaderboard.ts`
 

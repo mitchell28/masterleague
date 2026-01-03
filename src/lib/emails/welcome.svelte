@@ -141,7 +141,7 @@
 						</Text>
 					</Column>
 					<Column style="text-align: center; width: 33%;">
-						<Text style="margin: 0; font-size: 28px; font-weight: 700; color: #a78bfa;">2-5x</Text>
+						<Text style="margin: 0; font-size: 28px; font-weight: 700; color: #a78bfa;">2-3x</Text>
 						<Text
 							style="margin: 4px 0 0 0; font-size: 11px; color: {textMuted}; text-transform: uppercase; letter-spacing: 0.05em;"
 						>

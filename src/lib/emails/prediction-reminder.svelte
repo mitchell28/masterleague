@@ -38,7 +38,6 @@
 
 	let previewText = $derived(`${missingCount} predictions needed for Week ${week} - Master League`);
 	let predictionsUrl = $derived(`https://masterleague.app/predictions/${week}`);
-	const unsubscribeUrl = 'https://masterleague.app/settings';
 
 	// Site colors - Master League green
 	const accent = '#30FF9A';
@@ -81,8 +80,14 @@
 				</Text>
 
 				<Text style="font-size: 15px; color: #cbd5e1; margin: 0 0 24px 0; line-height: 1.6;">
-					You have <strong style="color: {accent};">{missingCount}</strong> predictions left to make
-					for Week {week}.
+					Match Week {week} is about to kick off! You have <strong style="color: {accent};"
+						>{missingCount}</strong
+					> predictions left to make.
+				</Text>
+
+				<Text style="font-size: 15px; color: #cbd5e1; margin: 0 0 24px 0; line-height: 1.6;">
+					Get your predictions in before the first game starts to ensure you don't miss out on any
+					points this week.
 				</Text>
 
 				{#if firstKickoff}
@@ -92,7 +97,7 @@
 						<Text
 							style="margin: 0; font-size: 12px; color: {textMuted}; text-transform: uppercase; letter-spacing: 0.05em;"
 						>
-							First Kickoff
+							First Kickoff Deadline
 						</Text>
 						<Text style="margin: 4px 0 0 0; font-size: 15px; font-weight: 600; color: #ffffff;">
 							{firstKickoff}
@@ -166,7 +171,7 @@
 						</Text>
 					</Column>
 					<Column style="text-align: center; width: 33%;">
-						<Text style="margin: 0; font-size: 24px; font-weight: 700; color: #a78bfa;">2-5x</Text>
+						<Text style="margin: 0; font-size: 24px; font-weight: 700; color: #a78bfa;">2-3x</Text>
 						<Text
 							style="margin: 4px 0 0 0; font-size: 11px; color: {textMuted}; text-transform: uppercase; letter-spacing: 0.05em;"
 						>
@@ -184,10 +189,6 @@
 					You're receiving this because you have email reminders enabled.
 				</Text>
 				<Text style="margin: 12px 0 0 0; font-size: 11px; color: #64748b;">
-					<Link href={unsubscribeUrl} style="color: {textMuted}; text-decoration: underline;"
-						>Manage preferences</Link
-					>
-					<span style="color: #475569;"> | </span>
 					<Link
 						href="https://masterleague.app"
 						style="color: {textMuted}; text-decoration: underline;">masterleague.app</Link

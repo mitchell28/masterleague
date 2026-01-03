@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { type PageData } from './$types';
-	import { ChevronUp, TrendingUp, Loader2 } from '@lucide/svelte';
+	import { ChevronUp, TrendingUp, Loader2, LineChart } from '@lucide/svelte';
 	import { useLeaderboardSorting } from './hooks';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { navigating } from '$app/stores';
 	import WeekSelector from '$lib/components/WeekSelector.svelte';
+	import RankingsChart from '$lib/components/RankingsChart.svelte';
 
 	// Props and state
 	let { data } = $props<{ data: PageData }>();
@@ -61,7 +62,7 @@
 	// Get display score based on view mode
 	function getDisplayScore(entry: any): number {
 		if (isWeekView) {
-			return entry.weeklyFilteredScore || 0;
+			return entry.cumulativePoints || 0;
 		}
 		return entry.score || 0;
 	}
@@ -69,7 +70,7 @@
 	// Get display correct score count based on view mode
 	function getDisplayCorrect(entry: any): number {
 		if (isWeekView) {
-			return entry.weeklyFilteredCorrect || 0;
+			return entry.cumulativeCorrect || 0;
 		}
 		return entry.correctScorelines || 0;
 	}
@@ -101,32 +102,34 @@
 					</div>
 					
 					<!-- Mobile Week Selector -->
-					<div class="flex items-center justify-center gap-2">
-						<!-- Segmented Toggle -->
-						<div class="inline-flex border-2 border-slate-700 bg-slate-800">
-							<button
-								onclick={toggleViewMode}
-								class="min-h-11 px-3 text-xs font-medium transition-all {!isWeekView ? 'bg-accent text-black' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}"
-							>
-								Overall
-							</button>
-							<button
-								onclick={toggleViewMode}
-								class="min-h-11 px-3 text-xs font-medium transition-all {isWeekView ? 'bg-accent text-black' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}"
-							>
-								Weekly
-							</button>
+					<div class="flex flex-col items-center gap-3">
+						<div class="flex items-center justify-center gap-2">
+							<!-- Segmented Toggle -->
+							<div class="inline-flex border-2 border-slate-700 bg-slate-800">
+								<button
+									onclick={toggleViewMode}
+									class="min-h-11 px-3 text-xs font-medium transition-all {!isWeekView ? 'bg-accent text-black' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}"
+								>
+									Overall
+								</button>
+								<button
+									onclick={toggleViewMode}
+									class="min-h-11 px-3 text-xs font-medium transition-all {isWeekView ? 'bg-accent text-black' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}"
+								>
+									Weekly
+								</button>
+							</div>
+							
+							{#if isWeekView && selectedWeek}
+								<WeekSelector
+									weeks={availableWeeks}
+									currentWeek={data.currentWeek}
+									week={selectedWeek}
+									onWeekChange={handleWeekChange}
+									onNavigate={handleNavigate}
+								/>
+							{/if}
 						</div>
-						
-						{#if isWeekView && selectedWeek}
-							<WeekSelector
-								weeks={availableWeeks}
-								currentWeek={data.currentWeek}
-								week={selectedWeek}
-								onWeekChange={handleWeekChange}
-								onNavigate={handleNavigate}
-							/>
-						{/if}
 					</div>
 				</div>
 
@@ -186,7 +189,7 @@
 
 	<div class="mx-auto max-w-6xl px-4 sm:px-6">
 		<!-- Leaderboard table clean card with mobile responsive design -->
-		<div class="relative overflow-hidden bg-slate-800/50">
+		<div class="relative overflow-hidden bg-slate-900">
 			<!-- Loading Overlay -->
 			{#if isLoading}
 				<div class="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm">
@@ -227,7 +230,7 @@
 										<div class="text-lg font-bold text-indigo-300">
 											{getDisplayScore(entry)}
 										</div>
-										<div class="text-xs text-slate-400">{isWeekView ? 'week pts' : 'points'}</div>
+										<div class="text-xs text-slate-400">points</div>
 									</div>
 								</div>
 
@@ -241,9 +244,9 @@
 									</div>
 									{#if isWeekView}
 										<div class="flex items-center space-x-1">
-											<span class="text-slate-400">Total (Wk 1-{selectedWeek}):</span>
-											<span class="font-medium text-slate-300">
-												{entry.cumulativePoints || 0}
+											<span class="text-slate-400">Week {selectedWeek}:</span>
+											<span class="font-medium text-blue-400">
+												+{entry.weeklyFilteredScore || 0}
 											</span>
 										</div>
 									{:else}
@@ -284,39 +287,39 @@
 					<thead class="bg-slate-900/50">
 						<tr>
 							<th
-								class="cursor-pointer px-4 py-3 text-left text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
+								class="w-[40%] cursor-pointer px-4 py-3 text-left text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
 							>
 								<div class="flex items-center">
 									<span>Player</span>
 								</div>
 							</th>
 							<th
-								class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
-								onclick={() => sorting.toggleSort(isWeekView ? 'weeklyFilteredScore' : 'score')}
+								class="w-[20%] cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
+								onclick={() => sorting.toggleSort(isWeekView ? 'cumulativePoints' : 'score')}
 							>
 								<div class="flex items-center justify-center">
-									<span>{isWeekView ? 'Week Points' : 'Total Points'}</span>
+									<span>Total Points</span>
 									<ChevronUp
 										size={16}
-										class={`ml-1 text-slate-400 ${(isWeekView ? sorting.sortKey === 'weeklyFilteredScore' : sorting.sortKey === 'score') ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+										class={`ml-1 text-slate-400 ${(isWeekView ? sorting.sortKey === 'cumulativePoints' : sorting.sortKey === 'score') ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
 									/>
 								</div>
 							</th>
 							<th
-								class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
-								onclick={() => sorting.toggleSort(isWeekView ? 'weeklyFilteredCorrect' : 'correctScorelines')}
+								class="w-[20%] cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
+								onclick={() => sorting.toggleSort(isWeekView ? 'cumulativeCorrect' : 'correctScorelines')}
 							>
 								<div class="flex items-center justify-center">
 									<span>Correct</span>
 									<ChevronUp
 										size={16}
-										class={`ml-1 text-slate-400 ${(isWeekView ? sorting.sortKey === 'weeklyFilteredCorrect' : sorting.sortKey === 'correctScorelines') ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
+										class={`ml-1 text-slate-400 ${(isWeekView ? sorting.sortKey === 'cumulativeCorrect' : sorting.sortKey === 'correctScorelines') ? (sorting.sortDirection === 'asc' ? 'rotate-180' : '') : ''}`}
 									/>
 								</div>
 							</th>
 							{#if !isWeekView}
 								<th
-									class="cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
+									class="w-[20%] cursor-pointer px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase hover:text-white"
 									onclick={() => sorting.toggleSort('weeklyPoints')}
 								>
 									<div class="flex items-center justify-center">
@@ -329,17 +332,12 @@
 								</th>
 							{:else}
 								<th
-									class="px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase"
-									title="Cumulative points through Week {selectedWeek}"
+									class="w-[20%] px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase"
+									title="Points for Week {selectedWeek}"
 								>
-									<span>Total (Wk 1-{selectedWeek})</span>
+									<span>Week {selectedWeek}</span>
 								</th>
 							{/if}
-							<th
-								class="px-4 py-3 text-center text-[11px] font-bold tracking-wider whitespace-nowrap text-slate-400/80 uppercase"
-							>
-								<span>Actions</span>
-							</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-700/60">
@@ -348,14 +346,14 @@
 								<tr
 									class="group cursor-pointer transition-all duration-200 hover:scale-[1.005] hover:bg-slate-700/30 hover:shadow-lg"
 								>
-									<td colspan="5" class="p-0">
+									<td colspan="4" class="p-0">
 										<a
 											href={`/leaderboard/${entry.userId}/${isWeekView ? selectedWeek : data.currentWeek}`}
 											class="flex w-full cursor-pointer"
 											aria-label="View predictions for {entry.username}"
 										>
 											<!-- Player name and rank -->
-											<div class="w-1/5 flex-none px-4 py-3 whitespace-nowrap">
+											<div class="w-[40%] flex-none px-4 py-3 whitespace-nowrap">
 												<div class="flex items-center">
 													<div
 														class="mr-3 flex h-8 w-8 items-center justify-center
@@ -374,23 +372,23 @@
 											</div>
 											<!-- Points (total or week depending on view) -->
 											<div
-												class="flex w-1/5 flex-none items-center justify-center px-4 py-3 text-center text-base font-bold whitespace-nowrap text-indigo-300 transition-colors group-hover:text-indigo-200"
+												class="flex w-[20%] flex-none items-center justify-center px-4 py-3 text-center text-base font-bold whitespace-nowrap text-indigo-300 transition-colors group-hover:text-indigo-200"
 											>
 												{getDisplayScore(entry)}
 											</div>
 												<!-- Correct predictions -->
 												<div
-													class="flex w-1/5 flex-none items-center justify-center px-4 py-3 text-center text-base font-medium whitespace-nowrap text-green-400 transition-colors group-hover:text-green-300"
+													class="flex w-[20%] flex-none items-center justify-center px-4 py-3 text-center text-base font-medium whitespace-nowrap text-green-400 transition-colors group-hover:text-green-300"
 												>
 													{getDisplayCorrect(entry)}
 											</div>
 											<!-- Context column (current week points or cumulative total) -->
 											<div
-												class="flex w-1/5 flex-none items-center justify-center px-4 py-3 text-center text-base font-medium whitespace-nowrap transition-colors group-hover:text-blue-300"
+												class="flex w-[20%] flex-none items-center justify-center px-4 py-3 text-center text-base font-medium whitespace-nowrap transition-colors group-hover:text-blue-300"
 											>
 												{#if isWeekView}
-													<!-- Show cumulative total up to selected week -->
-													<span class="text-slate-400" title="Total through Week {selectedWeek}">{entry.cumulativePoints || 0}</span>
+													<!-- Show weekly points for selected week -->
+													<span class="text-blue-400" title="Points for Week {selectedWeek}">+{entry.weeklyFilteredScore || 0}</span>
 												{:else}
 													<!-- Show current week points when in overview -->
 													{#if entry.weeklyPoints > 0}
@@ -402,23 +400,13 @@
 													{/if}
 												{/if}
 											</div>
-											<!-- View Stats Button -->
-											<div
-												class="flex w-1/5 flex-none items-center justify-center px-4 py-3 text-center whitespace-nowrap"
-											>
-												<div
-													class="cursor-pointer border border-slate-600/50 bg-slate-700/50 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors duration-200 group-hover:border-slate-500/70 group-hover:bg-slate-600/70 hover:border-slate-500/70 hover:bg-slate-600/70 hover:text-white"
-												>
-													View Stats
-												</div>
-											</div>
 										</a>
 									</td>
 								</tr>
 							{/each}
 						{:else}
 							<tr>
-								<td colspan="5" class="py-8 text-center text-sm text-slate-400">
+								<td colspan="4" class="py-8 text-center text-sm text-slate-400">
 									No players found in the leaderboard
 								</td>
 							</tr>
@@ -426,10 +414,19 @@
 					</tbody>
 				</table>
 			</div>
-
-			<!-- Legend simplified with mobile responsive design -->
 		</div>
-		<div class=" bg-background my-6 sm:mt-10">
+
+		<!-- Rankings Chart -->
+		<div class="mt-8">
+			<RankingsChart 
+				rankingHistory={data.rankingHistory || []} 
+				availableWeeks={data.availableWeeks || []} 
+				currentUserId={data.currentUserId || ''} 
+			/>
+		</div>
+
+		<!-- Legend simplified with mobile responsive design -->
+		<div class=" bg-slate-900 my-6 sm:mt-10">
 			<div class="relative overflow-hidden p-4 sm:p-5">
 				<div>
 					<h3 class="font-display mb-3 text-base font-semibold text-white sm:text-lg">Scoring</h3>

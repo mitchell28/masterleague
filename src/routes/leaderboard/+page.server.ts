@@ -7,6 +7,7 @@ import type { PageServerLoad } from './$types';
 import type { MetaTagsProps } from 'svelte-meta-tags';
 import { getLeaderboardWeek, getCurrentWeek } from '$lib/server/engine/data/fixtures';
 import { getLeaderboard } from '$lib/server/engine/analytics/leaderboard.js';
+import { getRankingHistory } from '$lib/server/engine/analytics';
 
 // Type for weekly points breakdown
 interface WeeklyPointsData {
@@ -125,11 +126,18 @@ export const load = (async ({ locals, url }) => {
 						userId: predictions.userId,
 						weekId: fixtures.weekId,
 						points: sum(predictions.points),
-						// A correct scoreline gives 3 base points, so with multiplier it could be 3, 6, 9, etc. (divisible by 3 and >= 3)
-						// A correct outcome gives 1 base point, so with multiplier it could be 1, 2, 3, etc. but NOT divisible by 3 (unless it's 3 which is also a scoreline)
-						// We can check: if points >= 3 AND points % 3 = 0, it's a correct score. Otherwise if points > 0, it's a correct outcome.
-						correctScorelines: sql<number>`COUNT(CASE WHEN ${predictions.points} >= 3 AND ${predictions.points} % 3 = 0 THEN 1 END)`,
-						correctOutcomes: sql<number>`COUNT(CASE WHEN ${predictions.points} > 0 AND (${predictions.points} < 3 OR ${predictions.points} % 3 != 0) THEN 1 END)`,
+						// Correct Score: Exact match of home and away scores
+						correctScorelines: sql<number>`COUNT(CASE WHEN ${predictions.predictedHomeScore} = ${fixtures.homeScore} AND ${predictions.predictedAwayScore} = ${fixtures.awayScore} THEN 1 END)`,
+						// Correct Outcome: Same result (win/draw/loss) but NOT exact score
+						correctOutcomes: sql<number>`COUNT(CASE 
+							WHEN (${predictions.predictedHomeScore} != ${fixtures.homeScore} OR ${predictions.predictedAwayScore} != ${fixtures.awayScore}) 
+							AND (
+								(${predictions.predictedHomeScore} > ${predictions.predictedAwayScore} AND ${fixtures.homeScore} > ${fixtures.awayScore}) OR 
+								(${predictions.predictedHomeScore} < ${predictions.predictedAwayScore} AND ${fixtures.homeScore} < ${fixtures.awayScore}) OR 
+								(${predictions.predictedHomeScore} = ${predictions.predictedAwayScore} AND ${fixtures.homeScore} = ${fixtures.awayScore})
+							) 
+							THEN 1 
+						END)`,
 						totalPredictions: sql<number>`COUNT(*)`
 					})
 					.from(predictions)
@@ -233,7 +241,7 @@ export const load = (async ({ locals, url }) => {
 							cumulativeCorrect
 						};
 					})
-					.sort((a: any, b: any) => (b.weeklyFilteredScore || 0) - (a.weeklyFilteredScore || 0));
+					.sort((a: any, b: any) => (b.cumulativePoints || 0) - (a.cumulativePoints || 0));
 			}
 		}
 
@@ -257,6 +265,9 @@ export const load = (async ({ locals, url }) => {
 			}
 		}) satisfies MetaTagsProps;
 
+		// Get ranking history for the chart
+		const { rankingHistory } = await getRankingHistory(selectedOrganization.id, '2025-26');
+
 		const result = {
 			currentWeek,
 			leaderboard: enhancedLeaderboard,
@@ -266,7 +277,9 @@ export const load = (async ({ locals, url }) => {
 			leaderboardMeta: null,
 			pageMetaTags,
 			availableWeeks,
-			selectedWeek
+			selectedWeek,
+			rankingHistory,
+			currentUserId: locals.user.id
 		};
 
 		// Cache the result for 5 minutes
@@ -289,7 +302,9 @@ export const load = (async ({ locals, url }) => {
 				description: 'Leaderboard temporarily unavailable'
 			},
 			availableWeeks: [] as number[],
-			selectedWeek: null as number | null
+			selectedWeek: null as number | null,
+			rankingHistory: [],
+			currentUserId: locals.user.id
 		};
 
 		// Short cache for error state

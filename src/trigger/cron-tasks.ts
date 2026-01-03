@@ -307,10 +307,10 @@ export const liveScoresUpdater = schedules.task({
 });
 
 // Prediction reminder task - sends email reminders to users with missing predictions
-// Runs Friday 10 AM and Saturday 10 AM UTC (before typical Premier League kickoffs)
+// Runs every hour to check if we are 5 hours before the first kickoff
 export const predictionReminder = schedules.task({
 	id: 'prediction-reminder',
-	cron: '0 10 * * 5,6', // Friday and Saturday at 10 AM UTC
+	cron: '0 * * * *', // Every hour
 	run: async (payload) => {
 		console.log('📧 Running scheduled prediction reminder task');
 		console.log('Scheduled for:', payload.timestamp);

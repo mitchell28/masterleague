@@ -151,3 +151,28 @@ export class LeaderboardLock {
 		return true;
 	}
 }
+
+/**
+ * Check if leaderboard recalculation is needed
+ * Returns true if recalculation should proceed, false if cache is fresh
+ */
+export async function shouldRecalculateLeaderboard(
+	organizationId: string,
+	season: string
+): Promise<boolean> {
+	// If no cache exists, recalculation is needed
+	const cached = await LeaderboardCache.getData(organizationId, season);
+	if (!cached) {
+		console.log(`📊 No cache found, recalculation needed for ${organizationId}:${season}`);
+		return true;
+	}
+
+	// If cache is older than 10 minutes, recalculation may be needed
+	if (!LeaderboardCache.isFresh(organizationId, season, 10)) {
+		console.log(`📊 Cache is stale, recalculation needed for ${organizationId}:${season}`);
+		return true;
+	}
+
+	console.log(`📊 Cache is fresh, no recalculation needed for ${organizationId}:${season}`);
+	return false;
+}
