@@ -195,24 +195,46 @@ export const load = (async ({ locals, url }) => {
 
 				// Build weekly breakdown array (only for weeks up to current)
 				const weeklyBreakdown: WeeklyPointsData[] = [];
+				let calculatedTotalPoints = 0;
+				let calculatedTotalCorrect = 0;
 				if (userWeeks) {
 					for (const weekId of availableWeeks) {
 						const weekData = userWeeks.get(weekId);
+						const weekPoints = weekData?.points || 0;
+						const weekCorrect = weekData?.correctScorelines || 0;
 						weeklyBreakdown.push({
 							weekId,
-							points: weekData?.points || 0,
-							correctScorelines: weekData?.correctScorelines || 0,
+							points: weekPoints,
+							correctScorelines: weekCorrect,
 							correctOutcomes: weekData?.correctOutcomes || 0,
 							totalPredictions: weekData?.totalPredictions || 0
 						});
+						calculatedTotalPoints += weekPoints;
+						calculatedTotalCorrect += weekCorrect;
 					}
 				}
 
 				return {
 					...entry,
+					// Use calculated totals from predictions for consistency
+					score: calculatedTotalPoints,
+					correctScorelines: calculatedTotalCorrect,
 					weeklyPoints: currentWeekData?.points || 0,
 					weeklyBreakdown
 				};
+			});
+
+			// Re-sort by the calculated score to maintain proper ranking
+			enhancedLeaderboard.sort((a: any, b: any) => {
+				if (b.score !== a.score) return b.score - a.score;
+				if (b.correctScorelines !== a.correctScorelines)
+					return b.correctScorelines - a.correctScorelines;
+				return 0;
+			});
+
+			// Re-assign positions after sorting
+			enhancedLeaderboard.forEach((entry: any, index: number) => {
+				entry.position = index + 1;
 			});
 
 			// If a specific week is selected, calculate that week's points AND cumulative up to that week
