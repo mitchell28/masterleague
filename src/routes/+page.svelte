@@ -72,7 +72,7 @@
 						></span>
 						<span class="bg-accent relative inline-flex h-2 w-2 rounded-full"></span>
 					</span>
-					<span class="text-sm font-medium text-white/80">Season 2024/25 is Live</span>
+					<span class="text-sm font-medium text-white/80">Season 2025/26 is Live</span>
 				</div>
 			</div>
 

@@ -110,7 +110,7 @@
 							<div>
 								<h2 class="mb-3 text-2xl leading-tight font-bold sm:text-3xl lg:text-4xl">
 									<span
-										class="text-primary group-hover:text-accent transition-colors duration-200"
+										class=" group-hover:text-accent transition-colors duration-200"
 									>
 										{post.title || 'Untitled Post'}
 									</span>

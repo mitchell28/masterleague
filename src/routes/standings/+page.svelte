@@ -57,7 +57,7 @@
 					<div class="text-center">
 						<h1 class="text-2xl font-bold text-white">Premier League Table</h1>
 						<div class="mt-2 flex flex-col items-center gap-2">
-							<span class="text-xs font-medium text-slate-300">2024/25 Season</span>
+							<span class="text-xs font-medium text-slate-300">2025/26 Season</span>
 							{#if data.matchday}
 								<div class="text-sm text-slate-400">
 									Matchday <span class="font-semibold text-white">{data.matchday}</span>
@@ -73,7 +73,7 @@
 						<div>
 							<h1 class="text-3xl font-bold text-white lg:text-4xl">Premier League Table</h1>
 							<div class="mt-2 flex items-center gap-3">
-								<span class="text-sm font-medium text-slate-300">2024/25 Season</span>
+								<span class="text-sm font-medium text-slate-300">2025/26 Season</span>
 							</div>
 						</div>
 						<div class="flex items-center gap-4 text-base text-slate-400">
