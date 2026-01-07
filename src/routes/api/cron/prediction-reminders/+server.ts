@@ -248,60 +248,58 @@ export const POST: RequestHandler = async ({ request }) => {
 			});
 		}
 
-		// Send emails in batches
+		// Send emails sequentially to respect Resend rate limit (2 requests/second)
 		const results = {
 			sent: 0,
 			failed: 0,
 			errors: [] as string[]
 		};
 
-		// Process in batches of 10 to respect rate limits
-		const BATCH_SIZE = 10;
-		for (let i = 0; i < usersToNotify.length; i += BATCH_SIZE) {
-			const batch = usersToNotify.slice(i, i + BATCH_SIZE);
+		// Resend allows 2 requests per second, so we send one at a time with 500ms delay
+		// This ensures we stay under the rate limit while being efficient
+		const DELAY_BETWEEN_EMAILS_MS = 550; // 550ms to be safe (slightly under 2/sec)
 
-			await Promise.all(
-				batch.map(async (user) => {
-					try {
-						// Render the email using dynamic import helper
-						const { html, plainText } = await renderPredictionEmail({
-							userName: user.name.split(' ')[0] || 'Player',
-							week: currentWeek,
-							missingCount: user.missingCount,
-							totalFixtures,
-							firstKickoff
-						});
+		for (let i = 0; i < usersToNotify.length; i++) {
+			const user = usersToNotify[i];
 
-						// Send via Resend
-						const emailResult = await resend.emails.send({
-							from: 'Master League <reminders@mail.masterleague.app>',
-							to: user.email,
-							subject: `⚽ Week ${currentWeek}: ${user.missingCount} predictions needed!`,
-							html,
-							text: plainText
-						});
+			try {
+				// Render the email using dynamic import helper
+				const { html, plainText } = await renderPredictionEmail({
+					userName: user.name.split(' ')[0] || 'Player',
+					week: currentWeek,
+					missingCount: user.missingCount,
+					totalFixtures,
+					firstKickoff
+				});
 
-						if (emailResult.error) {
-							console.error(`❌ Failed to send to ${user.email}:`, emailResult.error);
-							results.failed++;
-							results.errors.push(`${user.email}: ${emailResult.error.message}`);
-						} else {
-							console.log(`✅ Sent reminder to ${user.email}`);
-							results.sent++;
-						}
-					} catch (error) {
-						console.error(`❌ Error sending to ${user.email}:`, error);
-						results.failed++;
-						results.errors.push(
-							`${user.email}: ${error instanceof Error ? error.message : 'Unknown error'}`
-						);
-					}
-				})
-			);
+				// Send via Resend
+				const emailResult = await resend.emails.send({
+					from: 'Master League <reminders@mail.masterleague.app>',
+					to: user.email,
+					subject: `⚽ Week ${currentWeek}: ${user.missingCount} predictions needed!`,
+					html,
+					text: plainText
+				});
 
-			// Small delay between batches to respect rate limits
-			if (i + BATCH_SIZE < usersToNotify.length) {
-				await new Promise((resolve) => setTimeout(resolve, 1000));
+				if (emailResult.error) {
+					console.error(`❌ Failed to send to ${user.email}:`, emailResult.error);
+					results.failed++;
+					results.errors.push(`${user.email}: ${emailResult.error.message}`);
+				} else {
+					console.log(`✅ Sent reminder to ${user.email} (${i + 1}/${usersToNotify.length})`);
+					results.sent++;
+				}
+			} catch (error) {
+				console.error(`❌ Error sending to ${user.email}:`, error);
+				results.failed++;
+				results.errors.push(
+					`${user.email}: ${error instanceof Error ? error.message : 'Unknown error'}`
+				);
+			}
+
+			// Delay between emails to respect rate limit (skip delay after last email)
+			if (i < usersToNotify.length - 1) {
+				await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_EMAILS_MS));
 			}
 		}
 
