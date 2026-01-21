@@ -12,7 +12,7 @@ export default defineConfig({
 	build: {
 		chunkSizeWarningLimit: 800, // More conservative limit
 		rollupOptions: {
-			external: ['node:dns/promises', 'node:dns']
+			external: ['node:dns/promises', 'node:dns', 'react']
 		}
 	}
 });
