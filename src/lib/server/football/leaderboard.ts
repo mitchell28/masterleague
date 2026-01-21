@@ -1,7 +1,7 @@
 import { db } from '../db/index.js';
 import { fixtures, predictions, leagueTable, leaderboardMeta } from '../db/schema.js';
 import { user as authUser } from '../db/auth/auth-schema.js';
-import { eq, and, desc, sql, max, inArray } from 'drizzle-orm';
+import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import {
 	LeaderboardCache,
 	LeaderboardLock,
