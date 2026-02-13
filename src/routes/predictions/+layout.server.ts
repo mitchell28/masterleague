@@ -65,9 +65,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		isUpdatingFixtures = true;
 		Promise.resolve().then(async () => {
 			try {
-				const { checkAndUpdateRecentFixtures } = await import(
-					'$lib/server/engine/data/predictions'
-				);
+				const { checkAndUpdateRecentFixtures } =
+					await import('$lib/server/engine/data/predictions');
 				const result = await checkAndUpdateRecentFixtures(true);
 
 				if (result.updated > 0) {

@@ -81,9 +81,8 @@ export const GET: RequestHandler = async ({ url }) => {
 		}
 
 		// Import cache utilities
-		const { LeaderboardCache, LeaderboardLock } = await import(
-			'$lib/server/cache/leaderboard-cache.js'
-		);
+		const { LeaderboardCache, LeaderboardLock } =
+			await import('$lib/server/cache/leaderboard-cache.js');
 
 		const [meta, isLocked] = await Promise.all([
 			LeaderboardCache.getMeta(organizationId, season),
