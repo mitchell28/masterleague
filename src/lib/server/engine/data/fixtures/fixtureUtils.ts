@@ -48,10 +48,10 @@ export async function getCurrentWeek(): Promise<number> {
 
 	// Calculate the week based on weeks elapsed since season start (primary method)
 	// This is more accurate than percentage-based calculation as Premier League plays roughly one matchweek per week
-	// Note: Pre-season and post-season cases are already handled above, so elapsedMs will always be positive
+	// Note: Pre-season and post-season cases are already handled above, but clamping below handles edge cases
 	const elapsedMs: number = now.getTime() - season.startDate.getTime();
 	const weeksElapsed: number = Math.floor(elapsedMs / MS_PER_WEEK);
-	// Clamp to valid range: week 1 to season.totalWeeks
+	// Clamp to valid range: week 1 to season.totalWeeks (handles negative elapsed time and overflow)
 	const calculatedWeek: number = Math.min(Math.max(weeksElapsed + 1, 1), season.totalWeeks);
 
 	// Try to refine the week based on actual fixture data
