@@ -21,6 +21,7 @@ interface FixtureResult {
 
 // Constants for week calculation
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000; // Milliseconds in a week
+const MS_PER_DAY = 24 * 60 * 60 * 1000; // Milliseconds in a day
 const FIXTURE_LOOKAHEAD_DAYS = 14; // Days to look ahead for fixtures
 const WEEK_TOLERANCE = 2; // Max weeks difference between calculated and fixture-based week
 
@@ -71,11 +72,9 @@ export async function getCurrentWeek(): Promise<number> {
 			const today: Date = new Date();
 			today.setHours(0, 0, 0, 0);
 
-			const tomorrow: Date = new Date(today);
-			tomorrow.setDate(tomorrow.getDate() + 1);
+			const tomorrow: Date = new Date(today.getTime() + MS_PER_DAY);
 
-			const lookaheadDate: Date = new Date(today);
-			lookaheadDate.setDate(lookaheadDate.getDate() + FIXTURE_LOOKAHEAD_DAYS);
+			const lookaheadDate: Date = new Date(today.getTime() + FIXTURE_LOOKAHEAD_DAYS * MS_PER_DAY);
 
 			// Check for fixtures happening today or tomorrow first
 			const imminent = results.find((fixture) => {
