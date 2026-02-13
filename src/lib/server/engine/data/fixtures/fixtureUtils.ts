@@ -41,11 +41,12 @@ export async function getCurrentWeek(): Promise<number> {
 	// Handle post-season dates
 	if (now > season.endDate) return season.totalWeeks;
 
-	// Calculate the week based on date progression (primary method)
-	const msPerDay: number = 24 * 60 * 60 * 1000;
-	const totalDays: number = (season.endDate.getTime() - season.startDate.getTime()) / msPerDay;
-	const elapsedDays: number = (now.getTime() - season.startDate.getTime()) / msPerDay;
-	const calculatedWeek: number = Math.floor((elapsedDays / totalDays) * season.totalWeeks) + 1;
+	// Calculate the week based on weeks elapsed since season start (primary method)
+	// This is more accurate than percentage-based calculation as PL plays roughly one matchweek per week
+	const msPerWeek: number = 7 * 24 * 60 * 60 * 1000;
+	const elapsedMs: number = now.getTime() - season.startDate.getTime();
+	const weeksElapsed: number = Math.floor(elapsedMs / msPerWeek);
+	const calculatedWeek: number = Math.min(weeksElapsed + 1, season.totalWeeks);
 
 	// Try to refine the week based on actual fixture data
 	try {
