@@ -41,7 +41,13 @@ export async function getCurrentWeek(): Promise<number> {
 	// Handle post-season dates
 	if (now > season.endDate) return season.totalWeeks;
 
-	// First approach: Try to find the actual active week based on fixtures
+	// Calculate the week based on date progression (primary method)
+	const msPerDay: number = 24 * 60 * 60 * 1000;
+	const totalDays: number = (season.endDate.getTime() - season.startDate.getTime()) / msPerDay;
+	const elapsedDays: number = (now.getTime() - season.startDate.getTime()) / msPerDay;
+	const calculatedWeek: number = Math.floor((elapsedDays / totalDays) * season.totalWeeks) + 1;
+
+	// Try to refine the week based on actual fixture data
 	try {
 		// Query the database to find the upcoming fixtures - using proper Drizzle query pattern
 		const results = await db
@@ -61,8 +67,8 @@ export async function getCurrentWeek(): Promise<number> {
 			const tomorrow: Date = new Date(today);
 			tomorrow.setDate(tomorrow.getDate() + 1);
 
-			const nextWeek: Date = new Date(today);
-			nextWeek.setDate(nextWeek.getDate() + 7);
+			const twoWeeksOut: Date = new Date(today);
+			twoWeeksOut.setDate(twoWeeksOut.getDate() + 14);
 
 			// Check for fixtures happening today or tomorrow first
 			const imminent = results.find((fixture) => {
@@ -74,13 +80,15 @@ export async function getCurrentWeek(): Promise<number> {
 				return imminent.weekId;
 			}
 
-			// If no fixtures today/tomorrow, find closest upcoming fixture
+			// If no fixtures today/tomorrow, find closest upcoming fixture within 2 weeks
 			const upcoming = results.find((fixture) => {
 				const fixtureDate: Date = new Date(fixture.matchDate);
-				return fixtureDate >= today;
+				return fixtureDate >= today && fixtureDate <= twoWeeksOut;
 			});
 
-			if (upcoming) {
+			// Only use fixture-based week if it's within +/- 2 weeks of calculated week
+			// This prevents jumping to far-future weeks when there's a gap in fixtures
+			if (upcoming && Math.abs(upcoming.weekId - calculatedWeek) <= 2) {
 				return upcoming.weekId;
 			}
 		}
@@ -89,16 +97,9 @@ export async function getCurrentWeek(): Promise<number> {
 		console.error('Error finding current week from fixtures:', error);
 	}
 
-	// Fall back to linear calculation if fixture-based approach fails
-	const msPerDay: number = 24 * 60 * 60 * 1000;
-	const totalDays: number = (season.endDate.getTime() - season.startDate.getTime()) / msPerDay;
-	const elapsedDays: number = (now.getTime() - season.startDate.getTime()) / msPerDay;
-
-	// Calculate match week based on percentage of season completed
-	const matchWeek: number = Math.floor((elapsedDays / totalDays) * season.totalWeeks) + 1;
-
+	// Use the date-based calculation as the authoritative answer
 	// Ensure result is within valid range
-	return Math.min(Math.max(matchWeek, 1), season.totalWeeks);
+	return Math.min(Math.max(calculatedWeek, 1), season.totalWeeks);
 }
 
 /**
