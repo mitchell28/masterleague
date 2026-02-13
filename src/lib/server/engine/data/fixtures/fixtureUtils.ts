@@ -19,6 +19,11 @@ interface FixtureResult {
 	matchDate: Date | string;
 }
 
+// Constants for week calculation
+const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000; // Milliseconds in a week
+const FIXTURE_LOOKAHEAD_DAYS = 14; // Days to look ahead for fixtures
+const WEEK_TOLERANCE = 2; // Max weeks difference between calculated and fixture-based week
+
 /**
  * Determines the current match week based on the fixture dates and schedule
  * @returns The current week number (1-38)
@@ -43,9 +48,8 @@ export async function getCurrentWeek(): Promise<number> {
 
 	// Calculate the week based on weeks elapsed since season start (primary method)
 	// This is more accurate than percentage-based calculation as PL plays roughly one matchweek per week
-	const msPerWeek: number = 7 * 24 * 60 * 60 * 1000;
 	const elapsedMs: number = now.getTime() - season.startDate.getTime();
-	const weeksElapsed: number = Math.floor(elapsedMs / msPerWeek);
+	const weeksElapsed: number = Math.floor(elapsedMs / MS_PER_WEEK);
 	const calculatedWeek: number = Math.min(weeksElapsed + 1, season.totalWeeks);
 
 	// Try to refine the week based on actual fixture data
@@ -68,8 +72,8 @@ export async function getCurrentWeek(): Promise<number> {
 			const tomorrow: Date = new Date(today);
 			tomorrow.setDate(tomorrow.getDate() + 1);
 
-			const twoWeeksOut: Date = new Date(today);
-			twoWeeksOut.setDate(twoWeeksOut.getDate() + 14);
+			const lookaheadDate: Date = new Date(today);
+			lookaheadDate.setDate(lookaheadDate.getDate() + FIXTURE_LOOKAHEAD_DAYS);
 
 			// Check for fixtures happening today or tomorrow first
 			const imminent = results.find((fixture) => {
@@ -81,15 +85,15 @@ export async function getCurrentWeek(): Promise<number> {
 				return imminent.weekId;
 			}
 
-			// If no fixtures today/tomorrow, find closest upcoming fixture within 2 weeks
+			// If no fixtures today/tomorrow, find closest upcoming fixture within lookahead window
 			const upcoming = results.find((fixture) => {
 				const fixtureDate: Date = new Date(fixture.matchDate);
-				return fixtureDate >= today && fixtureDate <= twoWeeksOut;
+				return fixtureDate >= today && fixtureDate <= lookaheadDate;
 			});
 
-			// Only use fixture-based week if it's within +/- 2 weeks of calculated week
+			// Only use fixture-based week if it's within tolerance of calculated week
 			// This prevents jumping to far-future weeks when there's a gap in fixtures
-			if (upcoming && Math.abs(upcoming.weekId - calculatedWeek) <= 2) {
+			if (upcoming && Math.abs(upcoming.weekId - calculatedWeek) <= WEEK_TOLERANCE) {
 				return upcoming.weekId;
 			}
 		}
