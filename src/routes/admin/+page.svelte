@@ -19,6 +19,7 @@
 		checkMissingFixtures: false,
 		updateLiveScores: false,
 		updateLeaderboard: false,
+		recreateLeaderboard: false,
 		healthCheck: false,
 		predictionsUpdate: false,
 		fixtureSchedule: false
@@ -131,6 +132,37 @@
 			toast.error('Failed to update leaderboard. Please try again.', { duration: 4000 });
 		} finally {
 			loadingStates.updateLeaderboard = false;
+		}
+	}
+
+	// Admin function to recreate leaderboard from scratch
+	async function recreateLeaderboard() {
+		if (loadingStates.recreateLeaderboard) return;
+
+		loadingStates.recreateLeaderboard = true;
+
+		try {
+			const response = await fetch('/api/update-leaderboard', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					all: true,
+					force: true
+				})
+			});
+
+			const result = await response.json();
+
+			if (result.success) {
+				toast.success(result.message + ' (Force recalculation complete)', { duration: 5000 });
+			} else {
+				toast.error(result.message || 'Failed to recreate leaderboard', { duration: 5000 });
+			}
+		} catch (error) {
+			console.error('Failed to recreate leaderboard:', error);
+			toast.error('Failed to recreate leaderboard. Please try again.', { duration: 4000 });
+		} finally {
+			loadingStates.recreateLeaderboard = false;
 		}
 	}
 
@@ -274,7 +306,7 @@
 				</div>
 				<p class="mt-1 text-sm text-slate-400">Manage scoring calculations and point systems</p>
 			</div>
-			<div class="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
+			<div class="grid gap-4 p-4 sm:grid-cols-3 sm:p-6">
 				<button
 					onclick={recalculateAllPoints}
 					disabled={loadingStates.recalculatePoints}
@@ -308,6 +340,23 @@
 							{loadingStates.updateLeaderboard ? 'Updating...' : 'Update Leaderboard'}
 						</div>
 						<div class="text-xs text-purple-200">Refresh leaderboard rankings and statistics</div>
+					</div>
+				</button>
+
+				<button
+					onclick={recreateLeaderboard}
+					disabled={loadingStates.recreateLeaderboard}
+					class="flex items-center gap-3 bg-indigo-600 px-4 py-3 text-left transition-all duration-200 hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					<RefreshCw
+						size={18}
+						class={loadingStates.recreateLeaderboard ? 'animate-spin text-white' : 'text-indigo-100'}
+					/>
+					<div>
+						<div class="font-medium text-white">
+							{loadingStates.recreateLeaderboard ? 'Recreating...' : 'Recreate Leaderboard'}
+						</div>
+						<div class="text-xs text-indigo-200">Force rebuild all leaderboards from scratch</div>
 					</div>
 				</button>
 			</div>
