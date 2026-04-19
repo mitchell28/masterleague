@@ -11,8 +11,14 @@ if (!DATABASE_URL) {
 	throw new Error("DATABASE_URL is not set. Make sure it's available in process.env");
 }
 
-// Create the PostgreSQL client with connection options
-const client = postgres(DATABASE_URL);
+// Create the PostgreSQL client with connection pool limits
+// Keeps pool small to avoid exhausting PgBouncer session-mode limits
+const client = postgres(DATABASE_URL, {
+	max: 3,
+	idle_timeout: 20,
+	max_lifetime: 60 * 5,
+	prepare: false
+});
 
 // Export the database connection with both schemas
 export const db = drizzle(client, { schema: { ...appSchema, ...authSchema } });
