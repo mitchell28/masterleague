@@ -282,6 +282,13 @@ export const leaderboardMetaRelations = relations(leaderboardMeta, ({ one }) => 
 	})
 }));
 
+// Site-wide settings (key-value store)
+export const siteSettings = pgTable('site_settings', {
+	key: varchar('key').primaryKey(),
+	value: varchar('value').notNull(),
+	updatedAt: timestamp('updated_at').notNull()
+});
+
 // Type exports
 export type Team = typeof teams.$inferSelect;
 export type Organization = typeof organization.$inferSelect;

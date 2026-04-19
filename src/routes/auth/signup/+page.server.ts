@@ -6,11 +6,14 @@ import type { PageServerLoad, Actions } from './$types';
 import type { MetaTagsProps } from 'svelte-meta-tags';
 import auth from '$lib/server/db/auth/auth';
 import { APIError } from 'better-auth/api';
+import { areSignupsEnabled } from '$lib/server/site-settings';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (locals.user) {
 		throw redirect(302, '/predictions');
 	}
+
+	const signupsEnabled = await areSignupsEnabled();
 
 	const pageMetaTags = Object.freeze({
 		title: 'Sign Up',
@@ -32,6 +35,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	return {
 		form: await superValidate(zod4(authSignupSchema)),
+		signupsEnabled,
 		pageMetaTags
 	};
 };
@@ -42,6 +46,13 @@ export const actions: Actions = {
 
 		if (!form.valid) {
 			return fail(400, { form });
+		}
+
+		// Check if signups are currently allowed
+		const signupsEnabled = await areSignupsEnabled();
+		if (!signupsEnabled) {
+			form.message = 'Sign-ups are currently closed. Please try again later.';
+			return fail(403, { form });
 		}
 
 		try {

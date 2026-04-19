@@ -25,6 +25,7 @@
 		{ href: '/groups', label: 'Groups' },
 		{ href: '/studio', label: 'Studio' },
 		{ href: '/admin', label: 'Admin' },
+		{ href: '/admin/users', label: 'Users' },
 		{ href: '/admin/email-preview', label: 'Email Preview' }
 	];
 

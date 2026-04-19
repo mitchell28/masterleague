@@ -56,6 +56,21 @@
 				</p>
 			</div>
 
+			{#if !data.signupsEnabled}
+				<div class="mb-6 border border-amber-500/30 bg-amber-500/10 p-4 text-center">
+					<p class="font-medium text-amber-300">Sign-ups are currently closed</p>
+					<p class="mt-1 text-sm text-amber-400/80">
+						New account registration has been temporarily disabled. Please check back later.
+					</p>
+					<a
+						href="/auth/login"
+						class="text-accent hover:text-accent/80 mt-3 inline-block text-sm font-medium transition-colors"
+					>
+						Sign in to an existing account
+					</a>
+				</div>
+			{:else}
+
 			{#if $message}
 				<div class="mb-6 border border-red-500/30 bg-red-500/10 p-4">
 					<p class="text-sm text-red-400">{$message}</p>
@@ -162,6 +177,7 @@
 					{/if}
 				</button>
 			</form>
+			{/if}
 		</div>
 	</div>
 </div>

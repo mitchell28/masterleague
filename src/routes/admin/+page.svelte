@@ -10,7 +10,10 @@
 		Settings,
 		Users,
 		BarChart3,
-		Clock
+		Clock,
+		UserPlus,
+		UserX,
+		LoaderCircle
 	} from '@lucide/svelte';
 
 	// State management for various admin operations
@@ -23,6 +26,50 @@
 		healthCheck: false,
 		predictionsUpdate: false,
 		fixtureSchedule: false
+	});
+
+	// Signup toggle state
+	let signupsEnabled = $state<boolean | null>(null);
+	let signupsToggling = $state(false);
+
+	// Fetch initial signup state
+	async function fetchSignupState() {
+		try {
+			const res = await fetch('/api/admin/signup-toggle');
+			const data = await res.json();
+			signupsEnabled = data.enabled;
+		} catch {
+			signupsEnabled = true;
+		}
+	}
+
+	// Toggle signup state
+	async function toggleSignups() {
+		if (signupsToggling) return;
+		signupsToggling = true;
+
+		try {
+			const res = await fetch('/api/admin/signup-toggle', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ enabled: !signupsEnabled })
+			});
+			const data = await res.json();
+			if (data.success) {
+				signupsEnabled = data.enabled;
+				toast.success(data.message, { duration: 4000 });
+			} else {
+				toast.error('Failed to update sign-up setting', { duration: 4000 });
+			}
+		} catch {
+			toast.error('Failed to update sign-up setting', { duration: 4000 });
+		} finally {
+			signupsToggling = false;
+		}
+	}
+
+	$effect(() => {
+		fetchSignupState();
 	});
 
 	// Admin function to recalculate all points
@@ -468,6 +515,64 @@
 							{loadingStates.predictionsUpdate ? 'Updating...' : 'Update Predictions'}
 						</div>
 						<div class="text-xs text-emerald-200">Trigger predictions update process</div>
+					</div>
+				</button>
+			</div>
+		</div>
+
+		<!-- User Management Section -->
+		<div class="mb-6 overflow-hidden bg-slate-800/50">
+			<div class="border-b border-slate-700/60 bg-slate-900/30 px-4 py-4 sm:px-6">
+				<div class="flex items-center gap-3">
+					<Users class="text-cyan-400" size={20} />
+					<h2 class="text-lg font-semibold text-white">User Management</h2>
+				</div>
+				<p class="mt-1 text-sm text-slate-400">
+					Manage users, roles, bans, sessions and impersonation
+				</p>
+			</div>
+			<div class="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
+				<a
+					href="/admin/users"
+					class="flex items-center gap-3 bg-cyan-600 px-4 py-3 text-left transition-all duration-200 hover:bg-cyan-700"
+				>
+					<Users size={18} class="text-cyan-100" />
+					<div>
+						<div class="font-medium text-white">Manage Users</div>
+						<div class="text-xs text-cyan-200">
+							View, ban, set roles, impersonate or delete users
+						</div>
+					</div>
+				</a>
+
+				<!-- Sign-ups Toggle -->
+				<button
+					onclick={toggleSignups}
+					disabled={signupsToggling || signupsEnabled === null}
+					class="flex items-center gap-3 px-4 py-3 text-left transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 {signupsEnabled ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}"
+				>
+					{#if signupsToggling}
+						<LoaderCircle size={18} class="animate-spin text-white" />
+					{:else if signupsEnabled}
+						<UserPlus size={18} class="text-emerald-100" />
+					{:else}
+						<UserX size={18} class="text-rose-100" />
+					{/if}
+					<div>
+						<div class="font-medium text-white">
+							{#if signupsEnabled === null}
+								Loading…
+							{:else if signupsToggling}
+								Updating…
+							{:else if signupsEnabled}
+								Sign-ups Open
+							{:else}
+								Sign-ups Closed
+							{/if}
+						</div>
+						<div class="text-xs {signupsEnabled ? 'text-emerald-200' : 'text-rose-200'}">
+							{signupsEnabled ? 'Click to prevent new registrations' : 'Click to allow new registrations'}
+						</div>
 					</div>
 				</button>
 			</div>
