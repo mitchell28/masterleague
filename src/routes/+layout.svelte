@@ -11,12 +11,13 @@
 
 	let metaTags = $derived(deepMerge(data.baseMetaTags, page.data.pageMetaTags));
 	let isHomePage = $derived(page.url.pathname === '/');
+	let isStudio = $derived(page.url.pathname.startsWith('/studio'));
 </script>
 
 <MetaTags {...metaTags} />
 <Toaster />
 <Navbar />
-<main class="min-h-screen sm:py-26 py-20" style="view-transition-name: bottom-nav-content;">
+<main class="min-h-screen" class:sm:py-26={!isStudio} class:py-20={!isStudio} style="view-transition-name: bottom-nav-content;">
 	{@render children()}
 </main>
 <BottomNav />

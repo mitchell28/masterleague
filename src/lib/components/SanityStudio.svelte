@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { renderStudio, defineConfig, type StudioProps } from 'sanity';
+	import { renderStudio, type StudioProps } from 'sanity';
 	import { browser } from '$app/environment';
 
 	let { config } = $props<{ config: StudioProps['config'] }>();
@@ -8,9 +8,7 @@
 
 	$effect(() => {
 		if (browser && studioEl) {
-			const sanityConfig = defineConfig(config);
-
-			renderStudio(studioEl, sanityConfig);
+			renderStudio(studioEl, config);
 		}
 	});
 </script>
