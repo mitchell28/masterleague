@@ -10,7 +10,8 @@ export default defineConfig({
 		exclude: ['@vinejs/vine', '@fontsource-variable/work-sans']
 	},
 	build: {
-		chunkSizeWarningLimit: 800, // More conservative limit
+		cssMinify: 'esbuild',
+		chunkSizeWarningLimit: 800,
 		rollupOptions: {
 			external: ['node:dns/promises', 'node:dns'],
 			onwarn(warning, warn) {
