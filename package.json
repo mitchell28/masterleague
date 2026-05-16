@@ -61,7 +61,7 @@
 		"trigger.dev": "4.0.0",
 		"tsx": "^4.21.1",
 		"typescript": "^5.9.3",
-		"vite": "^8.0.13",
+		"vite": "^7.3.3",
 		"vite-plugin-devtools-json": "^0.2.1",
 		"vitest": "^3.2.4"
 	},
@@ -71,7 +71,7 @@
 		"@lucide/svelte": "^0.479.0",
 		"@portabletext/svelte": "^3.0.1",
 		"@portabletext/types": "^2.0.15",
-		"@sanity/assist": "^6.0.5",
+		"@sanity/assist": "^5.0.4",
 		"@sanity/client": "^7.22.0",
 		"@sanity/image-url": "^1.2.0",
 		"@sanity/svelte-loader": "^1.13.57",
