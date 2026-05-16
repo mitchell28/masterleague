@@ -148,12 +148,12 @@
 			min-width: anchor-size(width);
 		}
 
-		.custom-select::picker(select):popover-open {
+		.custom-select:open::picker(select) {
 			opacity: 1;
 		}
 
 		@starting-style {
-			.custom-select::picker(select):popover-open {
+			.custom-select:open::picker(select) {
 				opacity: 0;
 			}
 		}
