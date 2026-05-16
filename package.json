@@ -3,6 +3,7 @@
 	"private": true,
 	"version": "1.0.0",
 	"type": "module",
+	"packageManager": "pnpm@10.29.3",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
@@ -34,7 +35,7 @@
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^4.0.0",
 		"@sveltejs/kit": "^2.59.1",
-		"@sveltejs/vite-plugin-svelte": "^5.1.1",
+		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.3.0",
 		"@trigger.dev/build": "4.0.0",
@@ -62,7 +63,6 @@
 		"tsx": "^4.21.1",
 		"typescript": "^5.9.3",
 		"vite": "^8.0.13",
-		"vite-plugin-devtools-json": "^0.2.1",
 		"vitest": "^3.2.4"
 	},
 	"dependencies": {
