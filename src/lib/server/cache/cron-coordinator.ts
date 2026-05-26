@@ -73,7 +73,7 @@ export class CronCoordinator {
 			switch (lockType) {
 				case 'leaderboard':
 					if (!identifier) throw new Error('Organization ID required for leaderboard lock');
-					const [orgId, season = '2025-26'] = identifier.split(':');
+					const [orgId, season = '2026-27'] = identifier.split(':');
 					lockKey = this.LOCK_KEYS.leaderboard(orgId, season);
 					break;
 				case 'fixtures':
@@ -140,7 +140,7 @@ export class CronCoordinator {
 			switch (lockType) {
 				case 'leaderboard':
 					if (!identifier) return false;
-					const [orgId, season = '2025-26'] = identifier.split(':');
+					const [orgId, season = '2026-27'] = identifier.split(':');
 					lockKey = this.LOCK_KEYS.leaderboard(orgId, season);
 					break;
 				case 'fixtures':

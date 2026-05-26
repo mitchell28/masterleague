@@ -43,7 +43,7 @@ interface UserWithMissingPredictions {
  */
 async function getUsersWithMissingPredictions(
 	weekId: number,
-	season: string = '2025-26'
+	season: string = '2026-27'
 ): Promise<UserWithMissingPredictions[]> {
 	// Get all fixtures for this week
 	const weekFixtures = await db
@@ -98,7 +98,7 @@ async function getUsersWithMissingPredictions(
 /**
  * Get upcoming fixtures for a week that haven't started yet
  */
-async function getUpcomingFixturesForWeek(weekId: number, season: string = '2025-26') {
+async function getUpcomingFixturesForWeek(weekId: number, season: string = '2026-27') {
 	const now = new Date();
 
 	const upcomingFixtures = await db
@@ -156,7 +156,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const firstFixtureOfWeek = await db
 			.select({ id: fixtures.id, matchDate: fixtures.matchDate })
 			.from(fixtures)
-			.where(and(eq(fixtures.weekId, currentWeek), eq(fixtures.season, '2025-26')))
+			.where(and(eq(fixtures.weekId, currentWeek), eq(fixtures.season, '2026-27')))
 			.orderBy(fixtures.matchDate)
 			.limit(1)
 			.then((rows) => rows[0]);
@@ -229,7 +229,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const totalFixtures = await db
 			.select({ count: sql<number>`COUNT(*)::int` })
 			.from(fixtures)
-			.where(and(eq(fixtures.weekId, currentWeek), eq(fixtures.season, '2025-26')))
+			.where(and(eq(fixtures.weekId, currentWeek), eq(fixtures.season, '2026-27')))
 			.then((r) => r[0]?.count ?? 0);
 
 		if (dryRun) {

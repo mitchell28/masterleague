@@ -238,7 +238,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 					// Smart check: Only recalculate leaderboards if predictions actually changed points
 					if (predictionResult.pointsAwarded && predictionResult.pointsAwarded > 0) {
-						leaderboardResult = await recalculateAllLeaderboards('2025-26', false);
+						leaderboardResult = await recalculateAllLeaderboards('2026-27', false);
 						console.log(
 							`✅ Leaderboards recalculated: ${leaderboardResult.length} leaderboards updated (${predictionResult.pointsAwarded} points awarded)`
 						);

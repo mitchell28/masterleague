@@ -148,7 +148,7 @@ export async function POST() {
 					id: randomUUID(),
 					userId,
 					organizationId,
-					season: '2025-26',
+					season: '2026-27',
 					totalPoints: stats.totalPoints,
 					correctScorelines: stats.correctScorelines,
 					correctOutcomes: stats.correctOutcomes,

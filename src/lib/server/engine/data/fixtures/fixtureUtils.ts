@@ -1,6 +1,7 @@
 import { db } from '../../../db';
 import { fixtures } from '../../../db/schema';
 import { inArray as drizzleInArray } from 'drizzle-orm';
+import { CURRENT_SEASON_CONFIG } from '$lib/server/config/season';
 
 /**
  * Season configuration interface

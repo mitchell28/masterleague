@@ -28,6 +28,7 @@
 		"db:init-teams": "vite-node src/lib/scripts/init-teams.ts",
 		"db:seed-fixtures": "vite-node src/lib/scripts/seed-fixtures.ts",
 		"db:setup-organization": "vite-node src/lib/scripts/setup-default-organization.ts",
+		"db:migrate-season": "vite-node src/lib/scripts/migrate-season-2026-27.ts",
 		"knip": "knip",
 		"dev:trigger": "trigger dev",
 		"deploy:trigger": "trigger deploy"

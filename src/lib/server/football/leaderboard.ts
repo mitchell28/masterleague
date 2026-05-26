@@ -1,4 +1,10 @@
 import { db } from '../db/index.js';
+/**
+ * RECALCULATION / WRITE PATH — recomputes leaderboard standings from raw predictions.
+ * Used by cron jobs, the prediction processor, and admin routes.
+ * For the read path (used by the leaderboard page) see:
+ * src/lib/server/engine/analytics/leaderboard.ts
+ */
 import { fixtures, predictions, leagueTable, leaderboardMeta } from '../db/schema.js';
 import { user as authUser } from '../db/auth/auth-schema.js';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
@@ -32,7 +38,7 @@ export interface RecalculationResult {
  */
 export async function recalculateLeaderboard(
 	organizationId: string,
-	season: string = '2025-26',
+	season: string = '2026-27',
 	forceRecalculation: boolean = false
 ): Promise<RecalculationResult> {
 	const startTime = Date.now();
@@ -318,7 +324,7 @@ export async function recalculateLeaderboard(
  * Useful for batch operations and maintenance
  */
 export async function recalculateAllLeaderboards(
-	season: string = '2025-26',
+	season: string = '2026-27',
 	forceRecalculation: boolean = false
 ): Promise<RecalculationResult[]> {
 	// Get all organizations that have predictions
@@ -343,7 +349,7 @@ export async function recalculateAllLeaderboards(
  */
 export async function getLeaderboard(
 	organizationId: string,
-	season: string = '2025-26'
+	season: string = '2026-27'
 ): Promise<LeaderboardEntry[]> {
 	// Try to get from cache first
 	const cached = await LeaderboardCache.get(organizationId, season);

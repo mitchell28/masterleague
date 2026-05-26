@@ -11,7 +11,7 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async () => {
 	try {
 		const now = new Date();
-		const currentSeason = '2025-26'; // TODO: Make this dynamic based on current date
+		const currentSeason = '2026-27'; // TODO: Make this dynamic based on current date
 
 		// Time windows for different scenarios
 		const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000);

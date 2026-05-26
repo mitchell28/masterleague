@@ -3,13 +3,15 @@
 	import { page } from '$app/state';
 	import { Info, ChevronLeft, ChevronRight } from '@lucide/svelte';
 	import WeekSelector from '$lib/components/WeekSelector.svelte';
+	import OffSeason from '$lib/components/OffSeason.svelte';
+	import GameweekRecap from '$lib/components/GameweekRecap.svelte';
 	import { swipeAction } from '$lib/hooks';
 
 	// Correct way to handle slots in SvelteKit 5
 	let { children } = $props();
 
 	// Using runes to access page data
-	let { weeks, currentWeek } = $derived(page.data);
+	let { weeks, currentWeek, seasonState, daysUntilStart, nextSeasonStart, currentSeason, previousSeason, previousSeasonPodium } = $derived(page.data);
 
 	// Enhanced week parsing with better type safety - Svelte 5 syntax
 	let week = $derived(
@@ -158,6 +160,16 @@
 	let canNavigateNext = $derived(weeks?.includes(week + 1) ?? false);
 </script>
 
+<!-- Off-season screen replaces all predictions content -->
+{#if seasonState !== 'in-season'}
+	<OffSeason
+		{currentSeason}
+		{previousSeason}
+		{nextSeasonStart}
+		{daysUntilStart}
+		{previousSeasonPodium}
+	/>
+{:else}
 <!-- Swipe container for mobile week navigation -->
 <div
 	class="mx-auto touch-pan-y"
@@ -194,6 +206,11 @@
 		{/if}
 	</div>
 
+	<!-- Gameweek recap banner (shows results of the previous week once all fixtures are finished) -->
+	{#if currentWeek > 1}
+		<GameweekRecap previousWeek={currentWeek - 1} />
+	{/if}
+
 	<!-- Mobile swipe hint (shown on first visit) -->
 	<div class="border-accent/20 flex items-center justify-center gap-2 border-b bg-slate-900/50 px-4 py-2 text-xs text-slate-400 sm:hidden">
 		<ChevronLeft class="size-3" />
@@ -227,8 +244,10 @@
 						<div class="mt-2 text-center">
 							<span class="text-xs text-slate-400">Predictions close 30 mins before kickoff</span>
 						</div>
+						<div class="mt-1 text-center">
+							<a href="/predictions/history" class="text-accent/80 hover:text-accent text-xs transition-colors">View history →</a>
+						</div>
 					</div>
-
 					<!-- Week navigation centered on mobile -->
 					<div class="flex justify-center">
 						<WeekSelector
@@ -245,6 +264,10 @@
 				<div class="hidden sm:flex sm:items-center sm:justify-between">
 					<div>
 						<h1 class="text-3xl font-bold text-white lg:text-4xl">Week {week}</h1>
+						<div class="mt-1 flex items-center gap-3">
+							<span class="text-xs text-slate-400">Predictions close 30 mins before kickoff</span>
+							<a href="/predictions/history" class="text-accent/80 hover:text-accent text-xs transition-colors">History →</a>
+						</div>
 						<div class="mt-2 flex items-center gap-3">
 							{#if weekStatus === 'current'}
 								<span class="bg-accent px-3 py-1 text-xs font-bold text-black"> CURRENT WEEK </span>
@@ -287,6 +310,7 @@
 		{@render children()}
 	</div>
 </div>
+{/if}
 
 <style>
 	/* View Transitions CSS - slide animations */

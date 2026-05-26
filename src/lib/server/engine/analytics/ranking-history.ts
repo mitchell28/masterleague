@@ -41,7 +41,7 @@ export interface RankingHistoryResult {
  */
 export async function getRankingHistory(
 	organizationId: string,
-	season: string = '2025-26'
+	season: string = '2026-27'
 ): Promise<RankingHistoryResult> {
 	const currentWeek = await getLeaderboardWeek();
 

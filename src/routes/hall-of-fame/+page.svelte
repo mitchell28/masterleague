@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { Trophy } from '@lucide/svelte';
+	import { page } from '$app/state';
 
-	// Hall of Fame data from the image
-	const legends = [
+	// Static historical data — year = end-year of each season (e.g. 2025 = 2024/25 season)
+	const historicalLegends = [
 		{
 			name: 'ASH',
 			wins: 8,
@@ -34,6 +35,61 @@
 			rank: 5
 		}
 	];
+
+	// Latest winner from DB, loaded by the root layout server
+	let { previousSeason, previousSeasonPodium } = $derived(page.data);
+
+	// "2025-26" → 2026
+	let prevSeasonYear = $derived(
+		previousSeason ? 2000 + parseInt(previousSeason.split('-')[1]) : null
+	);
+
+	let latestWinner = $derived(
+		previousSeasonPodium && previousSeasonPodium.length > 0 ? previousSeasonPodium[0] : null
+	);
+
+	// Merge the latest season winner into the legends list
+	function buildLegends(
+		base: typeof historicalLegends,
+		winner: { name: string } | null,
+		winYear: number | null
+	) {
+		if (!winner || !winYear) return base;
+
+		const winnerName = winner.name.toUpperCase();
+		let updated = base.map((l) => ({ ...l, years: [...l.years] }));
+		const idx = updated.findIndex((l) => l.name === winnerName);
+
+		if (idx !== -1) {
+			// Existing champion — add the year if not already listed
+			if (!updated[idx].years.includes(winYear)) {
+				updated[idx] = {
+					...updated[idx],
+					wins: updated[idx].wins + 1,
+					years: [...updated[idx].years, winYear].sort((a, b) => b - a)
+				};
+			}
+		} else {
+			// New champion — append
+			updated.push({ name: winnerName, wins: 1, years: [winYear], rank: 0 });
+		}
+
+		// Re-sort by wins desc, then most recent year desc
+		updated.sort(
+			(a, b) => b.wins - a.wins || Math.max(...b.years) - Math.max(...a.years)
+		);
+
+		return updated.map((l, i) => ({ ...l, rank: i + 1 }));
+	}
+
+	let legends = $derived(buildLegends(historicalLegends, latestWinner, prevSeasonYear));
+
+	// The most recent winning year — used for the ★ indicator
+	let mostRecentYear = $derived(prevSeasonYear ?? 2025);
+
+	// Stats
+	let totalSeasons = $derived(new Set(legends.flatMap((l) => l.years)).size);
+	let totalChampions = $derived(legends.length);
 </script>
 
 <style>
@@ -107,10 +163,10 @@
 
 		<!-- Diagonal lines (artsy touch) -->
 		<div
-			class="via-accent/20 absolute top-0 -left-20 h-[800px] w-px rotate-[35deg] bg-linear-to-b from-transparent to-transparent"
+			class="via-accent/20 absolute top-0 -left-20 h-200 w-px rotate-35 bg-linear-to-b from-transparent to-transparent"
 		></div>
 		<div
-			class="via-accent/10 absolute top-0 right-1/3 h-[900px] w-px rotate-[-35deg] bg-linear-to-b from-transparent to-transparent"
+			class="via-accent/10 absolute top-0 right-1/3 h-225 w-px -rotate-35 bg-linear-to-b from-transparent to-transparent"
 		></div>
 	</div>
 
@@ -175,11 +231,11 @@
 			<!-- Stats summary -->
 			<div class="mt-10 flex flex-wrap items-center justify-center gap-4 sm:gap-6">
 				<div class="border border-white/10 bg-slate-800/50 px-6 py-3 text-center backdrop-blur-sm">
-					<div class="text-2xl font-black text-white sm:text-3xl">22</div>
-					<div class="text-xs font-medium tracking-widest text-slate-500 uppercase">Seasons</div>
-				</div>
-				<div class="border-accent/20 bg-accent/10 border px-6 py-3 text-center backdrop-blur-sm">
-					<div class="text-accent text-2xl font-black sm:text-3xl">5</div>
+						<div class="text-2xl font-black text-white sm:text-3xl">{totalSeasons}</div>
+						<div class="text-xs font-medium tracking-widest text-slate-500 uppercase">Seasons</div>
+					</div>
+					<div class="border-accent/20 bg-accent/10 border px-6 py-3 text-center backdrop-blur-sm">
+						<div class="text-accent text-2xl font-black sm:text-3xl">{totalChampions}</div>
 					<div class="text-xs font-medium tracking-widest text-slate-500 uppercase">Champions</div>
 				</div>
 				<div class="border border-white/10 bg-slate-800/50 px-6 py-3 text-center backdrop-blur-sm">
@@ -308,7 +364,7 @@
 														class="border border-slate-700/50 bg-slate-800/50 px-3 py-1.5 text-sm font-medium text-slate-400 transition-all duration-300 hover:border-slate-600 hover:text-white"
 													>
 														{year}
-														{#if yi === 0 && year === 2025}
+														{#if year === mostRecentYear}
 															<span class="text-accent ml-1">★</span>
 														{/if}
 													</span>

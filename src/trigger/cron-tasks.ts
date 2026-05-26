@@ -457,3 +457,58 @@ export const leaderboardIntegrityCheck = schedules.task({
 		};
 	}
 });
+
+// Season bootstrap task — provisions fixtures and league table entries for CURRENT_SEASON.
+// Runs daily at 9 AM UTC. Once the season is fully bootstrapped (380 fixtures seeded +
+// all members have league table rows) it exits in milliseconds, so there is no overhead.
+export const seasonBootstrap = schedules.task({
+	id: 'season-bootstrap',
+	cron: '0 9 * * *', // Daily at 9 AM UTC
+	run: async (payload) => {
+		console.log('🌱 Season bootstrap: checking season readiness...');
+
+		const baseUrl = getBaseUrl();
+
+		// Quick status check first (GET is read-only / cheap)
+		const statusRes = await fetch(`${baseUrl}/api/cron/season-bootstrap`, {
+			method: 'GET'
+		});
+
+		if (!statusRes.ok) {
+			throw new Error(`Season bootstrap status check failed: ${statusRes.statusText}`);
+		}
+
+		const status = await statusRes.json();
+		console.log('Season bootstrap status:', status);
+
+		if (status.ready) {
+			console.log(`✅ Season ${status.season} is fully bootstrapped — skipping`);
+			return { skipped: true, reason: 'already_ready', status };
+		}
+
+		// Something is missing — run the full bootstrap
+		console.log(
+			`🚀 Season ${status.season} needs work — fixtures: ${status.fixturesSeeded}/380, members without entry: ${status.membersWithoutLeagueEntry}`
+		);
+
+		const bootstrapRes = await fetch(`${baseUrl}/api/cron/season-bootstrap`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ force: false })
+		});
+
+		if (!bootstrapRes.ok) {
+			throw new Error(`Season bootstrap failed: ${bootstrapRes.statusText}`);
+		}
+
+		const result = await bootstrapRes.json();
+		console.log('Season bootstrap completed:', result);
+
+		return {
+			success: true,
+			timestamp: new Date().toISOString(),
+			scheduleId: payload.scheduleId,
+			result
+		};
+	}
+});

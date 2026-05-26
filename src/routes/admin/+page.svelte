@@ -13,7 +13,10 @@
 		Clock,
 		UserPlus,
 		UserX,
-		LoaderCircle
+		LoaderCircle,
+		Shuffle,
+		Zap,
+		Lock
 	} from '@lucide/svelte';
 
 	// State management for various admin operations
@@ -298,6 +301,71 @@
 			loadingStates.fixtureSchedule = false;
 		}
 	}
+
+	// ── Multiplier re-roll ──────────────────────────────────────────────────────
+
+	type MultiplierFixture = {
+		id: string;
+		homeTeam: string;
+		awayTeam: string;
+		matchDate: string;
+		status: string;
+		pointsMultiplier: number;
+	};
+
+	let multiplierWeek = $state<number>(1);
+	let multiplierFixtures = $state<MultiplierFixture[]>([]);
+	let multiplierCanReroll = $state(false);
+	let multiplierEarliestKickoff = $state<string | null>(null);
+	let multiplierLoading = $state(false);
+	let multiplierRerolling = $state(false);
+
+	async function fetchWeekMultipliers(week: number) {
+		multiplierLoading = true;
+		try {
+			const res = await fetch(`/admin/reroll-multipliers?week=${week}`);
+			const data = await res.json();
+			multiplierFixtures = data.fixtures ?? [];
+			multiplierCanReroll = data.canReroll ?? false;
+			multiplierEarliestKickoff = data.earliestKickoff ?? null;
+		} catch {
+			toast.error('Failed to load fixtures for this week', { duration: 4000 });
+		} finally {
+			multiplierLoading = false;
+		}
+	}
+
+	async function rerollMultipliers() {
+		if (multiplierRerolling || !multiplierCanReroll) return;
+		multiplierRerolling = true;
+		try {
+			const res = await fetch('/admin/reroll-multipliers', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ week: multiplierWeek })
+			});
+			const data = await res.json();
+			if (data.success) {
+				multiplierFixtures = data.fixtures ?? [];
+				const triple = data.triple;
+				const double = data.double;
+				toast.success(
+					`Re-rolled! 3× ${triple?.homeTeam} v ${triple?.awayTeam} · 2× ${double?.homeTeam} v ${double?.awayTeam}`,
+					{ duration: 6000 }
+				);
+			} else {
+				toast.error(data.message ?? 'Re-roll failed', { duration: 5000 });
+			}
+		} catch {
+			toast.error('Re-roll failed. Please try again.', { duration: 4000 });
+		} finally {
+			multiplierRerolling = false;
+		}
+	}
+
+	$effect(() => {
+		if (multiplierWeek) fetchWeekMultipliers(multiplierWeek);
+	});
 </script>
 
 <div class="mx-auto">
@@ -576,6 +644,91 @@
 					</div>
 				</button>
 			</div>
+		</div>
+
+		<!-- Fixture Multipliers Section -->
+		<div class="mb-6 border border-white/10 bg-white/5 p-4 sm:p-6">
+			<div class="mb-4 flex items-center gap-3">
+				<div class="rounded-lg bg-accent/20 p-2">
+					<Shuffle class="text-accent" size={20} />
+				</div>
+				<div>
+					<h2 class="text-lg font-semibold text-white">Fixture Multipliers</h2>
+					<p class="text-sm text-white/50">Re-randomise the 2× and 3× bonus fixtures for a gameweek (locked once any match kicks off)</p>
+				</div>
+			</div>
+
+			<!-- Week Selector -->
+			<div class="mb-4 flex items-center gap-3">
+				<label for="multiplier-week" class="text-sm font-medium text-white/70 whitespace-nowrap">Gameweek</label>
+				<select
+					id="multiplier-week"
+					bind:value={multiplierWeek}
+					class="rounded border border-white/20 bg-white/10 px-3 py-1.5 text-sm text-white focus:border-accent focus:outline-none"
+				>
+					{#each Array.from({ length: 38 }, (_, i) => i + 1) as w}
+						<option value={w}>Week {w}</option>
+					{/each}
+				</select>
+				{#if multiplierLoading}
+					<LoaderCircle class="animate-spin text-white/40" size={16} />
+				{/if}
+			</div>
+
+			<!-- Fixtures List -->
+			{#if multiplierFixtures.length > 0}
+				<div class="mb-4 space-y-2">
+					{#each multiplierFixtures as fixture}
+						<div class="flex items-center justify-between rounded border border-white/10 bg-white/5 px-3 py-2">
+							<span class="text-sm text-white">
+								{fixture.homeTeam} <span class="text-white/40">v</span> {fixture.awayTeam}
+							</span>
+							<div class="flex items-center gap-2">
+								{#if fixture.pointsMultiplier === 3}
+									<span class="flex items-center gap-1 rounded bg-yellow-500/20 px-2 py-0.5 text-xs font-bold text-yellow-300">
+										<Zap size={11} />3×
+									</span>
+								{:else if fixture.pointsMultiplier === 2}
+									<span class="flex items-center gap-1 rounded bg-purple-500/20 px-2 py-0.5 text-xs font-bold text-purple-300">
+										<Zap size={11} />2×
+									</span>
+								{/if}
+								<span class="text-xs text-white/30">
+									{new Date(fixture.matchDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+								</span>
+							</div>
+						</div>
+					{/each}
+				</div>
+
+				<!-- Lock Status -->
+				<div class="mb-4 flex items-center gap-2 rounded border px-3 py-2 text-sm {multiplierCanReroll ? 'border-green-600/40 bg-green-900/20 text-green-300' : 'border-red-600/40 bg-red-900/20 text-red-300'}">
+					{#if multiplierCanReroll}
+						<Shuffle size={14} />
+						<span>Re-roll available — first kick-off {multiplierEarliestKickoff ? new Date(multiplierEarliestKickoff).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+					{:else}
+						<Lock size={14} />
+						<span>Locked — week has started or no upcoming fixtures</span>
+					{/if}
+				</div>
+			{:else if !multiplierLoading}
+				<p class="mb-4 text-sm text-white/40">No fixtures found for week {multiplierWeek}.</p>
+			{/if}
+
+			<!-- Re-roll Button -->
+			<button
+				onclick={rerollMultipliers}
+				disabled={!multiplierCanReroll || multiplierRerolling || multiplierLoading}
+				class="flex items-center gap-2 rounded bg-accent px-4 py-2 text-sm font-semibold text-black transition hover:bg-accent/80 disabled:cursor-not-allowed disabled:opacity-40"
+			>
+				{#if multiplierRerolling}
+					<LoaderCircle class="animate-spin" size={16} />
+					Re-rolling…
+				{:else}
+					<Shuffle size={16} />
+					Re-roll Multipliers
+				{/if}
+			</button>
 		</div>
 
 		<!-- Warning Notice -->

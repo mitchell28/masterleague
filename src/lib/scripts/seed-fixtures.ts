@@ -125,9 +125,12 @@ async function seedFixtures() {
 	console.log('🔄 Seeding fixtures...');
 
 	try {
-		// Default to 2025 season, allow override with command line argument
-		const season = process.argv[2] || '2025-26';
-		console.log(`📅 Seeding fixtures for ${season} season...`);
+		// Default to current season, allow override with command line argument
+		// Season format: 'YYYY-YY' (e.g. '2026-27') - the API uses only the start year
+		const season = process.argv[2] || '2026-27';
+		// Extract start year for football-data.org API (e.g. '2026-27' → '2026')
+		const apiSeason = season.split('-')[0];
+		console.log(`📅 Seeding fixtures for ${season} season (API year: ${apiSeason})...`);
 
 		// Check if API key exists
 		if (!FOOTBALL_DATA_API_KEY) {
@@ -189,8 +192,8 @@ async function seedFixtures() {
 			}
 		}
 
-		// Now fetch the matches from the API
-		const MATCHES_API_URL = `https://api.football-data.org/v4/competitions/PL/matches?season=${season}`;
+		// Now fetch the matches from the API (API uses start year only, e.g. 2026)
+		const MATCHES_API_URL = `https://api.football-data.org/v4/competitions/PL/matches?season=${apiSeason}`;
 		const matchesResponse = await fetch(MATCHES_API_URL, {
 			headers: {
 				'X-Auth-Token': FOOTBALL_DATA_API_KEY

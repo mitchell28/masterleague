@@ -57,7 +57,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	let weekFixtures = await db
 		.select({ id: fixtures.id, matchDate: fixtures.matchDate })
 		.from(fixtures)
-		.where(and(eq(fixtures.weekId, currentWeek), eq(fixtures.season, '2025-26')))
+		.where(and(eq(fixtures.weekId, currentWeek), eq(fixtures.season, '2026-27')))
 		.orderBy(fixtures.matchDate);
 
 	// If the week has started (first match passed), look at next week for the preview
@@ -67,7 +67,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		weekFixtures = await db
 			.select({ id: fixtures.id, matchDate: fixtures.matchDate })
 			.from(fixtures)
-			.where(and(eq(fixtures.weekId, currentWeek), eq(fixtures.season, '2025-26')))
+			.where(and(eq(fixtures.weekId, currentWeek), eq(fixtures.season, '2026-27')))
 			.orderBy(fixtures.matchDate);
 	}
 
@@ -167,7 +167,7 @@ export const actions: Actions = {
 		let weekFixtures = await db
 			.select({ id: fixtures.id, matchDate: fixtures.matchDate })
 			.from(fixtures)
-			.where(and(eq(fixtures.weekId, currentWeek), eq(fixtures.season, '2025-26')))
+			.where(and(eq(fixtures.weekId, currentWeek), eq(fixtures.season, '2026-27')))
 			.orderBy(fixtures.matchDate);
 
 		// If the week has started (first match passed), look at next week for the preview
@@ -176,7 +176,7 @@ export const actions: Actions = {
 			weekFixtures = await db
 				.select({ id: fixtures.id, matchDate: fixtures.matchDate })
 				.from(fixtures)
-				.where(and(eq(fixtures.weekId, currentWeek), eq(fixtures.season, '2025-26')))
+				.where(and(eq(fixtures.weekId, currentWeek), eq(fixtures.season, '2026-27')))
 				.orderBy(fixtures.matchDate);
 		}
 

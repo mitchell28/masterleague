@@ -50,7 +50,7 @@ export interface WeeklyPointsRow {
  */
 export async function getWeeklyPointsByOrganization(
 	organizationId: string,
-	season: string = '2025-26'
+	season: string = '2026-27'
 ): Promise<WeeklyPointsRow[]> {
 	const result = await db
 		.select({
@@ -83,7 +83,7 @@ export async function getWeeklyPointsByOrganization(
  */
 export async function getAvailableWeeks(
 	organizationId: string,
-	season: string = '2025-26',
+	season: string = '2026-27',
 	maxWeek?: number
 ): Promise<number[]> {
 	const weeksData = await db

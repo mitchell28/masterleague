@@ -2,17 +2,86 @@ import type { MetaTagsProps } from 'svelte-meta-tags';
 import type { LayoutServerLoad } from './$types';
 import { getCurrentWeek } from '$lib/server/engine/data/fixtures';
 import { lightCache } from '$lib/server/light-cache';
+import {
+	getSeasonState,
+	daysUntilSeasonStart,
+	CURRENT_SEASON,
+	PREVIOUS_SEASON,
+	CURRENT_SEASON_CONFIG
+} from '$lib/server/config/season';
+import { db } from '$lib/server/db';
+import { leagueTable } from '$lib/server/db/schema';
+import { user as authUser, organization } from '$lib/server/db/auth/auth-schema';
+import { eq, desc, and } from 'drizzle-orm';
 
 export const load: LayoutServerLoad = async ({ url, locals }) => {
+	// Compute season state on every request (cheap date comparison, no caching needed)
+	const seasonState = getSeasonState();
+	const daysUntilStart = daysUntilSeasonStart();
+	const nextSeasonStart = CURRENT_SEASON_CONFIG.startDate.toISOString();
+
 	// Cache key for layout data
 	const cacheKey = 'layout:core-data';
 
-	// Try to get cached data first
+	// Previous season podium - cache separately (only relevant during off-season)
+	let previousSeasonPodium: { name: string; totalPoints: number; position: number }[] = [];
+	if (seasonState !== 'in-season') {
+		const podiumCacheKey = `layout:podium:${PREVIOUS_SEASON}`;
+		const cachedPodium = lightCache.stable.get(podiumCacheKey);
+		if (cachedPodium) {
+			previousSeasonPodium = cachedPodium as typeof previousSeasonPodium;
+		} else {
+			try {
+				const defaultOrg = await db
+					.select({ id: organization.id })
+					.from(organization)
+					.where(eq(organization.slug, 'master-league'))
+					.limit(1);
+
+				if (defaultOrg[0]) {
+					const podiumRows = await db
+						.select({
+							name: authUser.name,
+							totalPoints: leagueTable.totalPoints
+						})
+						.from(leagueTable)
+						.innerJoin(authUser, eq(leagueTable.userId, authUser.id))
+						.where(
+							and(
+								eq(leagueTable.season, PREVIOUS_SEASON),
+								eq(leagueTable.organizationId, defaultOrg[0].id)
+							)
+						)
+						.orderBy(desc(leagueTable.totalPoints))
+						.limit(3);
+
+					previousSeasonPodium = podiumRows.map((row, i) => ({
+						name: row.name ?? 'Unknown',
+						totalPoints: row.totalPoints ?? 0,
+						position: i + 1
+					}));
+
+					// Cache for 1 hour (previous season data won't change)
+					lightCache.stable.set(podiumCacheKey, previousSeasonPodium, 3600000, ['leaderboard']);
+				}
+			} catch {
+				// Non-critical — off-season screen still renders without podium
+			}
+		}
+	}
+
+	// Try to get cached core data first
 	const cached = lightCache.stable.get(cacheKey);
 	if (cached) {
 		return {
 			...cached,
-			user: locals.user // Always use fresh user data
+			user: locals.user,
+			seasonState,
+			daysUntilStart,
+			nextSeasonStart,
+			previousSeasonPodium,
+			currentSeason: CURRENT_SEASON,
+			previousSeason: PREVIOUS_SEASON
 		};
 	}
 
@@ -98,6 +167,12 @@ export const load: LayoutServerLoad = async ({ url, locals }) => {
 
 	return {
 		...coreData,
-		user: locals.user
+		user: locals.user,
+		seasonState,
+		daysUntilStart,
+		nextSeasonStart,
+		previousSeasonPodium,
+		currentSeason: CURRENT_SEASON,
+		previousSeason: PREVIOUS_SEASON
 	};
 };

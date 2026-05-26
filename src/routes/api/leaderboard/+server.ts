@@ -9,7 +9,7 @@ import type { RequestHandler } from './$types.js';
 export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
 		const organizationId = url.searchParams.get('organizationId');
-		const season = url.searchParams.get('season') || '2025-26';
+		const season = url.searchParams.get('season') || '2026-27';
 
 		if (!organizationId) {
 			return json(

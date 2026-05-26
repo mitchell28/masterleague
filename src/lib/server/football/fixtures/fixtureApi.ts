@@ -269,15 +269,18 @@ export interface ApiMatch {
 /**
  * Fetch fixtures from Football-Data.org API and seed them into the database
  */
-export async function seedFixturesWithSeasonYear(season: string = '2025'): Promise<void> {
+export async function seedFixturesWithSeasonYear(season: string = '2026-27'): Promise<void> {
 	// Get the API key
 	const apiKey = FOOTBALL_DATA_API_KEY;
 	if (!apiKey) {
 		throw new Error('FOOTBALL_DATA_API_KEY not found in environment variables');
 	}
 
+	// football-data.org API uses start year only (e.g. '2026' for 2026-27 season)
+	const apiSeason = season.split('-')[0];
+
 	// First, get teams directly from the API
-	const TEAMS_API_URL = `https://api.football-data.org/v4/competitions/PL/teams?season=${season}`;
+	const TEAMS_API_URL = `https://api.football-data.org/v4/competitions/PL/teams?season=${apiSeason}`;
 	const teamsResponse = await queuedApiCall(TEAMS_API_URL, apiKey);
 
 	const teamsData = teamsResponse;
@@ -308,8 +311,8 @@ export async function seedFixturesWithSeasonYear(season: string = '2025'): Promi
 		}
 	}
 
-	// Now fetch the matches from the API
-	const MATCHES_API_URL = `https://api.football-data.org/v4/competitions/PL/matches?season=${season}`;
+	// Now fetch the matches from the API (uses start year only)
+	const MATCHES_API_URL = `https://api.football-data.org/v4/competitions/PL/matches?season=${apiSeason}`;
 	const matchesResponse = await queuedApiCall(MATCHES_API_URL, apiKey);
 
 	const data = matchesResponse;

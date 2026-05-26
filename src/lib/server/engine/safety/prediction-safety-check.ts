@@ -9,7 +9,7 @@ import { calculatePredictionPoints } from '$lib/server/engine/shared/utils';
  */
 export async function fixUnprocessedPredictions(
 	daysBack: number = 7,
-	season: string = '2025-26'
+	season: string = '2026-27'
 ): Promise<{
 	success: boolean;
 	fixturesChecked: number;

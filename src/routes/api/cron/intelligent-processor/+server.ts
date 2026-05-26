@@ -44,7 +44,7 @@ export const POST: RequestHandler = async ({ request }) => {
 						`📊 ${predictionResult.predictionsProcessed} predictions updated, triggering leaderboard recalculation...`
 					);
 
-					const leaderboardResults = await recalculateAllLeaderboards('2025-26', false);
+					const leaderboardResults = await recalculateAllLeaderboards('2026-27', false);
 					CacheHelpers.markCronCompleted('leaderboards');
 
 					results.push({
@@ -79,7 +79,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 				// Run leaderboard recalculation
 				console.log('📊 Running leaderboard recalculation...');
-				const leaderboardResults = await recalculateAllLeaderboards('2025-26', false);
+				const leaderboardResults = await recalculateAllLeaderboards('2026-27', false);
 
 				// Mark as completed
 				CacheHelpers.markCronCompleted('leaderboards');
@@ -113,7 +113,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					console.log(
 						`⚽ ${liveResult.predictionsProcessed} live fixtures updated, triggering leaderboard recalculation...`
 					);
-					const leaderboardResults = await recalculateAllLeaderboards('2025-26', false);
+					const leaderboardResults = await recalculateAllLeaderboards('2026-27', false);
 					CacheHelpers.markCronCompleted('leaderboards');
 
 					results.push({

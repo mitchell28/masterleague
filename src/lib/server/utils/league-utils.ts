@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto';
 export async function addUserToLeagueTable(
 	userId: string,
 	organizationId: string,
-	season = '2025-26'
+	season = '2026-27'
 ) {
 	// Check if user already exists in league table for this org/season
 	const existingEntry = await db
@@ -48,7 +48,7 @@ export async function addUserToLeagueTable(
 export async function removeUserFromLeagueTable(
 	userId: string,
 	organizationId: string,
-	season = '2025-26'
+	season = '2026-27'
 ) {
 	return await db
 		.delete(leagueTable)

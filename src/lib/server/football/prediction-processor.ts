@@ -24,7 +24,7 @@ export interface PredictionUpdateResult {
  */
 export async function updatePredictions(
 	targetOrganizationId?: string,
-	targetSeason: string = '2025-26'
+	targetSeason: string = '2026-27'
 ): Promise<PredictionUpdateResult> {
 	const startTime = Date.now();
 
@@ -209,7 +209,7 @@ export async function updatePredictions(
  */
 export async function analyzePredictions(
 	organizationId: string,
-	season: string = '2025-26',
+	season: string = '2026-27',
 	gameWeek?: number
 ): Promise<{
 	success: boolean;

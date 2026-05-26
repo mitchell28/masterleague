@@ -8,6 +8,7 @@ import type { MetaTagsProps } from 'svelte-meta-tags';
 import { getLeaderboardWeek, getCurrentWeek } from '$lib/server/engine/data/fixtures';
 import { getLeaderboard } from '$lib/server/engine/analytics/leaderboard.js';
 import { getRankingHistory } from '$lib/server/engine/analytics';
+import { getSeasonState, CURRENT_SEASON, PREVIOUS_SEASON } from '$lib/server/config/season';
 
 // Type for weekly points breakdown
 interface WeeklyPointsData {
@@ -51,11 +52,15 @@ export const load = (async ({ locals, url }) => {
 
 	const userId = locals.user.id;
 
+	// Use previous season data during off-season
+	const seasonState = getSeasonState();
+	const displaySeason = seasonState === 'in-season' ? CURRENT_SEASON : PREVIOUS_SEASON;
+
 	// Get week filter from URL params (null = overview/all weeks)
 	const weekParam = url.searchParams.get('week');
 	const selectedWeek = weekParam ? parseInt(weekParam, 10) : null;
 
-	const cacheKey = `leaderboard:${userId}:week-${selectedWeek || 'all'}`;
+	const cacheKey = `leaderboard:${userId}:${displaySeason}:week-${selectedWeek || 'all'}`;
 
 	// Try cache first (5 minute TTL)
 	const cached = getCached(cacheKey);
@@ -82,7 +87,7 @@ export const load = (async ({ locals, url }) => {
 			leaderboard: [],
 			selectedOrganization: null,
 			user: locals.user,
-			currentSeason: '2025-26',
+			currentSeason: displaySeason,
 			leaderboardMeta: null,
 			availableWeeks: [],
 			selectedWeek: null,
@@ -107,14 +112,18 @@ export const load = (async ({ locals, url }) => {
 		let allWeeklyPoints = getCached<any[]>(weeklyPointsCacheKey);
 
 		// Parallel fetch only what we need
-		const fetchPromises: Promise<any>[] = [getLeaderboard(selectedOrganization.id, '2025-26')];
+		const fetchPromises: Promise<any>[] = [
+			getLeaderboard(selectedOrganization.id, displaySeason),
+			// getRankingHistory runs in parallel — no dependency on leaderboard data
+			getRankingHistory(selectedOrganization.id, displaySeason)
+		];
 
 		if (!availableWeeksData) {
 			fetchPromises.push(
 				db
 					.selectDistinct({ weekId: fixtures.weekId })
 					.from(fixtures)
-					.where(eq(fixtures.season, '2025-26'))
+					.where(eq(fixtures.season, displaySeason))
 					.orderBy(asc(fixtures.weekId))
 			);
 		}
@@ -145,7 +154,7 @@ export const load = (async ({ locals, url }) => {
 					.where(
 						and(
 							eq(predictions.organizationId, selectedOrganization.id),
-							eq(fixtures.season, '2025-26'),
+							eq(fixtures.season, displaySeason),
 							eq(fixtures.status, 'FINISHED')
 						)
 					)
@@ -155,9 +164,10 @@ export const load = (async ({ locals, url }) => {
 
 		const results = await Promise.all(fetchPromises);
 		const leaderboard = results[0];
+		const { rankingHistory } = results[1];
 
 		// Assign fetched data or use cached
-		let resultIndex = 1;
+		let resultIndex = 2;
 		if (!availableWeeksData) {
 			availableWeeksData = results[resultIndex++];
 			setCache(weeksCacheKey, availableWeeksData, 600000); // 10 min cache for weeks
@@ -287,15 +297,13 @@ export const load = (async ({ locals, url }) => {
 			}
 		}) satisfies MetaTagsProps;
 
-		// Get ranking history for the chart
-		const { rankingHistory } = await getRankingHistory(selectedOrganization.id, '2025-26');
-
 		const result = {
 			currentWeek,
 			leaderboard: enhancedLeaderboard,
 			selectedOrganization,
 			user: locals.user,
-			currentSeason: '2025-26',
+			currentSeason: displaySeason,
+			isOffSeason: seasonState !== 'in-season',
 			leaderboardMeta: null,
 			pageMetaTags,
 			availableWeeks,
@@ -317,7 +325,7 @@ export const load = (async ({ locals, url }) => {
 			leaderboard: [],
 			selectedOrganization,
 			user: locals.user,
-			currentSeason: '2025-26',
+			currentSeason: displaySeason,
 			leaderboardMeta: null,
 			pageMetaTags: {
 				title: 'Leaderboard - Error',

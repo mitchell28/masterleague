@@ -13,7 +13,7 @@ import type { RequestHandler } from './$types.js';
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const body = await request.json().catch(() => ({}));
-		const { organizationId, season = '2025-26', force = false, all = false } = body;
+		const { organizationId, season = '2026-27', force = false, all = false } = body;
 
 		let results;
 
@@ -69,7 +69,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 export const GET: RequestHandler = async ({ url }) => {
 	try {
 		const organizationId = url.searchParams.get('organizationId');
-		const season = url.searchParams.get('season') || '2025-26';
+		const season = url.searchParams.get('season') || '2026-27';
 
 		if (!organizationId) {
 			return json(

@@ -17,7 +17,7 @@ async function checkLeaderboardData() {
 		}
 
 		// Check league table data
-		const season = '2025-26';
+		const season = '2026-27';
 		const leagueData = await db
 			.select({
 				organizationId: leagueTable.organizationId,

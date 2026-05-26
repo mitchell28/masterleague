@@ -25,25 +25,40 @@ interface ApiTeam {
  * Script to initialize/update the database with Premier League teams for the current season
  */
 async function initTeams() {
-	console.log('🔄 Updating database with 2025 Premier League teams...');
+	console.log('🔄 Updating database with Premier League teams for 2026-27 season...');
 
 	try {
-		// Get command line argument for season, default to 2025
-		const season = process.argv[2] || '2025-26';
-		console.log(`📅 Fetching teams for ${season} season...`);
+		// Get command line argument for season, default to current season
+		// Season format: 'YYYY-YY' (e.g. '2026-27') - the API uses only the start year
+		const season = process.argv[2] || '2026-27';
+		const apiSeason = season.split('-')[0];
+		console.log(`📅 Fetching teams for ${season} season (API year: ${apiSeason})...`);
 
 		// Check if API key exists
 		if (!FOOTBALL_DATA_API_KEY) {
 			throw new Error('FOOTBALL_DATA_API_KEY not found in environment variables');
 		}
 
-		// Fetch teams from API for the specific season
-		const API_URL = `https://api.football-data.org/v4/competitions/${PREMIER_LEAGUE_ID}/teams?season=${season}`;
-		const response = await fetch(API_URL, {
+		// Fetch teams from API for the specific season (API uses start year only)
+		// Falls back to latest available season if the requested one isn't published yet
+		let API_URL = `https://api.football-data.org/v4/competitions/${PREMIER_LEAGUE_ID}/teams?season=${apiSeason}`;
+		let response = await fetch(API_URL, {
 			headers: {
 				'X-Auth-Token': FOOTBALL_DATA_API_KEY
 			}
 		});
+
+		if (response.status === 404) {
+			console.log(
+				`⚠️  Season ${apiSeason} not available on API yet (404). Falling back to latest available season...`
+			);
+			API_URL = `https://api.football-data.org/v4/competitions/${PREMIER_LEAGUE_ID}/teams`;
+			response = await fetch(API_URL, {
+				headers: {
+					'X-Auth-Token': FOOTBALL_DATA_API_KEY
+				}
+			});
+		}
 
 		if (!response.ok) {
 			throw new Error(`Failed to fetch teams: ${response.status} ${response.statusText}`);

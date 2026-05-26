@@ -143,7 +143,7 @@ export async function POST() {
 
 		// Get the current season from finished fixtures (use the most recent season)
 		const seasons = [...new Set(finishedFixtures.map((f) => f.season).filter(Boolean))];
-		const currentSeason = seasons.length > 0 ? seasons.sort().pop()! : '2025-26'; // Fallback to current season
+		const currentSeason = seasons.length > 0 ? seasons.sort().pop()! : '2026-27'; // Fallback to current season
 
 		for (const [organizationId, orgUsers] of userStatsMap) {
 			for (const [userId, stats] of orgUsers) {

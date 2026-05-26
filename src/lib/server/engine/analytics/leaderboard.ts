@@ -1,3 +1,8 @@
+/**
+ * READ PATH — fetches the current leaderboard for display in the UI.
+ * For the recalculation / write path (used by cron jobs and prediction processing)
+ * see: src/lib/server/football/leaderboard.ts
+ */
 import { db } from '$lib/server/db';
 import { user } from '$lib/server/db/auth/auth-schema';
 import { fixtures, leagueTable, leaderboardMeta } from '$lib/server/db/schema';
@@ -64,7 +69,7 @@ export interface RecalculationResult {
  */
 export async function recalculateLeaderboard(
 	organizationId: string,
-	season: string = '2025-26',
+	season: string = '2026-27',
 	forceRecalculation: boolean = false
 ): Promise<RecalculationResult> {
 	const startTime = Date.now();
@@ -265,7 +270,7 @@ export async function recalculateLeaderboard(
  */
 export async function getLeaderboard(
 	organizationId: string,
-	season: string = '2025-26' // Default to the most common season format
+	season: string = '2026-27' // Default to the most common season format
 ): Promise<LeaderboardEntry[]> {
 	// Try to get from cache first (includes memory cache)
 	const cached = await LeaderboardCache.getData(organizationId, season);
@@ -278,8 +283,8 @@ export async function getLeaderboard(
 	let quickData = await getLeaderboardFromDatabase(organizationId, season);
 
 	// If no data found with the provided season, try alternative season formats
-	if (quickData.length === 0 && season !== '2025-26') {
-		const alternativeSeasons = ['2025-26', '2025', '24-25', '2024-25'];
+	if (quickData.length === 0 && season !== '2026-27') {
+		const alternativeSeasons = ['2026-27', '2025-26', '2025', '24-25', '2024-25'];
 		for (const altSeason of alternativeSeasons) {
 			if (altSeason !== season) {
 				quickData = await getLeaderboardFromDatabase(organizationId, altSeason);
@@ -432,7 +437,7 @@ async function updateCacheInBackground(
  * Useful for batch operations and maintenance
  */
 export async function recalculateAllLeaderboards(
-	season: string = '2025-26',
+	season: string = '2026-27',
 	forceRecalculation: boolean = false
 ): Promise<RecalculationResult[]> {
 	// Get all organizations from the database

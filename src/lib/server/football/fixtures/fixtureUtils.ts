@@ -1,6 +1,7 @@
 import { db } from '../../db';
 import { fixtures } from '../../db/schema';
 import { inArray as drizzleInArray } from 'drizzle-orm';
+import { CURRENT_SEASON_CONFIG } from '$lib/server/config/season';
 
 /**
  * Season configuration interface
@@ -24,12 +25,8 @@ interface FixtureResult {
  * @returns The current week number (1-38)
  */
 export async function getCurrentWeek(): Promise<number> {
-	// Use 2025-26 season dates (official Premier League dates)
-	const season: SeasonConfig = {
-		startDate: new Date('2025-08-15'), // Friday, 15 Aug 2025
-		endDate: new Date('2026-05-24'), // Sunday, 24 May 2026
-		totalWeeks: 38
-	};
+	// Use current season dates from central config
+	const season: SeasonConfig = CURRENT_SEASON_CONFIG;
 	const now: Date = new Date();
 
 	// Handle pre-season: if we're before the season starts, return week 1

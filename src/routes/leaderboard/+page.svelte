@@ -7,15 +7,20 @@
 	import { navigating } from '$app/stores';
 	import WeekSelector from '$lib/components/WeekSelector.svelte';
 	import RankingsChart from '$lib/components/RankingsChart.svelte';
+	import OffSeason from '$lib/components/OffSeason.svelte';
 
 	// Props and state
 	let { data } = $props<{ data: PageData }>();
+
+	// Season state from layout data (available on all pages)
+	let { seasonState, daysUntilStart, nextSeasonStart, currentSeason, previousSeason, previousSeasonPodium } = $derived(page.data);
 
 	// Update leaderboard when data changes (reactive to server load updates)
 	let leaderboard = $derived(data.leaderboard || []);
 	let availableWeeks = $derived(data.availableWeeks || []);
 	let selectedWeek = $derived(data.selectedWeek);
 	let isWeekView = $derived(selectedWeek !== null);
+	let isOffSeason = $derived(data.isOffSeason ?? false);
 	
 	// Loading state derived from navigating store
 	let isLoading = $derived($navigating !== null);
@@ -76,6 +81,13 @@
 	}
 </script>
 
+{#if isOffSeason}
+	<div class="border-b border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-center text-sm">
+		<span class="font-semibold text-yellow-400">{previousSeason} Final Standings</span>
+		<span class="mx-2 text-white/30">·</span>
+		<span class="text-white/50">Next season starts {new Date(nextSeasonStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+	</div>
+{/if}
 <div class="mx-auto">
 	<!-- Main Header with clean geometric design and mobile responsive layout -->
 	<div class="relative mb-4 sm:mb-6">
@@ -204,9 +216,12 @@
 			<div class="block sm:hidden">
 				{#if sorting.sortedData && sorting.sortedData.length > 0}
 					{#each sorting.sortedData as entry, index}
-						<a
-							class="group block w-full cursor-pointer border-b border-slate-700/50 text-left transition-all duration-200 last:border-b-0 hover:bg-slate-700/30 focus:bg-slate-700/30 focus:ring-2 focus:ring-indigo-500/50 focus:outline-none focus:ring-inset active:bg-slate-700/40"
-							href={`/leaderboard/${entry.userId}/${data.currentWeek}`}
+						<div
+							class="group block w-full cursor-pointer border-b border-slate-700/50 text-left transition-all duration-200 last:border-b-0 hover:bg-slate-700/30 active:bg-slate-700/40"
+							role="button"
+							tabindex="0"
+							onclick={() => goto(`/leaderboard/${entry.userId}/${data.currentWeek}`)}
+							onkeydown={(e) => e.key === 'Enter' && goto(`/leaderboard/${entry.userId}/${data.currentWeek}`)}
 							aria-label="View predictions for {entry.username}"
 						>
 							<!-- Main content row -->
@@ -265,14 +280,12 @@
 							</div>
 
 							<!-- View Stats Button for Mobile -->
-							<div class="px-4 pb-3">
-								<div
-									class="cursor-pointer border border-slate-600/50 bg-slate-700/50 px-3 py-1.5 text-center text-xs font-medium text-slate-300 transition-colors duration-200 group-hover:border-slate-500/70 group-hover:bg-slate-600/70 hover:border-slate-500/70 hover:bg-slate-600/70 hover:text-white"
-								>
+							<div class="flex gap-2 px-4 pb-3">
+								<div class="flex-1 cursor-pointer border border-slate-600/50 bg-slate-700/50 px-3 py-1.5 text-center text-xs font-medium text-slate-300 transition-colors duration-200 group-hover:border-slate-500/70 group-hover:bg-slate-600/70 hover:border-slate-500/70 hover:bg-slate-600/70 hover:text-white">
 									View Stats
 								</div>
 							</div>
-						</a>
+						</div>
 					{/each}
 				{:else}
 					<div class="py-8 text-center text-sm text-slate-400">
@@ -346,12 +359,8 @@
 								<tr
 									class="group cursor-pointer transition-all duration-200 hover:scale-[1.005] hover:bg-slate-700/30 hover:shadow-lg"
 								>
-									<td colspan="4" class="p-0">
-										<a
-											href={`/leaderboard/${entry.userId}/${isWeekView ? selectedWeek : data.currentWeek}`}
-											class="flex w-full cursor-pointer"
-											aria-label="View predictions for {entry.username}"
-										>
+									<td colspan="4" class="p-0" onclick={() => goto(`/leaderboard/${entry.userId}/${isWeekView ? selectedWeek : data.currentWeek}`)}>
+										<div class="flex w-full cursor-pointer">
 											<!-- Player name and rank -->
 											<div class="w-[40%] flex-none px-4 py-3 whitespace-nowrap">
 												<div class="flex items-center">
@@ -362,11 +371,7 @@
 														{index + 1}
 													</div>
 													<div>
-														<div
-															class="text-sm font-medium tracking-wide text-white transition-colors group-hover:text-indigo-200"
-														>
-															{entry?.username || 'Anonymous'}
-														</div>
+													<span class="text-sm font-medium tracking-wide text-white">{entry?.username || 'Anonymous'}</span>
 													</div>
 												</div>
 											</div>
@@ -400,7 +405,7 @@
 													{/if}
 												{/if}
 											</div>
-										</a>
+										</div>
 									</td>
 								</tr>
 							{/each}

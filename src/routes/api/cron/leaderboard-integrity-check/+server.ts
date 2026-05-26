@@ -58,7 +58,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				.where(
 					and(
 						eq(predictions.organizationId, org.id),
-						eq(fixtures.season, '2025-26'),
+						eq(fixtures.season, '2026-27'),
 						eq(fixtures.status, 'FINISHED')
 					)
 				)
@@ -71,7 +71,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					totalPoints: leagueTable.totalPoints
 				})
 				.from(leagueTable)
-				.where(and(eq(leagueTable.organizationId, org.id), eq(leagueTable.season, '2025-26')));
+				.where(and(eq(leagueTable.organizationId, org.id), eq(leagueTable.season, '2026-27')));
 
 			// Create lookup map for leaderboard
 			const leaderboardMap = new Map(leaderboardEntries.map((e) => [e.userId, e.totalPoints]));
@@ -120,7 +120,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			for (const orgId of orgsToFix) {
 				try {
-					await recalculateLeaderboard(orgId, '2025-26', true); // Force recalculation
+					await recalculateLeaderboard(orgId, '2026-27', true); // Force recalculation
 					fixedCount++;
 					console.log(`✅ Recalculated leaderboard for org ${orgId}`);
 				} catch (error) {
@@ -187,9 +187,9 @@ export const GET: RequestHandler = async () => {
 					INNER JOIN fixtures f ON p.fixture_id = f.id
 					LEFT JOIN league_table lt ON p.user_id = lt.user_id 
 						AND lt.organization_id = ${org.id}
-						AND lt.season = '2025-26'
+						AND lt.season = '2026-27'
 					WHERE p.organization_id = ${org.id}
-						AND f.season = '2025-26'
+						AND f.season = '2026-27'
 						AND f.status = 'FINISHED'
 					GROUP BY p.user_id, lt.total_points
 					HAVING COALESCE(SUM(p.points), 0) != COALESCE(lt.total_points, 0)

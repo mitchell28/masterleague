@@ -209,10 +209,16 @@
 <!-- Rectangle 1 - Main Card Container with Custom Shape -->
 <div class="font-display relative min-h-[180px] w-full overflow-clip text-sm sm:min-h-[220px]">
 	<!-- Green middle notch - always present for card shape -->
+	<!-- Status chip — colour driven by match state -->
 	<div
-		class="bg-accent absolute top-0 left-[33%] flex h-[26px] w-[34%] items-center justify-center"
+		class="absolute top-0 left-[33%] flex h-[26px] w-[34%] items-center justify-center gap-1 {isFixtureLive
+			? 'bg-red-600'
+			: 'bg-accent'}"
 	>
-		<span class="text-xs text-black sm:text-sm">{statusDisplay.text}</span>
+		{#if isFixtureLive}
+			<span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-white"></span>
+		{/if}
+		<span class="text-xs text-black sm:text-sm {isFixtureLive ? 'text-white' : ''}">{statusDisplay.text}</span>
 	</div>
 
 	{#if specialBadge}
