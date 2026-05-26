@@ -20,7 +20,9 @@ export const GET: RequestHandler = async () => {
 			'^/predictions/\\[week\\]$',
 			'.*\\(authenticated\\).*',
 			'.*studio.*', // Exclude Sanity studio routes (simple pattern)
-			'.*/studio/\\[\\.\\.\\.*\\].*' // Exclude Sanity studio catchall routes (specific pattern)
+			'.*/studio/\\[\\.\\.\\.*\\].*', // Exclude Sanity studio catchall routes (specific pattern)
+			'^/join/.*', // Exclude invite token routes
+			'^/standings/.*' // Exclude dynamic standings/season routes
 		],
 		paramValues: {
 			'/blog/[slug]': blogSlugs

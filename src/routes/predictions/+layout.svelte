@@ -97,7 +97,7 @@
 	}
 
 	// Reference to content container for view transitions
-	let contentContainer: HTMLElement;
+	let contentContainer: HTMLElement = $state(undefined as unknown as HTMLElement);
 
 	// Track swipe direction for CSS view transition
 	let swipeDirection = $state<'left' | 'right' | null>(null);

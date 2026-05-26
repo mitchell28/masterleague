@@ -4,7 +4,12 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let openWeeks = $state(new Set<number>([data.weekGroups[0]?.weekId]));
+	let openWeeks = $state(new Set<number>());
+	$effect(() => {
+		if (openWeeks.size === 0 && data.weekGroups[0]?.weekId != null) {
+			openWeeks = new Set<number>([data.weekGroups[0].weekId]);
+		}
+	});
 
 	function toggleWeek(weekId: number) {
 		if (openWeeks.has(weekId)) {

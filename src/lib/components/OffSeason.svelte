@@ -22,7 +22,10 @@
 	} = $props();
 
 	// Client-side countdown (days / hours / mins) refreshed every minute
-	let countdown = $state({ days: daysUntilStart, hours: 0, minutes: 0 });
+	let countdown = $state({ days: 0, hours: 0, minutes: 0 });
+	$effect(() => {
+		countdown = { days: daysUntilStart, hours: 0, minutes: 0 };
+	});
 
 	function computeCountdown() {
 		const now = new Date();
